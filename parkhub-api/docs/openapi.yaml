@@ -1,0 +1,401 @@
+openapi: 3.0.3
+info:
+  title: ParkHub API - Authentication
+  description: ParkHub 智能停车管理系统认证相关 API
+  version: 1.0.0
+  contact:
+    name: ParkHub Team
+    email: support@parkhub.cn
+
+servers:
+  - url: http://localhost:8080/api/v1
+    description: Development server
+  - url: https://api.parkhub.cn/api/v1
+    description: Production server
+
+tags:
+  - name: Auth
+    description: 认证相关接口
+
+paths:
+  /auth/login:
+    post:
+      tags:
+        - Auth
+      summary: 账号密码登录
+      description: 使用用户名/邮箱和密码进行登录认证
+      operationId: login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+            examples:
+              username:
+                summary: 用户名登录
+                value:
+                  account: admin
+                  password: Password123
+              email:
+                summary: 邮箱登录
+                value:
+                  account: admin@parkhub.cn
+                  password: Password123
+      responses:
+        '200':
+          description: 登录成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '400':
+          description: 请求参数错误
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                code: INVALID_REQUEST
+                message: 请输入账号
+        '401':
+          description: 认证失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                code: INVALID_CREDENTIALS
+                message: 账号或密码错误
+        '403':
+          description: 账号被冻结
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                code: ACCOUNT_FROZEN
+                message: 账号已被冻结，请联系管理员
+
+  /auth/sms/send:
+    post:
+      tags:
+        - Auth
+      summary: 发送短信验证码
+      description: 发送短信验证码（MVP阶段验证码固定为123456）
+      operationId: sendSmsCode
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SendSmsCodeRequest'
+            example:
+              phone: "13800138000"
+              purpose: login
+      responses:
+        '200':
+          description: 验证码发送成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+              example:
+                message: 验证码已发送
+        '400':
+          description: 请求参数错误
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: 发送频率过高
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                code: SMS_TOO_FREQUENT
+                message: 验证码发送过于频繁，请稍后再试
+
+  /auth/sms/login:
+    post:
+      tags:
+        - Auth
+      summary: 验证码登录
+      description: 使用手机号和验证码进行登录
+      operationId: smsLogin
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SmsLoginRequest'
+            example:
+              phone: "13800138000"
+              code: "123456"
+      responses:
+        '200':
+          description: 登录成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '400':
+          description: 验证码错误
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                code: INVALID_SMS_CODE
+                message: 验证码错误或已过期
+
+  /auth/refresh:
+    post:
+      tags:
+        - Auth
+      summary: 刷新令牌
+      description: 使用 Refresh Token 获取新的 Access Token
+      operationId: refreshToken
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshTokenRequest'
+      responses:
+        '200':
+          description: 刷新成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '401':
+          description: Refresh Token 无效或过期
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                code: TOKEN_EXPIRED
+                message: 登录已过期，请重新登录
+
+  /auth/logout:
+    post:
+      tags:
+        - Auth
+      summary: 登出
+      description: 登出当前用户，吊销 Refresh Token
+      operationId: logout
+      security:
+        - BearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                refresh_token:
+                  type: string
+                  description: 可选，用于吊销指定的 Refresh Token
+      responses:
+        '200':
+          description: 登出成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+              example:
+                message: 登出成功
+        '401':
+          description: 未授权
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /auth/me:
+    get:
+      tags:
+        - Auth
+      summary: 获取当前用户信息
+      description: 获取当前登录用户的详细信息
+      operationId: getCurrentUser
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: 成功获取用户信息
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CurrentUserResponse'
+        '401':
+          description: 未授权
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT Token 认证
+
+  schemas:
+    LoginRequest:
+      type: object
+      required:
+        - account
+        - password
+      properties:
+        account:
+          type: string
+          description: 用户名或邮箱
+          example: admin
+        password:
+          type: string
+          format: password
+          description: 密码
+          example: Password123
+        remember:
+          type: boolean
+          description: 记住登录状态，延长 Token 有效期
+          default: false
+
+    SendSmsCodeRequest:
+      type: object
+      required:
+        - phone
+        - purpose
+      properties:
+        phone:
+          type: string
+          pattern: '^1[3-9]\d{9}$'
+          description: 手机号
+          example: "13800138000"
+        purpose:
+          type: string
+          enum: [login, reset_password]
+          description: 验证码用途
+          example: login
+
+    SmsLoginRequest:
+      type: object
+      required:
+        - phone
+        - code
+      properties:
+        phone:
+          type: string
+          pattern: '^1[3-9]\d{9}$'
+          description: 手机号
+          example: "13800138000"
+        code:
+          type: string
+          pattern: '^\d{6}$'
+          description: 验证码
+          example: "123456"
+
+    RefreshTokenRequest:
+      type: object
+      required:
+        - refresh_token
+      properties:
+        refresh_token:
+          type: string
+          description: Refresh Token
+
+    LoginResponse:
+      type: object
+      properties:
+        access_token:
+          type: string
+          description: 访问令牌（2小时有效）
+        refresh_token:
+          type: string
+          description: 刷新令牌（7天有效）
+        expires_in:
+          type: integer
+          description: 过期时间（秒）
+          example: 7200
+        user:
+          $ref: '#/components/schemas/UserInfo'
+
+    UserInfo:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: 用户ID
+        username:
+          type: string
+          description: 用户名
+        email:
+          type: string
+          format: email
+          description: 邮箱
+        phone:
+          type: string
+          description: 手机号
+        real_name:
+          type: string
+          description: 真实姓名
+        role:
+          type: string
+          enum: [platform_admin, tenant_admin, operator]
+          description: 角色
+        tenant_id:
+          type: string
+          format: uuid
+          description: 租户ID（平台管理员为空）
+
+    CurrentUserResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        username:
+          type: string
+        email:
+          type: string
+          format: email
+        phone:
+          type: string
+        real_name:
+          type: string
+        role:
+          type: string
+          enum: [platform_admin, tenant_admin, operator]
+        tenant_id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [active, frozen]
+        created_at:
+          type: string
+          format: date-time
+
+    ErrorResponse:
+      type: object
+      properties:
+        code:
+          type: string
+          description: 错误码
+        message:
+          type: string
+          description: 错误消息
+
+    MessageResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          description: 消息内容

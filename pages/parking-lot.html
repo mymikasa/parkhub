@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>停车场管理 · ParkHub</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#eff6ff',
+                            100: '#dbeafe',
+                            500: '#3b82f6',
+                            600: '#2563eb',
+                            700: '#1d4ed8',
+                            900: '#1e3a5f',
+                        },
+                        surface: {
+                            DEFAULT: '#ffffff',
+                            muted: '#f8fafc',
+                            border: '#e2e8f0',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .sidebar-gradient { background: linear-gradient(180deg, #1e3a5f 0%, #1a3454 100%); }
+        .nav-item:hover { background: rgba(255,255,255,0.08); }
+        .nav-item.active { background: rgba(37, 99, 235, 0.3); border-left: 3px solid #3b82f6; }
+        .status-dot { animation: pulse 2s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+        .card-hover { transition: all 0.2s ease; }
+        .card-hover:hover { transform: translateY(-2px); box-shadow: 0 8px 25px -5px rgba(0,0,0,0.1); }
+        .btn-primary {
+            background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+            transition: all 0.2s ease;
+        }
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%);
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
+        }
+        .modal-overlay { backdrop-filter: blur(4px); }
+        .progress-bar { transition: width 0.3s ease; }
+        .glow-normal { box-shadow: 0 0 8px rgba(34, 197, 94, 0.3); }
+        .glow-warning { box-shadow: 0 0 8px rgba(245, 158, 11, 0.3); }
+        .glow-danger { box-shadow: 0 0 8px rgba(239, 68, 68, 0.3); }
+    </style>
+</head>
+<body class="font-sans antialiased bg-surface-muted">
+    <div class="flex min-h-screen">
+        <!-- 侧边栏 -->
+        <aside class="w-64 sidebar-gradient fixed h-full flex flex-col">
+            <div class="p-5 border-b border-white/10">
+                <div class="flex items-center gap-3">
+                    <div class="w-9 h-9 bg-white/15 rounded-xl flex items-center justify-center backdrop-blur-sm">
+                        <i class="fa-solid fa-square-parking text-white text-base"></i>
+                    </div>
+                    <span class="text-white text-lg font-semibold">ParkHub</span>
+                </div>
+            </div>
+            <nav class="flex-1 py-4 overflow-y-auto">
+                <div class="px-3 mb-2">
+                    <span class="text-xs font-medium text-blue-200/50 uppercase tracking-wider px-3">平台管理</span>
+                </div>
+                <a href="tenant-management.html" class="nav-item flex items-center gap-3 px-6 py-2.5 text-white/70 text-sm hover:text-white/90">
+                    <i class="fa-solid fa-building w-5 text-center"></i>
+                    <span>租户管理</span>
+                </a>
+                <div class="px-3 mt-6 mb-2">
+                    <span class="text-xs font-medium text-blue-200/50 uppercase tracking-wider px-3">车场运营</span>
+                </div>
+                <a href="parking-lot.html" class="nav-item active flex items-center gap-3 px-6 py-2.5 text-white/90 text-sm">
+                    <i class="fa-solid fa-warehouse w-5 text-center"></i>
+                    <span>停车场管理</span>
+                </a>
+                <a href="device-management.html" class="nav-item flex items-center gap-3 px-6 py-2.5 text-white/70 text-sm hover:text-white/90">
+                    <i class="fa-solid fa-microchip w-5 text-center"></i>
+                    <span>设备管理</span>
+                </a>
+                <a href="billing-rules.html" class="nav-item flex items-center gap-3 px-6 py-2.5 text-white/70 text-sm hover:text-white/90">
+                    <i class="fa-solid fa-calculator w-5 text-center"></i>
+                    <span>计费规则</span>
+                </a>
+                <div class="px-3 mt-6 mb-2">
+                    <span class="text-xs font-medium text-blue-200/50 uppercase tracking-wider px-3">运营监控</span>
+                </div>
+                <a href="realtime-monitor.html" class="nav-item flex items-center gap-3 px-6 py-2.5 text-white/70 text-sm hover:text-white/90">
+                    <i class="fa-solid fa-chart-line w-5 text-center"></i>
+                    <span>实时监控</span>
+                </a>
+                <a href="entry-exit-records.html" class="nav-item flex items-center gap-3 px-6 py-2.5 text-white/70 text-sm hover:text-white/90">
+                    <i class="fa-solid fa-list-check w-5 text-center"></i>
+                    <span>出入记录</span>
+                </a>
+                <a href="operator-workspace.html" class="nav-item flex items-center gap-3 px-6 py-2.5 text-white/70 text-sm hover:text-white/90">
+                    <i class="fa-solid fa-desktop w-5 text-center"></i>
+                    <span>操作员工作台</span>
+                </a>
+            </nav>
+            <div class="p-4 border-t border-white/10">
+                <div class="flex items-center gap-3">
+                    <div class="w-9 h-9 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center">
+                        <span class="text-white text-sm font-medium">万</span>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <div class="text-white text-sm font-medium truncate">万科物业</div>
+                        <div class="text-blue-200/60 text-xs">租户管理员</div>
+                    </div>
+                    <button class="text-white/50 hover:text-white/80 transition-colors">
+                        <i class="fa-solid fa-right-from-bracket"></i>
+                    </button>
+                </div>
+            </div>
+        </aside>
+
+        <!-- 主内容区 -->
+        <main class="flex-1 ml-64">
+            <header class="bg-white border-b border-surface-border sticky top-0 z-10">
+                <div class="flex items-center justify-between px-8 py-4">
+                    <div>
+                        <h1 class="text-xl font-semibold text-gray-900">停车场管理</h1>
+                        <p class="text-sm text-gray-500 mt-0.5">管理旗下所有停车场及出入口配置</p>
+                    </div>
+                    <div class="flex items-center gap-4">
+                        <div class="relative">
+                            <input type="text" placeholder="搜索车场..." class="w-64 h-10 pl-10 pr-4 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/10">
+                            <i class="fa-solid fa-search absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
+                        </div>
+                        <button onclick="openCreateModal()" class="btn-primary h-10 px-5 rounded-lg text-white text-sm font-medium flex items-center gap-2">
+                            <i class="fa-solid fa-plus text-xs"></i>
+                            新建车场
+                        </button>
+                    </div>
+                </div>
+            </header>
+
+            <!-- 统计卡片 -->
+            <div class="px-8 py-6">
+                <div class="grid grid-cols-4 gap-5">
+                    <div class="bg-white rounded-xl p-5 border border-surface-border card-hover">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm text-gray-500">总车位数</p>
+                                <p class="text-2xl font-bold text-gray-900 mt-1">8,640</p>
+                            </div>
+                            <div class="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center">
+                                <i class="fa-solid fa-square-parking text-brand-600 text-lg"></i>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-xl p-5 border border-surface-border card-hover">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm text-gray-500">剩余车位</p>
+                                <p class="text-2xl font-bold text-emerald-600 mt-1">2,156</p>
+                            </div>
+                            <div class="w-12 h-12 rounded-xl bg-emerald-50 flex items-center justify-center">
+                                <i class="fa-solid fa-car text-emerald-600 text-lg"></i>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-xl p-5 border border-surface-border card-hover">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm text-gray-500">在场车辆</p>
+                                <p class="text-2xl font-bold text-gray-900 mt-1">6,484</p>
+                            </div>
+                            <div class="w-12 h-12 rounded-xl bg-amber-50 flex items-center justify-center">
+                                <i class="fa-solid fa-car-side text-amber-600 text-lg"></i>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-xl p-5 border border-surface-border card-hover">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm text-gray-500">出入口数</p>
+                                <p class="text-2xl font-bold text-gray-900 mt-1">96</p>
+                            </div>
+                            <div class="w-12 h-12 rounded-xl bg-violet-50 flex items-center justify-center">
+                                <i class="fa-solid fa-door-open text-violet-600 text-lg"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 车场列表 -->
+            <div class="px-8 pb-8">
+                <div class="grid grid-cols-2 gap-5">
+                    <!-- 车场卡片 1 -->
+                    <div class="bg-white rounded-xl border border-surface-border overflow-hidden card-hover">
+                        <div class="p-5">
+                            <div class="flex items-start justify-between">
+                                <div class="flex items-center gap-4">
+                                    <div class="w-14 h-14 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center">
+                                        <i class="fa-solid fa-building text-white text-xl"></i>
+                                    </div>
+                                    <div>
+                                        <h3 class="font-semibold text-gray-900 text-base">万科翡翠滨江地下停车场</h3>
+                                        <p class="text-sm text-gray-500 mt-1">
+                                            <i class="fa-solid fa-location-dot text-gray-400 mr-1"></i>
+                                            上海市浦东新区陆家嘴环路1000号
+                                        </p>
+                                    </div>
+                                </div>
+                                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 glow-normal">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 status-dot"></span>
+                                    运营中
+                                </span>
+                            </div>
+
+                            <div class="mt-5 grid grid-cols-3 gap-4">
+                                <div class="text-center p-3 bg-gray-50 rounded-lg">
+                                    <div class="text-2xl font-bold text-gray-900">800</div>
+                                    <div class="text-xs text-gray-500 mt-1">总车位</div>
+                                </div>
+                                <div class="text-center p-3 bg-emerald-50 rounded-lg">
+                                    <div class="text-2xl font-bold text-emerald-600">156</div>
+                                    <div class="text-xs text-gray-500 mt-1">剩余</div>
+                                </div>
+                                <div class="text-center p-3 bg-blue-50 rounded-lg">
+                                    <div class="text-2xl font-bold text-brand-600">6</div>
+                                    <div class="text-xs text-gray-500 mt-1">出入口</div>
+                                </div>
+                            </div>
+
+                            <!-- 使用率进度条 -->
+                            <div class="mt-4">
+                                <div class="flex items-center justify-between text-xs mb-1.5">
+                                    <span class="text-gray-500">使用率</span>
+                                    <span class="font-medium text-gray-900">80.5%</span>
+                                </div>
+                                <div class="h-2 bg-gray-100 rounded-full overflow-hidden">
+                                    <div class="h-full bg-amber-500 rounded-full progress-bar glow-warning" style="width: 80.5%"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="px-5 py-3 bg-gray-50 border-t border-surface-border flex items-center justify-between">
+                            <div class="flex items-center gap-4 text-xs text-gray-500">
+                                <span><i class="fa-solid fa-arrow-right-to-bracket text-emerald-500 mr-1"></i>入口 3</span>
+                                <span><i class="fa-solid fa-arrow-right-from-bracket text-blue-500 mr-1"></i>出口 3</span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <button onclick="openGateConfigModal()" class="text-xs text-brand-600 hover:text-brand-700 font-medium">配置出入口</button>
+                                <span class="text-gray-300">|</span>
+                                <button class="text-xs text-gray-500 hover:text-gray-700">编辑</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 车场卡片 2 -->
+                    <div class="bg-white rounded-xl border border-surface-border overflow-hidden card-hover">
+                        <div class="p-5">
+                            <div class="flex items-start justify-between">
+                                <div class="flex items-center gap-4">
+                                    <div class="w-14 h-14 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center">
+                                        <i class="fa-solid fa-shop text-white text-xl"></i>
+                                    </div>
+                                    <div>
+                                        <h3 class="font-semibold text-gray-900 text-base">万科广场商业停车场</h3>
+                                        <p class="text-sm text-gray-500 mt-1">
+                                            <i class="fa-solid fa-location-dot text-gray-400 mr-1"></i>
+                                            上海市闵行区七莘路3655号
+                                        </p>
+                                    </div>
+                                </div>
+                                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 glow-normal">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 status-dot"></span>
+                                    运营中
+                                </span>
+                            </div>
+
+                            <div class="mt-5 grid grid-cols-3 gap-4">
+                                <div class="text-center p-3 bg-gray-50 rounded-lg">
+                                    <div class="text-2xl font-bold text-gray-900">1,200</div>
+                                    <div class="text-xs text-gray-500 mt-1">总车位</div>
+                                </div>
+                                <div class="text-center p-3 bg-emerald-50 rounded-lg">
+                                    <div class="text-2xl font-bold text-emerald-600">89</div>
+                                    <div class="text-xs text-gray-500 mt-1">剩余</div>
+                                </div>
+                                <div class="text-center p-3 bg-blue-50 rounded-lg">
+                                    <div class="text-2xl font-bold text-brand-600">8</div>
+                                    <div class="text-xs text-gray-500 mt-1">出入口</div>
+                                </div>
+                            </div>
+
+                            <div class="mt-4">
+                                <div class="flex items-center justify-between text-xs mb-1.5">
+                                    <span class="text-gray-500">使用率</span>
+                                    <span class="font-medium text-red-600">92.6%</span>
+                                </div>
+                                <div class="h-2 bg-gray-100 rounded-full overflow-hidden">
+                                    <div class="h-full bg-red-500 rounded-full progress-bar glow-danger" style="width: 92.6%"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="px-5 py-3 bg-gray-50 border-t border-surface-border flex items-center justify-between">
+                            <div class="flex items-center gap-4 text-xs text-gray-500">
+                                <span><i class="fa-solid fa-arrow-right-to-bracket text-emerald-500 mr-1"></i>入口 4</span>
+                                <span><i class="fa-solid fa-arrow-right-from-bracket text-blue-500 mr-1"></i>出口 4</span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <button onclick="openGateConfigModal()" class="text-xs text-brand-600 hover:text-brand-700 font-medium">配置出入口</button>
+                                <span class="text-gray-300">|</span>
+                                <button class="text-xs text-gray-500 hover:text-gray-700">编辑</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 车场卡片 3 -->
+                    <div class="bg-white rounded-xl border border-surface-border overflow-hidden card-hover">
+                        <div class="p-5">
+                            <div class="flex items-start justify-between">
+                                <div class="flex items-center gap-4">
+                                    <div class="w-14 h-14 rounded-xl bg-gradient-to-br from-violet-500 to-violet-600 flex items-center justify-center">
+                                        <i class="fa-solid fa-house-chimney text-white text-xl"></i>
+                                    </div>
+                                    <div>
+                                        <h3 class="font-semibold text-gray-900 text-base">万科城市花园停车场</h3>
+                                        <p class="text-sm text-gray-500 mt-1">
+                                            <i class="fa-solid fa-location-dot text-gray-400 mr-1"></i>
+                                            上海市宝山区共康路555号
+                                        </p>
+                                    </div>
+                                </div>
+                                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 glow-normal">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 status-dot"></span>
+                                    运营中
+                                </span>
+                            </div>
+
+                            <div class="mt-5 grid grid-cols-3 gap-4">
+                                <div class="text-center p-3 bg-gray-50 rounded-lg">
+                                    <div class="text-2xl font-bold text-gray-900">450</div>
+                                    <div class="text-xs text-gray-500 mt-1">总车位</div>
+                                </div>
+                                <div class="text-center p-3 bg-emerald-50 rounded-lg">
+                                    <div class="text-2xl font-bold text-emerald-600">203</div>
+                                    <div class="text-xs text-gray-500 mt-1">剩余</div>
+                                </div>
+                                <div class="text-center p-3 bg-blue-50 rounded-lg">
+                                    <div class="text-2xl font-bold text-brand-600">4</div>
+                                    <div class="text-xs text-gray-500 mt-1">出入口</div>
+                                </div>
+                            </div>
+
+                            <div class="mt-4">
+                                <div class="flex items-center justify-between text-xs mb-1.5">
+                                    <span class="text-gray-500">使用率</span>
+                                    <span class="font-medium text-emerald-600">54.9%</span>
+                                </div>
+                                <div class="h-2 bg-gray-100 rounded-full overflow-hidden">
+                                    <div class="h-full bg-emerald-500 rounded-full progress-bar glow-normal" style="width: 54.9%"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="px-5 py-3 bg-gray-50 border-t border-surface-border flex items-center justify-between">
+                            <div class="flex items-center gap-4 text-xs text-gray-500">
+                                <span><i class="fa-solid fa-arrow-right-to-bracket text-emerald-500 mr-1"></i>入口 2</span>
+                                <span><i class="fa-solid fa-arrow-right-from-bracket text-blue-500 mr-1"></i>出口 2</span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <button onclick="openGateConfigModal()" class="text-xs text-brand-600 hover:text-brand-700 font-medium">配置出入口</button>
+                                <span class="text-gray-300">|</span>
+                                <button class="text-xs text-gray-500 hover:text-gray-700">编辑</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 车场卡片 4 -->
+                    <div class="bg-white rounded-xl border border-surface-border overflow-hidden card-hover">
+                        <div class="p-5">
+                            <div class="flex items-start justify-between">
+                                <div class="flex items-center gap-4">
+                                    <div class="w-14 h-14 rounded-xl bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center">
+                                        <i class="fa-solid fa-hotel text-white text-xl"></i>
+                                    </div>
+                                    <div>
+                                        <h3 class="font-semibold text-gray-900 text-base">万科翡翠别墅区停车场</h3>
+                                        <p class="text-sm text-gray-500 mt-1">
+                                            <i class="fa-solid fa-location-dot text-gray-400 mr-1"></i>
+                                            上海市松江区泗泾镇古楼路888号
+                                        </p>
+                                    </div>
+                                </div>
+                                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-gray-400"></span>
+                                    暂停运营
+                                </span>
+                            </div>
+
+                            <div class="mt-5 grid grid-cols-3 gap-4">
+                                <div class="text-center p-3 bg-gray-50 rounded-lg">
+                                    <div class="text-2xl font-bold text-gray-900">320</div>
+                                    <div class="text-xs text-gray-500 mt-1">总车位</div>
+                                </div>
+                                <div class="text-center p-3 bg-emerald-50 rounded-lg">
+                                    <div class="text-2xl font-bold text-emerald-600">320</div>
+                                    <div class="text-xs text-gray-500 mt-1">剩余</div>
+                                </div>
+                                <div class="text-center p-3 bg-blue-50 rounded-lg">
+                                    <div class="text-2xl font-bold text-brand-600">2</div>
+                                    <div class="text-xs text-gray-500 mt-1">出入口</div>
+                                </div>
+                            </div>
+
+                            <div class="mt-4">
+                                <div class="flex items-center justify-between text-xs mb-1.5">
+                                    <span class="text-gray-500">使用率</span>
+                                    <span class="font-medium text-gray-500">0%</span>
+                                </div>
+                                <div class="h-2 bg-gray-100 rounded-full overflow-hidden">
+                                    <div class="h-full bg-gray-300 rounded-full progress-bar" style="width: 0%"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="px-5 py-3 bg-gray-50 border-t border-surface-border flex items-center justify-between">
+                            <div class="flex items-center gap-4 text-xs text-gray-500">
+                                <span><i class="fa-solid fa-arrow-right-to-bracket text-emerald-500 mr-1"></i>入口 1</span>
+                                <span><i class="fa-solid fa-arrow-right-from-bracket text-blue-500 mr-1"></i>出口 1</span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <button onclick="openGateConfigModal()" class="text-xs text-brand-600 hover:text-brand-700 font-medium">配置出入口</button>
+                                <span class="text-gray-300">|</span>
+                                <button class="text-xs text-gray-500 hover:text-gray-700">编辑</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- 新建车场弹窗 -->
+    <div id="create-modal" class="fixed inset-0 z-50 hidden">
+        <div class="modal-overlay absolute inset-0 bg-black/40" onclick="closeCreateModal()"></div>
+        <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-lg">
+            <div class="bg-white rounded-2xl shadow-2xl">
+                <div class="px-6 py-5 border-b border-surface-border flex items-center justify-between">
+                    <h3 class="text-lg font-semibold text-gray-900">新建停车场</h3>
+                    <button onclick="closeCreateModal()" class="w-8 h-8 rounded-lg hover:bg-gray-100 flex items-center justify-center text-gray-400 hover:text-gray-600 transition-colors">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+                <div class="p-6 space-y-5">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1.5">车场名称 <span class="text-red-500">*</span></label>
+                        <input type="text" placeholder="如：万科翡翠滨江地下停车场" class="w-full h-11 px-4 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/10">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1.5">车场地址 <span class="text-red-500">*</span></label>
+                        <input type="text" placeholder="省/市/区/街道/门牌号" class="w-full h-11 px-4 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/10">
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1.5">总车位数 <span class="text-red-500">*</span></label>
+                            <input type="number" placeholder="0" class="w-full h-11 px-4 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/10">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1.5">车场类型</label>
+                            <select class="w-full h-11 px-4 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/10 bg-white">
+                                <option>地下停车场</option>
+                                <option>地面停车场</option>
+                                <option>立体车库</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="px-6 py-4 border-t border-surface-border flex items-center justify-end gap-3">
+                    <button onclick="closeCreateModal()" class="h-10 px-5 rounded-lg border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">取消</button>
+                    <button class="btn-primary h-10 px-5 rounded-lg text-white text-sm font-medium">确认创建</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 出入口配置弹窗 -->
+    <div id="gate-config-modal" class="fixed inset-0 z-50 hidden">
+        <div class="modal-overlay absolute inset-0 bg-black/40" onclick="closeGateConfigModal()"></div>
+        <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-2xl">
+            <div class="bg-white rounded-2xl shadow-2xl">
+                <div class="px-6 py-5 border-b border-surface-border flex items-center justify-between">
+                    <div>
+                        <h3 class="text-lg font-semibold text-gray-900">出入口配置</h3>
+                        <p class="text-sm text-gray-500 mt-0.5">万科翡翠滨江地下停车场</p>
+                    </div>
+                    <button onclick="closeGateConfigModal()" class="w-8 h-8 rounded-lg hover:bg-gray-100 flex items-center justify-center text-gray-400 hover:text-gray-600 transition-colors">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+                <div class="p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <span class="text-sm font-medium text-gray-700">出入口列表</span>
+                        <button class="text-sm text-brand-600 hover:text-brand-700 font-medium flex items-center gap-1">
+                            <i class="fa-solid fa-plus text-xs"></i>添加出入口
+                        </button>
+                    </div>
+
+                    <div class="space-y-3">
+                        <!-- 入口 1 -->
+                        <div class="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+                            <div class="flex items-center gap-4">
+                                <div class="w-10 h-10 rounded-lg bg-emerald-100 flex items-center justify-center">
+                                    <i class="fa-solid fa-arrow-right-to-bracket text-emerald-600"></i>
+                                </div>
+                                <div>
+                                    <div class="font-medium text-gray-900">1号入口</div>
+                                    <div class="text-xs text-gray-500 mt-0.5">绑定设备: PH-DEV-2024-001</div>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-3">
+                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-emerald-50 text-emerald-600">
+                                    <span class="w-1 h-1 rounded-full bg-emerald-500"></span>在线
+                                </span>
+                                <button class="text-xs text-gray-400 hover:text-gray-600">编辑</button>
+                            </div>
+                        </div>
+
+                        <!-- 入口 2 -->
+                        <div class="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+                            <div class="flex items-center gap-4">
+                                <div class="w-10 h-10 rounded-lg bg-emerald-100 flex items-center justify-center">
+                                    <i class="fa-solid fa-arrow-right-to-bracket text-emerald-600"></i>
+                                </div>
+                                <div>
+                                    <div class="font-medium text-gray-900">2号入口</div>
+                                    <div class="text-xs text-gray-500 mt-0.5">绑定设备: PH-DEV-2024-002</div>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-3">
+                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-emerald-50 text-emerald-600">
+                                    <span class="w-1 h-1 rounded-full bg-emerald-500"></span>在线
+                                </span>
+                                <button class="text-xs text-gray-400 hover:text-gray-600">编辑</button>
+                            </div>
+                        </div>
+
+                        <!-- 出口 1 -->
+                        <div class="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+                            <div class="flex items-center gap-4">
+                                <div class="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
+                                    <i class="fa-solid fa-arrow-right-from-bracket text-blue-600"></i>
+                                </div>
+                                <div>
+                                    <div class="font-medium text-gray-900">1号出口</div>
+                                    <div class="text-xs text-gray-500 mt-0.5">绑定设备: PH-DEV-2024-003</div>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-3">
+                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-emerald-50 text-emerald-600">
+                                    <span class="w-1 h-1 rounded-full bg-emerald-500"></span>在线
+                                </span>
+                                <button class="text-xs text-gray-400 hover:text-gray-600">编辑</button>
+                            </div>
+                        </div>
+
+                        <!-- 出口 2 - 离线 -->
+                        <div class="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-red-200">
+                            <div class="flex items-center gap-4">
+                                <div class="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
+                                    <i class="fa-solid fa-arrow-right-from-bracket text-blue-600"></i>
+                                </div>
+                                <div>
+                                    <div class="font-medium text-gray-900">2号出口</div>
+                                    <div class="text-xs text-red-500 mt-0.5">设备离线 · 最后心跳: 15分钟前</div>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-3">
+                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-red-50 text-red-600">
+                                    <span class="w-1 h-1 rounded-full bg-red-500"></span>离线
+                                </span>
+                                <button class="text-xs text-gray-400 hover:text-gray-600">编辑</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="px-6 py-4 border-t border-surface-border flex items-center justify-end">
+                    <button onclick="closeGateConfigModal()" class="h-10 px-5 rounded-lg bg-gray-900 text-sm font-medium text-white hover:bg-gray-800 transition-colors">完成</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function openCreateModal() {
+            document.getElementById('create-modal').classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+        }
+        function closeCreateModal() {
+            document.getElementById('create-modal').classList.add('hidden');
+            document.body.style.overflow = '';
+        }
+        function openGateConfigModal() {
+            document.getElementById('gate-config-modal').classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+        }
+        function closeGateConfigModal() {
+            document.getElementById('gate-config-modal').classList.add('hidden');
+            document.body.style.overflow = '';
+        }
+    </script>
+</body>
+</html>

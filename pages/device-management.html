@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>设备管理 · ParkHub</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: { 50: '#eff6ff', 100: '#dbeafe', 500: '#3b82f6', 600: '#2563eb', 700: '#1d4ed8', 900: '#1e3a5f' },
+                        surface: { DEFAULT: '#ffffff', muted: '#f8fafc', border: '#e2e8f0' }
+                    },
+                    fontFamily: { sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'] }
+                }
+            }
+        }
+    </script>
+    <style>
+        .sidebar-gradient { background: linear-gradient(180deg, #1e3a5f 0%, #1a3454 100%); }
+        .nav-item:hover { background: rgba(255,255,255,0.08); }
+        .nav-item.active { background: rgba(37, 99, 235, 0.3); border-left: 3px solid #3b82f6; }
+        .status-dot { animation: pulse 2s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+        .card-hover { transition: all 0.2s ease; }
+        .card-hover:hover { transform: translateY(-2px); box-shadow: 0 8px 25px -5px rgba(0,0,0,0.1); }
+        .btn-primary { background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); transition: all 0.2s ease; }
+        .btn-primary:hover { background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%); box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4); }
+        .modal-overlay { backdrop-filter: blur(4px); }
+        .glow-online { box-shadow: 0 0 12px rgba(34, 197, 94, 0.4); }
+        .glow-offline { box-shadow: 0 0 12px rgba(239, 68, 68, 0.3); }
+        .table-row-hover:hover { background: #f8fafc; }
+        .device-card { transition: all 0.3s ease; }
+        .device-card:hover { transform: translateY(-4px); }
+    </style>
+</head>
+<body class="font-sans antialiased bg-surface-muted">
+    <div class="flex min-h-screen">
+        <!-- 侧边栏 -->
+        <aside class="w-64 sidebar-gradient fixed h-full flex flex-col">
+            <div class="p-5 border-b border-white/10">
+                <div class="flex items-center gap-3">
+                    <div class="w-9 h-9 bg-white/15 rounded-xl flex items-center justify-center backdrop-blur-sm">
+                        <i class="fa-solid fa-square-parking text-white text-base"></i>
+                    </div>
+                    <span class="text-white text-lg font-semibold">ParkHub</span>
+                </div>
+            </div>
+            <nav class="flex-1 py-4 overflow-y-auto">
+                <div class="px-3 mb-2"><span class="text-xs font-medium text-blue-200/50 uppercase tracking-wider px-3">平台管理</span></div>
+                <a href="tenant-management.html" class="nav-item flex items-center gap-3 px-6 py-2.5 text-white/70 text-sm hover:text-white/90">
+                    <i class="fa-solid fa-building w-5 text-center"></i><span>租户管理</span>
+                </a>
+                <div class="px-3 mt-6 mb-2"><span class="text-xs font-medium text-blue-200/50 uppercase tracking-wider px-3">车场运营</span></div>
+                <a href="parking-lot.html" class="nav-item flex items-center gap-3 px-6 py-2.5 text-white/70 text-sm hover:text-white/90">
+                    <i class="fa-solid fa-warehouse w-5 text-center"></i><span>停车场管理</span>
+                </a>
+                <a href="device-management.html" class="nav-item active flex items-center gap-3 px-6 py-2.5 text-white/90 text-sm">
+                    <i class="fa-solid fa-microchip w-5 text-center"></i><span>设备管理</span>
+                </a>
+                <a href="billing-rules.html" class="nav-item flex items-center gap-3 px-6 py-2.5 text-white/70 text-sm hover:text-white/90">
+                    <i class="fa-solid fa-calculator w-5 text-center"></i><span>计费规则</span>
+                </a>
+                <div class="px-3 mt-6 mb-2"><span class="text-xs font-medium text-blue-200/50 uppercase tracking-wider px-3">运营监控</span></div>
+                <a href="realtime-monitor.html" class="nav-item flex items-center gap-3 px-6 py-2.5 text-white/70 text-sm hover:text-white/90">
+                    <i class="fa-solid fa-chart-line w-5 text-center"></i><span>实时监控</span>
+                </a>
+                <a href="entry-exit-records.html" class="nav-item flex items-center gap-3 px-6 py-2.5 text-white/70 text-sm hover:text-white/90">
+                    <i class="fa-solid fa-list-check w-5 text-center"></i><span>出入记录</span>
+                </a>
+                <a href="operator-workspace.html" class="nav-item flex items-center gap-3 px-6 py-2.5 text-white/70 text-sm hover:text-white/90">
+                    <i class="fa-solid fa-desktop w-5 text-center"></i><span>操作员工作台</span>
+                </a>
+            </nav>
+            <div class="p-4 border-t border-white/10">
+                <div class="flex items-center gap-3">
+                    <div class="w-9 h-9 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center">
+                        <span class="text-white text-sm font-medium">万</span>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <div class="text-white text-sm font-medium truncate">万科物业</div>
+                        <div class="text-blue-200/60 text-xs">租户管理员</div>
+                    </div>
+                    <button class="text-white/50 hover:text-white/80 transition-colors"><i class="fa-solid fa-right-from-bracket"></i></button>
+                </div>
+            </div>
+        </aside>
+
+        <!-- 主内容区 -->
+        <main class="flex-1 ml-64">
+            <header class="bg-white border-b border-surface-border sticky top-0 z-10">
+                <div class="flex items-center justify-between px-8 py-4">
+                    <div>
+                        <h1 class="text-xl font-semibold text-gray-900">设备管理</h1>
+                        <p class="text-sm text-gray-500 mt-0.5">管理一体机设备，监控在线状态，执行远程操作</p>
+                    </div>
+                    <div class="flex items-center gap-4">
+                        <div class="relative">
+                            <input type="text" placeholder="搜索设备序列号..." class="w-64 h-10 pl-10 pr-4 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/10">
+                            <i class="fa-solid fa-search absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
+                        </div>
+                        <button onclick="openRegisterModal()" class="btn-primary h-10 px-5 rounded-lg text-white text-sm font-medium flex items-center gap-2">
+                            <i class="fa-solid fa-plus text-xs"></i>注册设备
+                        </button>
+                    </div>
+                </div>
+            </header>
+
+            <!-- 统计卡片 -->
+            <div class="px-8 py-6">
+                <div class="grid grid-cols-4 gap-5">
+                    <div class="bg-white rounded-xl p-5 border border-surface-border card-hover">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm text-gray-500">设备总数</p>
+                                <p class="text-2xl font-bold text-gray-900 mt-1">96</p>
+                            </div>
+                            <div class="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center">
+                                <i class="fa-solid fa-microchip text-brand-600 text-lg"></i>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-xl p-5 border border-surface-border card-hover ring-2 ring-emerald-500/20">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm text-gray-500">在线设备</p>
+                                <p class="text-2xl font-bold text-emerald-600 mt-1">92</p>
+                            </div>
+                            <div class="w-12 h-12 rounded-xl bg-emerald-50 flex items-center justify-center glow-online">
+                                <i class="fa-solid fa-circle-check text-emerald-600 text-lg"></i>
+                            </div>
+                        </div>
+                        <div class="mt-2 text-xs text-emerald-600">在线率 95.8%</div>
+                    </div>
+                    <div class="bg-white rounded-xl p-5 border border-red-200 card-hover ring-2 ring-red-500/20">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm text-gray-500">离线设备</p>
+                                <p class="text-2xl font-bold text-red-600 mt-1">4</p>
+                            </div>
+                            <div class="w-12 h-12 rounded-xl bg-red-50 flex items-center justify-center glow-offline">
+                                <i class="fa-solid fa-triangle-exclamation text-red-500 text-lg"></i>
+                            </div>
+                        </div>
+                        <div class="mt-2 text-xs text-red-500 flex items-center gap-1">
+                            <i class="fa-solid fa-bell"></i>需要关注
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-xl p-5 border border-surface-border card-hover">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm text-gray-500">今日通行</p>
+                                <p class="text-2xl font-bold text-gray-900 mt-1">8,432</p>
+                            </div>
+                            <div class="w-12 h-12 rounded-xl bg-violet-50 flex items-center justify-center">
+                                <i class="fa-solid fa-car text-violet-600 text-lg"></i>
+                            </div>
+                        </div>
+                        <div class="mt-2 text-xs text-gray-500">入场 4,215 / 出场 4,217</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 离线设备告警 -->
+            <div class="px-8 pb-4">
+                <div class="bg-red-50 border border-red-200 rounded-xl p-4 flex items-center justify-between">
+                    <div class="flex items-center gap-4">
+                        <div class="w-10 h-10 rounded-lg bg-red-100 flex items-center justify-center">
+                            <i class="fa-solid fa-bell text-red-500"></i>
+                        </div>
+                        <div>
+                            <div class="font-medium text-red-800">4 台设备离线超过15分钟</div>
+                            <div class="text-sm text-red-600 mt-0.5">请检查网络连接或设备状态，避免影响正常通行</div>
+                        </div>
+                    </div>
+                    <button class="text-sm text-red-600 hover:text-red-700 font-medium">查看详情 →</button>
+                </div>
+            </div>
+
+            <!-- 设备列表 -->
+            <div class="px-8 pb-8">
+                <div class="bg-white rounded-xl border border-surface-border overflow-hidden">
+                    <div class="px-6 py-4 border-b border-surface-border flex items-center justify-between">
+                        <div class="flex items-center gap-4">
+                            <span class="text-sm font-medium text-gray-900">设备列表</span>
+                            <div class="flex bg-gray-100 rounded-lg p-0.5">
+                                <button class="px-3 py-1.5 text-xs font-medium rounded-md bg-white shadow-sm text-gray-900">全部</button>
+                                <button class="px-3 py-1.5 text-xs font-medium text-gray-500 hover:text-gray-700">在线</button>
+                                <button class="px-3 py-1.5 text-xs font-medium text-red-500 hover:text-red-600">离线</button>
+                            </div>
+                        </div>
+                        <select class="h-9 px-3 rounded-lg border border-gray-200 text-sm text-gray-600 bg-white focus:outline-none focus:border-brand-500">
+                            <option>全部车场</option>
+                            <option>万科翡翠滨江</option>
+                            <option>万科广场</option>
+                            <option>万科城市花园</option>
+                        </select>
+                    </div>
+
+                    <table class="w-full">
+                        <thead>
+                            <tr class="bg-gray-50/80">
+                                <th class="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">设备信息</th>
+                                <th class="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">所属车场/出入口</th>
+                                <th class="text-center px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">状态</th>
+                                <th class="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">最后心跳</th>
+                                <th class="text-center px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">今日通行</th>
+                                <th class="text-center px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-100">
+                            <tr class="table-row-hover transition-colors">
+                                <td class="px-6 py-4">
+                                    <div class="flex items-center gap-3">
+                                        <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center">
+                                            <i class="fa-solid fa-video text-white text-sm"></i>
+                                        </div>
+                                        <div>
+                                            <div class="font-medium text-gray-900 font-mono text-sm">PH-DEV-2024-001</div>
+                                            <div class="text-xs text-gray-500 mt-0.5">一体机 · 入口设备</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="px-6 py-4">
+                                    <div class="text-sm text-gray-900">万科翡翠滨江</div>
+                                    <div class="text-xs text-gray-500 mt-0.5">1号入口</div>
+                                </td>
+                                <td class="px-6 py-4 text-center">
+                                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 status-dot"></span>在线
+                                    </span>
+                                </td>
+                                <td class="px-6 py-4 text-sm text-gray-500">刚刚</td>
+                                <td class="px-6 py-4 text-center">
+                                    <span class="text-sm font-medium text-gray-900">486</span>
+                                </td>
+                                <td class="px-6 py-4">
+                                    <div class="flex items-center justify-center gap-1">
+                                        <button onclick="openControlModal('PH-DEV-2024-001', '1号入口')" class="h-8 px-3 rounded-lg bg-emerald-50 text-emerald-600 text-xs font-medium hover:bg-emerald-100 transition-colors flex items-center gap-1.5">
+                                            <i class="fa-solid fa-arrow-up"></i>抬杆
+                                        </button>
+                                        <button class="w-8 h-8 rounded-lg hover:bg-gray-100 flex items-center justify-center text-gray-400 hover:text-gray-600 transition-colors" title="更多">
+                                            <i class="fa-solid fa-ellipsis-vertical text-sm"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+
+                            <tr class="table-row-hover transition-colors">
+                                <td class="px-6 py-4">
+                                    <div class="flex items-center gap-3">
+                                        <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center">
+                                            <i class="fa-solid fa-video text-white text-sm"></i>
+                                        </div>
+                                        <div>
+                                            <div class="font-medium text-gray-900 font-mono text-sm">PH-DEV-2024-003</div>
+                                            <div class="text-xs text-gray-500 mt-0.5">一体机 · 出口设备</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="px-6 py-4">
+                                    <div class="text-sm text-gray-900">万科翡翠滨江</div>
+                                    <div class="text-xs text-gray-500 mt-0.5">1号出口</div>
+                                </td>
+                                <td class="px-6 py-4 text-center">
+                                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 status-dot"></span>在线
+                                    </span>
+                                </td>
+                                <td class="px-6 py-4 text-sm text-gray-500">5秒前</td>
+                                <td class="px-6 py-4 text-center">
+                                    <span class="text-sm font-medium text-gray-900">492</span>
+                                </td>
+                                <td class="px-6 py-4">
+                                    <div class="flex items-center justify-center gap-1">
+                                        <button onclick="openControlModal('PH-DEV-2024-003', '1号出口')" class="h-8 px-3 rounded-lg bg-emerald-50 text-emerald-600 text-xs font-medium hover:bg-emerald-100 transition-colors flex items-center gap-1.5">
+                                            <i class="fa-solid fa-arrow-up"></i>抬杆
+                                        </button>
+                                        <button class="w-8 h-8 rounded-lg hover:bg-gray-100 flex items-center justify-center text-gray-400 hover:text-gray-600 transition-colors" title="更多">
+                                            <i class="fa-solid fa-ellipsis-vertical text-sm"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+
+                            <!-- 离线设备 -->
+                            <tr class="table-row-hover transition-colors bg-red-50/50">
+                                <td class="px-6 py-4">
+                                    <div class="flex items-center gap-3">
+                                        <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-gray-400 to-gray-500 flex items-center justify-center">
+                                            <i class="fa-solid fa-video text-white text-sm"></i>
+                                        </div>
+                                        <div>
+                                            <div class="font-medium text-gray-900 font-mono text-sm">PH-DEV-2024-008</div>
+                                            <div class="text-xs text-red-500 mt-0.5">一体机 · 出口设备 · 离线</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="px-6 py-4">
+                                    <div class="text-sm text-gray-900">万科翡翠滨江</div>
+                                    <div class="text-xs text-gray-500 mt-0.5">2号出口</div>
+                                </td>
+                                <td class="px-6 py-4 text-center">
+                                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-red-50 text-red-700">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-red-500"></span>离线
+                                    </span>
+                                </td>
+                                <td class="px-6 py-4 text-sm text-red-500">15分钟前</td>
+                                <td class="px-6 py-4 text-center">
+                                    <span class="text-sm font-medium text-gray-400">--</span>
+                                </td>
+                                <td class="px-6 py-4">
+                                    <div class="flex items-center justify-center gap-1">
+                                        <button class="h-8 px-3 rounded-lg bg-gray-100 text-gray-400 text-xs font-medium cursor-not-allowed flex items-center gap-1.5" disabled>
+                                            <i class="fa-solid fa-arrow-up"></i>抬杆
+                                        </button>
+                                        <button class="w-8 h-8 rounded-lg hover:bg-gray-100 flex items-center justify-center text-gray-400 hover:text-gray-600 transition-colors" title="更多">
+                                            <i class="fa-solid fa-ellipsis-vertical text-sm"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+
+                            <tr class="table-row-hover transition-colors">
+                                <td class="px-6 py-4">
+                                    <div class="flex items-center gap-3">
+                                        <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center">
+                                            <i class="fa-solid fa-video text-white text-sm"></i>
+                                        </div>
+                                        <div>
+                                            <div class="font-medium text-gray-900 font-mono text-sm">PH-DEV-2024-010</div>
+                                            <div class="text-xs text-gray-500 mt-0.5">一体机 · 入口设备</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="px-6 py-4">
+                                    <div class="text-sm text-gray-900">万科广场</div>
+                                    <div class="text-xs text-gray-500 mt-0.5">1号入口</div>
+                                </td>
+                                <td class="px-6 py-4 text-center">
+                                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 status-dot"></span>在线
+                                    </span>
+                                </td>
+                                <td class="px-6 py-4 text-sm text-gray-500">3秒前</td>
+                                <td class="px-6 py-4 text-center">
+                                    <span class="text-sm font-medium text-gray-900">1,245</span>
+                                </td>
+                                <td class="px-6 py-4">
+                                    <div class="flex items-center justify-center gap-1">
+                                        <button onclick="openControlModal('PH-DEV-2024-010', '1号入口')" class="h-8 px-3 rounded-lg bg-emerald-50 text-emerald-600 text-xs font-medium hover:bg-emerald-100 transition-colors flex items-center gap-1.5">
+                                            <i class="fa-solid fa-arrow-up"></i>抬杆
+                                        </button>
+                                        <button class="w-8 h-8 rounded-lg hover:bg-gray-100 flex items-center justify-center text-gray-400 hover:text-gray-600 transition-colors" title="更多">
+                                            <i class="fa-solid fa-ellipsis-vertical text-sm"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+
+                            <tr class="table-row-hover transition-colors">
+                                <td class="px-6 py-4">
+                                    <div class="flex items-center gap-3">
+                                        <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center">
+                                            <i class="fa-solid fa-video text-white text-sm"></i>
+                                        </div>
+                                        <div>
+                                            <div class="font-medium text-gray-900 font-mono text-sm">PH-DEV-2024-012</div>
+                                            <div class="text-xs text-gray-500 mt-0.5">一体机 · 出口设备</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="px-6 py-4">
+                                    <div class="text-sm text-gray-900">万科广场</div>
+                                    <div class="text-xs text-gray-500 mt-0.5">2号出口</div>
+                                </td>
+                                <td class="px-6 py-4 text-center">
+                                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 status-dot"></span>在线
+                                    </span>
+                                </td>
+                                <td class="px-6 py-4 text-sm text-gray-500">8秒前</td>
+                                <td class="px-6 py-4 text-center">
+                                    <span class="text-sm font-medium text-gray-900">1,198</span>
+                                </td>
+                                <td class="px-6 py-4">
+                                    <div class="flex items-center justify-center gap-1">
+                                        <button onclick="openControlModal('PH-DEV-2024-012', '2号出口')" class="h-8 px-3 rounded-lg bg-emerald-50 text-emerald-600 text-xs font-medium hover:bg-emerald-100 transition-colors flex items-center gap-1.5">
+                                            <i class="fa-solid fa-arrow-up"></i>抬杆
+                                        </button>
+                                        <button class="w-8 h-8 rounded-lg hover:bg-gray-100 flex items-center justify-center text-gray-400 hover:text-gray-600 transition-colors" title="更多">
+                                            <i class="fa-solid fa-ellipsis-vertical text-sm"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <!-- 分页 -->
+                    <div class="px-6 py-4 border-t border-surface-border flex items-center justify-between">
+                        <div class="text-sm text-gray-500">显示 1-5 条，共 96 条</div>
+                        <div class="flex items-center gap-1">
+                            <button class="w-8 h-8 rounded-lg border border-gray-200 flex items-center justify-center text-gray-400 hover:bg-gray-50 hover:text-gray-600 transition-colors">
+                                <i class="fa-solid fa-chevron-left text-xs"></i>
+                            </button>
+                            <button class="w-8 h-8 rounded-lg bg-brand-600 text-white text-sm font-medium">1</button>
+                            <button class="w-8 h-8 rounded-lg border border-gray-200 text-sm text-gray-600 hover:bg-gray-50 transition-colors">2</button>
+                            <button class="w-8 h-8 rounded-lg border border-gray-200 text-sm text-gray-600 hover:bg-gray-50 transition-colors">3</button>
+                            <span class="px-2 text-gray-400">...</span>
+                            <button class="w-8 h-8 rounded-lg border border-gray-200 text-sm text-gray-600 hover:bg-gray-50 transition-colors">20</button>
+                            <button class="w-8 h-8 rounded-lg border border-gray-200 flex items-center justify-center text-gray-400 hover:bg-gray-50 hover:text-gray-600 transition-colors">
+                                <i class="fa-solid fa-chevron-right text-xs"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- 设备注册弹窗 -->
+    <div id="register-modal" class="fixed inset-0 z-50 hidden">
+        <div class="modal-overlay absolute inset-0 bg-black/40" onclick="closeRegisterModal()"></div>
+        <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md">
+            <div class="bg-white rounded-2xl shadow-2xl">
+                <div class="px-6 py-5 border-b border-surface-border flex items-center justify-between">
+                    <h3 class="text-lg font-semibold text-gray-900">注册新设备</h3>
+                    <button onclick="closeRegisterModal()" class="w-8 h-8 rounded-lg hover:bg-gray-100 flex items-center justify-center text-gray-400 hover:text-gray-600 transition-colors">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+                <div class="p-6 space-y-5">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1.5">设备序列号 <span class="text-red-500">*</span></label>
+                        <input type="text" placeholder="请输入设备序列号" class="w-full h-11 px-4 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/10 font-mono">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1.5">所属停车场 <span class="text-red-500">*</span></label>
+                        <select class="w-full h-11 px-4 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/10 bg-white">
+                            <option value="">请选择停车场</option>
+                            <option>万科翡翠滨江地下停车场</option>
+                            <option>万科广场商业停车场</option>
+                            <option>万科城市花园停车场</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1.5">绑定出入口 <span class="text-red-500">*</span></label>
+                        <select class="w-full h-11 px-4 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/10 bg-white">
+                            <option value="">请选择出入口</option>
+                            <option>1号入口</option>
+                            <option>2号入口</option>
+                            <option>1号出口</option>
+                            <option>2号出口</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1.5">设备类型</label>
+                        <select class="w-full h-11 px-4 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/10 bg-white">
+                            <option>一体机（含相机+闸机）</option>
+                            <option>仅相机</option>
+                            <option>仅闸机</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="px-6 py-4 border-t border-surface-border flex items-center justify-end gap-3">
+                    <button onclick="closeRegisterModal()" class="h-10 px-5 rounded-lg border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">取消</button>
+                    <button class="btn-primary h-10 px-5 rounded-lg text-white text-sm font-medium">确认注册</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 远程控制弹窗 -->
+    <div id="control-modal" class="fixed inset-0 z-50 hidden">
+        <div class="modal-overlay absolute inset-0 bg-black/40" onclick="closeControlModal()"></div>
+        <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-sm">
+            <div class="bg-white rounded-2xl shadow-2xl">
+                <div class="px-6 py-5 border-b border-surface-border flex items-center justify-between">
+                    <h3 class="text-lg font-semibold text-gray-900">远程控制</h3>
+                    <button onclick="closeControlModal()" class="w-8 h-8 rounded-lg hover:bg-gray-100 flex items-center justify-center text-gray-400 hover:text-gray-600 transition-colors">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+                <div class="p-6">
+                    <div class="text-center mb-6">
+                        <div class="text-sm text-gray-500 mb-1">设备</div>
+                        <div class="font-mono text-lg font-semibold text-gray-900" id="control-device-id">PH-DEV-2024-001</div>
+                        <div class="text-sm text-gray-500 mt-1" id="control-location">1号入口</div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <button onclick="executeGateCommand('up')" class="h-20 rounded-xl bg-emerald-50 border-2 border-emerald-200 flex flex-col items-center justify-center gap-2 hover:bg-emerald-100 hover:border-emerald-300 transition-all group">
+                            <i class="fa-solid fa-arrow-up text-2xl text-emerald-600 group-hover:scale-110 transition-transform"></i>
+                            <span class="text-sm font-medium text-emerald-700">抬杆</span>
+                        </button>
+                        <button onclick="executeGateCommand('down')" class="h-20 rounded-xl bg-blue-50 border-2 border-blue-200 flex flex-col items-center justify-center gap-2 hover:bg-blue-100 hover:border-blue-300 transition-all group">
+                            <i class="fa-solid fa-arrow-down text-2xl text-blue-600 group-hover:scale-110 transition-transform"></i>
+                            <span class="text-sm font-medium text-blue-700">落杆</span>
+                        </button>
+                    </div>
+                    <p class="text-xs text-gray-400 text-center mt-4">请确认现场安全后再执行操作</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function openRegisterModal() {
+            document.getElementById('register-modal').classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+        }
+        function closeRegisterModal() {
+            document.getElementById('register-modal').classList.add('hidden');
+            document.body.style.overflow = '';
+        }
+        function openControlModal(deviceId, location) {
+            document.getElementById('control-device-id').textContent = deviceId;
+            document.getElementById('control-location').textContent = location;
+            document.getElementById('control-modal').classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+        }
+        function closeControlModal() {
+            document.getElementById('control-modal').classList.add('hidden');
+            document.body.style.overflow = '';
+        }
+        function executeGateCommand(action) {
+            const deviceId = document.getElementById('control-device-id').textContent;
+            alert(`已向设备 ${deviceId} 发送${action === 'up' ? '抬杆' : '落杆'}指令`);
+            closeControlModal();
+        }
+    </script>
+</body>
+</html>

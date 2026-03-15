@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>计费规则 · ParkHub</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: { 50: '#eff6ff', 100: '#dbeafe', 500: '#3b82f6', 600: '#2563eb', 700: '#1d4ed8', 900: '#1e3a5f' },
+                        surface: { DEFAULT: '#ffffff', muted: '#f8fafc', border: '#e2e8f0' }
+                    },
+                    fontFamily: { sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'] }
+                }
+            }
+        }
+    </script>
+    <style>
+        .sidebar-gradient { background: linear-gradient(180deg, #1e3a5f 0%, #1a3454 100%); }
+        .nav-item:hover { background: rgba(255,255,255,0.08); }
+        .nav-item.active { background: rgba(37, 99, 235, 0.3); border-left: 3px solid #3b82f6; }
+        .card-hover { transition: all 0.2s ease; }
+        .card-hover:hover { transform: translateY(-2px); box-shadow: 0 8px 25px -5px rgba(0,0,0,0.1); }
+        .btn-primary { background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); transition: all 0.2s ease; }
+        .btn-primary:hover { background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%); box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4); }
+        .btn-secondary { background: linear-gradient(135deg, #64748b 0%, #475569 100%); }
+        .btn-secondary:hover { background: linear-gradient(135deg, #475569 0%, #334155 100%); box-shadow: 0 4px 12px rgba(71, 85, 105, 0.4); }
+        .modal-overlay { backdrop-filter: blur(4px); }
+        .rule-card { transition: all 0.3s ease; }
+        .rule-card:hover { border-color: #3b82f6; }
+        .rule-card.active { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); }
+        /* 滑块样式 - 统一所有浏览器 */
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 100%;
+            height: 8px;
+            background: #e2e8f0;
+            border-radius: 999px;
+            cursor: pointer;
+            outline: none;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 24px;
+            height: 24px;
+            background: #ffffff;
+            border: 3px solid #2563eb;
+            border-radius: 50%;
+            cursor: grab;
+            box-shadow: 0 2px 8px rgba(37, 99, 235, 0.25);
+            transition: all 0.15s ease;
+        }
+        input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.1);
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35);
+        }
+        input[type="range"]::-webkit-slider-thumb:active {
+            cursor: grabbing;
+            transform: scale(1.05);
+        }
+        /* Firefox */
+        input[type="range"]::-moz-range-track {
+            height: 8px;
+            background: #e2e8f0;
+            border-radius: 999px;
+        }
+        input[type="range"]::-moz-range-thumb {
+            width: 24px;
+            height: 24px;
+            background: #ffffff;
+            border: 3px solid #2563eb;
+            border-radius: 50%;
+            cursor: grab;
+            box-shadow: 0 2px 8px rgba(37, 99, 235, 0.25);
+        }
+        input[type="range"]::-moz-range-progress {
+            height: 8px;
+            background: #2563eb;
+            border-radius: 999px 0 0 999px;
+        }
+        /* Edge/IE */
+        input[type="range"]::-ms-track {
+            height: 8px;
+            background: transparent;
+            border-color: transparent;
+            color: transparent;
+        }
+        input[type="range"]::-ms-fill-lower {
+            background: #2563eb;
+            border-radius: 999px 0 0 999px;
+        }
+        input[type="range"]::-ms-fill-upper {
+            background: #e2e8f0;
+            border-radius: 0 999px 999px 0;
+        }
+        input[type="range"]::-ms-thumb {
+            width: 24px;
+            height: 24px;
+            background: #ffffff;
+            border: 3px solid #2563eb;
+            border-radius: 50%;
+            cursor: grab;
+            box-shadow: 0 2px 8px rgba(37, 99, 235, 0.25);
+        }
+    </style>
+</head>
+<body class="font-sans antialiased bg-surface-muted">
+    <div class="flex min-h-screen">
+        <!-- 侧边栏 -->
+        <aside class="w-64 sidebar-gradient fixed h-full flex flex-col">
+            <div class="p-5 border-b border-white/10">
+                <div class="flex items-center gap-3">
+                    <div class="w-9 h-9 bg-white/15 rounded-xl flex items-center justify-center backdrop-blur-sm">
+                        <i class="fa-solid fa-square-parking text-white text-base"></i>
+                    </div>
+                    <span class="text-white text-lg font-semibold">ParkHub</span>
+                </div>
+            </div>
+            <nav class="flex-1 py-4 overflow-y-auto">
+                <div class="px-3 mb-2"><span class="text-xs font-medium text-blue-200/50 uppercase tracking-wider px-3">平台管理</span></div>
+                <a href="tenant-management.html" class="nav-item flex items-center gap-3 px-6 py-2.5 text-white/70 text-sm hover:text-white/90">
+                    <i class="fa-solid fa-building w-5 text-center"></i><span>租户管理</span>
+                </a>
+                <div class="px-3 mt-6 mb-2"><span class="text-xs font-medium text-blue-200/50 uppercase tracking-wider px-3">车场运营</span></div>
+                <a href="parking-lot.html" class="nav-item flex items-center gap-3 px-6 py-2.5 text-white/70 text-sm hover:text-white/90">
+                    <i class="fa-solid fa-warehouse w-5 text-center"></i><span>停车场管理</span>
+                </a>
+                <a href="device-management.html" class="nav-item flex items-center gap-3 px-6 py-2.5 text-white/70 text-sm hover:text-white/90">
+                    <i class="fa-solid fa-microchip w-5 text-center"></i><span>设备管理</span>
+                </a>
+                <a href="billing-rules.html" class="nav-item active flex items-center gap-3 px-6 py-2.5 text-white/90 text-sm">
+                    <i class="fa-solid fa-calculator w-5 text-center"></i><span>计费规则</span>
+                </a>
+                <div class="px-3 mt-6 mb-2"><span class="text-xs font-medium text-blue-200/50 uppercase tracking-wider px-3">运营监控</span></div>
+                <a href="realtime-monitor.html" class="nav-item flex items-center gap-3 px-6 py-2.5 text-white/70 text-sm hover:text-white/90">
+                    <i class="fa-solid fa-chart-line w-5 text-center"></i><span>实时监控</span>
+                </a>
+                <a href="entry-exit-records.html" class="nav-item flex items-center gap-3 px-6 py-2.5 text-white/70 text-sm hover:text-white/90">
+                    <i class="fa-solid fa-list-check w-5 text-center"></i><span>出入记录</span>
+                </a>
+                <a href="operator-workspace.html" class="nav-item flex items-center gap-3 px-6 py-2.5 text-white/70 text-sm hover:text-white/90">
+                    <i class="fa-solid fa-desktop w-5 text-center"></i><span>操作员工作台</span>
+                </a>
+            </nav>
+            <div class="p-4 border-t border-white/10">
+                <div class="flex items-center gap-3">
+                    <div class="w-9 h-9 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center">
+                        <span class="text-white text-sm font-medium">万</span>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <div class="text-white text-sm font-medium truncate">万科物业</div>
+                        <div class="text-blue-200/60 text-xs">租户管理员</div>
+                    </div>
+                    <button class="text-white/50 hover:text-white/80 transition-colors"><i class="fa-solid fa-right-from-bracket"></i></button>
+                </div>
+            </div>
+        </aside>
+
+        <!-- 主内容区 -->
+        <main class="flex-1 ml-64">
+            <header class="bg-white border-b border-surface-border sticky top-0 z-10">
+                <div class="flex items-center justify-between px-8 py-4">
+                    <div>
+                        <h1 class="text-xl font-semibold text-gray-900">计费规则配置</h1>
+                        <p class="text-sm text-gray-500 mt-0.5">设置各停车场的计费规则，支持免费时长、按时计费、每日封顶</p>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <button onclick="openCalculatorModal()" class="h-10 px-5 rounded-lg border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors flex items-center gap-2">
+                            <i class="fa-solid fa-calculator text-gray-400"></i>费用计算器
+                        </button>
+                    </div>
+                </div>
+            </header>
+
+            <div class="px-8 py-6">
+                <div class="grid grid-cols-12 gap-6">
+                    <!-- 左侧：车场列表 -->
+                    <div class="col-span-4">
+                        <div class="bg-white rounded-xl border border-surface-border overflow-hidden">
+                            <div class="px-5 py-4 border-b border-surface-border">
+                                <span class="text-sm font-medium text-gray-900">选择停车场</span>
+                            </div>
+                            <div class="p-3">
+                                <div onclick="selectParkingLot(1)" class="rule-card active p-4 rounded-xl border-2 border-surface-border cursor-pointer mb-2">
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center gap-3">
+                                            <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center">
+                                                <i class="fa-solid fa-building text-white text-sm"></i>
+                                            </div>
+                                            <div>
+                                                <div class="font-medium text-gray-900 text-sm">万科翡翠滨江</div>
+                                                <div class="text-xs text-gray-500">800 车位</div>
+                                            </div>
+                                        </div>
+                                        <i class="fa-solid fa-check text-brand-600"></i>
+                                    </div>
+                                </div>
+                                <div onclick="selectParkingLot(2)" class="rule-card p-4 rounded-xl border-2 border-surface-border cursor-pointer mb-2">
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center gap-3">
+                                            <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center">
+                                                <i class="fa-solid fa-shop text-white text-sm"></i>
+                                            </div>
+                                            <div>
+                                                <div class="font-medium text-gray-900 text-sm">万科广场</div>
+                                                <div class="text-xs text-gray-500">1,200 车位</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div onclick="selectParkingLot(3)" class="rule-card p-4 rounded-xl border-2 border-surface-border cursor-pointer mb-2">
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center gap-3">
+                                            <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-violet-500 to-violet-600 flex items-center justify-center">
+                                                <i class="fa-solid fa-house-chimney text-white text-sm"></i>
+                                            </div>
+                                            <div>
+                                                <div class="font-medium text-gray-900 text-sm">万科城市花园</div>
+                                                <div class="text-xs text-gray-500">450 车位</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div onclick="selectParkingLot(4)" class="rule-card p-4 rounded-xl border-2 border-surface-border cursor-pointer opacity-60">
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center gap-3">
+                                            <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-gray-400 to-gray-500 flex items-center justify-center">
+                                                <i class="fa-solid fa-hotel text-white text-sm"></i>
+                                            </div>
+                                            <div>
+                                                <div class="font-medium text-gray-900 text-sm">万科翡翠别墅</div>
+                                                <div class="text-xs text-gray-500">暂停运营</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 右侧：规则配置 -->
+                    <div class="col-span-8 space-y-6">
+                        <!-- 当前规则 -->
+                        <div class="bg-white rounded-xl border border-surface-border overflow-hidden">
+                            <div class="px-6 py-4 border-b border-surface-border flex items-center justify-between">
+                                <div>
+                                    <span class="text-sm font-medium text-gray-900">计费规则</span>
+                                    <span class="ml-2 text-xs text-gray-500">万科翡翠滨江地下停车场</span>
+                                </div>
+                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-emerald-50 text-emerald-600">
+                                    <i class="fa-solid fa-circle-check"></i>已启用
+                                </span>
+                            </div>
+                            <div class="p-6">
+                                <div class="grid grid-cols-3 gap-6">
+                                    <!-- 免费时长 -->
+                                    <div class="p-5 rounded-xl bg-blue-50/50 border border-blue-100">
+                                        <div class="flex items-center gap-2 mb-4">
+                                            <div class="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center">
+                                                <i class="fa-solid fa-gift text-blue-600 text-sm"></i>
+                                            </div>
+                                            <span class="text-sm font-medium text-gray-900">免费时长</span>
+                                        </div>
+                                        <div class="flex items-end gap-1 mb-3">
+                                            <span class="text-3xl font-bold text-gray-900">15</span>
+                                            <span class="text-sm text-gray-500 mb-1">分钟</span>
+                                        </div>
+                                        <p class="text-xs text-gray-500">停车不超过15分钟免费</p>
+                                    </div>
+
+                                    <!-- 计费单价 -->
+                                    <div class="p-5 rounded-xl bg-emerald-50/50 border border-emerald-100">
+                                        <div class="flex items-center gap-2 mb-4">
+                                            <div class="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center">
+                                                <i class="fa-solid fa-coins text-emerald-600 text-sm"></i>
+                                            </div>
+                                            <span class="text-sm font-medium text-gray-900">计费单价</span>
+                                        </div>
+                                        <div class="flex items-end gap-1 mb-3">
+                                            <span class="text-sm text-gray-500 mb-1">¥</span>
+                                            <span class="text-3xl font-bold text-gray-900">8</span>
+                                            <span class="text-sm text-gray-500 mb-1">/小时</span>
+                                        </div>
+                                        <p class="text-xs text-gray-500">不足1小时按1小时计算</p>
+                                    </div>
+
+                                    <!-- 每日封顶 -->
+                                    <div class="p-5 rounded-xl bg-amber-50/50 border border-amber-100">
+                                        <div class="flex items-center gap-2 mb-4">
+                                            <div class="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center">
+                                                <i class="fa-solid fa-umbrella text-amber-600 text-sm"></i>
+                                            </div>
+                                            <span class="text-sm font-medium text-gray-900">每日封顶</span>
+                                        </div>
+                                        <div class="flex items-end gap-1 mb-3">
+                                            <span class="text-sm text-gray-500 mb-1">¥</span>
+                                            <span class="text-3xl font-bold text-gray-900">64</span>
+                                        </div>
+                                        <p class="text-xs text-gray-500">24小时内最高收费64元</p>
+                                    </div>
+                                </div>
+
+                                <!-- 计费说明 -->
+                                <div class="mt-6 p-4 bg-gray-50 rounded-xl">
+                                    <div class="flex items-start gap-3">
+                                        <i class="fa-solid fa-circle-info text-gray-400 mt-0.5"></i>
+                                        <div class="text-sm text-gray-600">
+                                            <p class="font-medium text-gray-700 mb-1">计费规则说明</p>
+                                            <ul class="space-y-1 text-xs">
+                                                <li>• 停车15分钟内免费出场</li>
+                                                <li>• 超过15分钟后，从入场时间开始计费，每小时8元</li>
+                                                <li>• 不足1小时按1小时计算（向上取整）</li>
+                                                <li>• 每24小时封顶64元，超过24小时重新计费</li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 修改规则表单 -->
+                        <div class="bg-white rounded-xl border border-surface-border overflow-hidden">
+                            <div class="px-6 py-4 border-b border-surface-border">
+                                <span class="text-sm font-medium text-gray-900">修改规则</span>
+                            </div>
+                            <div class="p-6">
+                                <div class="space-y-6">
+                                    <!-- 免费时长 -->
+                                    <div class="p-4 bg-gray-50 rounded-xl">
+                                        <div class="flex items-center justify-between mb-4">
+                                            <label class="text-sm font-medium text-gray-700">免费时长</label>
+                                            <div class="flex items-center gap-2">
+                                                <input type="number" id="free-time-input" value="15" min="0" max="120" class="w-20 h-9 px-3 rounded-lg border border-gray-200 text-sm text-center focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/10 font-medium text-gray-900">
+                                                <span class="text-sm text-gray-500">分钟</span>
+                                            </div>
+                                        </div>
+                                        <div class="py-2">
+                                            <input type="range" id="free-time-slider" min="0" max="120" value="15" oninput="document.getElementById('free-time-input').value = this.value">
+                                        </div>
+                                        <div class="flex justify-between text-xs text-gray-400 mt-2">
+                                            <span>0分钟</span>
+                                            <span>60分钟</span>
+                                            <span>120分钟</span>
+                                        </div>
+                                    </div>
+
+                                    <!-- 计费单价 -->
+                                    <div class="p-4 bg-gray-50 rounded-xl">
+                                        <div class="flex items-center justify-between mb-4">
+                                            <label class="text-sm font-medium text-gray-700">计费单价（元/小时）</label>
+                                            <div class="flex items-center gap-2">
+                                                <span class="text-sm text-gray-500">¥</span>
+                                                <input type="number" id="price-input" value="8" min="1" max="50" step="0.5" class="w-20 h-9 px-3 rounded-lg border border-gray-200 text-sm text-center focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/10">
+                                            </div>
+                                        </div>
+                                        <div class="py-2">
+                                            <input type="range" id="price-slider" min="1" max="50" step="0.5" value="8" oninput="document.getElementById('price-input').value = this.value">
+                                        </div>
+                                        <div class="flex justify-between text-xs text-gray-400 mt-2">
+                                            <span>¥1</span>
+                                            <span>¥25</span>
+                                            <span>¥50</span>
+                                        </div>
+                                    </div>
+
+                                    <!-- 每日封顶 -->
+                                    <div class="p-4 bg-gray-50 rounded-xl">
+                                        <div class="flex items-center justify-between mb-4">
+                                            <label class="text-sm font-medium text-gray-700">每日封顶金额</label>
+                                            <div class="flex items-center gap-2">
+                                                <span class="text-sm text-gray-500">¥</span>
+                                                <input type="number" id="cap-input" value="64" min="0" max="500" class="w-20 h-9 px-3 rounded-lg border border-gray-200 text-sm text-center focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/10">
+                                            </div>
+                                        </div>
+                                        <div class="py-2">
+                                            <input type="range" id="cap-slider" min="0" max="500" value="64" step="4" oninput="document.getElementById('cap-input').value = this.value">
+                                        </div>
+                                        <div class="flex justify-between text-xs text-gray-400 mt-2">
+                                            <span>¥0</span>
+                                            <span>¥250</span>
+                                            <span>¥500</span>
+                                        </div>
+                                        <div class="flex items-center gap-2 mt-4 pt-3 border-t border-gray-200">
+                                            <input type="checkbox" id="no-limit" class="w-4 h-4 rounded border-gray-300 text-brand-600 focus:ring-brand-500">
+                                            <label for="no-limit" class="text-sm text-gray-600">不设封顶（24小时计费无上限）</label>
+                                        </div>
+                                    </div>
+
+                                    <!-- 计费周期 -->
+                                    <div>
+                                        <label class="text-sm font-medium text-gray-700 mb-3 block">计费周期</label>
+                                        <div class="flex gap-3">
+                                            <label class="flex-1 flex items-center justify-center gap-2 p-3 rounded-lg border-2 border-brand-500 bg-brand-50 cursor-pointer">
+                                                <input type="radio" name="cycle" checked class="sr-only">
+                                                <i class="fa-solid fa-clock text-brand-600"></i>
+                                                <span class="text-sm font-medium text-brand-700">按小时计费</span>
+                                            </label>
+                                            <label class="flex-1 flex items-center justify-center gap-2 p-3 rounded-lg border-2 border-gray-200 hover:border-gray-300 cursor-pointer transition-colors">
+                                                <input type="radio" name="cycle" class="sr-only">
+                                                <i class="fa-solid fa-hourglass-half text-gray-400"></i>
+                                                <span class="text-sm font-medium text-gray-600">按半小时计费</span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="mt-8 pt-6 border-t border-surface-border flex items-center justify-end gap-3">
+                                    <button class="h-10 px-5 rounded-lg border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">重置</button>
+                                    <button class="btn-primary h-10 px-5 rounded-lg text-white text-sm font-medium">保存规则</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- 费用计算器弹窗 -->
+    <div id="calculator-modal" class="fixed inset-0 z-50 hidden">
+        <div class="modal-overlay absolute inset-0 bg-black/40" onclick="closeCalculatorModal()"></div>
+        <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md">
+            <div class="bg-white rounded-2xl shadow-2xl">
+                <div class="px-6 py-5 border-b border-surface-border flex items-center justify-between">
+                    <h3 class="text-lg font-semibold text-gray-900">费用计算器</h3>
+                    <button onclick="closeCalculatorModal()" class="w-8 h-8 rounded-lg hover:bg-gray-100 flex items-center justify-center text-gray-400 hover:text-gray-600 transition-colors">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+                <div class="p-6 space-y-5">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1.5">停车场</label>
+                        <select class="w-full h-11 px-4 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/10 bg-white">
+                            <option>万科翡翠滨江地下停车场</option>
+                            <option>万科广场商业停车场</option>
+                            <option>万科城市花园停车场</option>
+                        </select>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1.5">入场时间</label>
+                            <input type="datetime-local" value="2026-03-13T09:30" class="w-full h-11 px-4 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/10">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1.5">出场时间</label>
+                            <input type="datetime-local" value="2026-03-13T14:30" class="w-full h-11 px-4 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/10">
+                        </div>
+                    </div>
+
+                    <!-- 计算结果 -->
+                    <div class="bg-gray-50 rounded-xl p-5">
+                        <div class="flex items-center justify-between mb-4">
+                            <span class="text-sm text-gray-500">停车时长</span>
+                            <span class="text-lg font-semibold text-gray-900">5小时 0分钟</span>
+                        </div>
+                        <div class="flex items-center justify-between mb-4">
+                            <span class="text-sm text-gray-500">免费时长</span>
+                            <span class="text-sm text-gray-600">15分钟</span>
+                        </div>
+                        <div class="flex items-center justify-between mb-4">
+                            <span class="text-sm text-gray-500">计费时长</span>
+                            <span class="text-sm text-gray-600">4小时45分钟 → 5小时</span>
+                        </div>
+                        <div class="flex items-center justify-between mb-4">
+                            <span class="text-sm text-gray-500">计费单价</span>
+                            <span class="text-sm text-gray-600">¥8/小时</span>
+                        </div>
+                        <div class="h-px bg-gray-200 my-4"></div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-base font-medium text-gray-700">应付金额</span>
+                            <span class="text-2xl font-bold text-brand-600">¥40.00</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="px-6 py-4 border-t border-surface-border flex items-center justify-center">
+                    <button onclick="calculateFee()" class="btn-secondary h-10 px-8 rounded-lg text-white text-sm font-medium">
+                        <i class="fa-solid fa-calculator mr-2"></i>重新计算
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 选择停车场
+        function selectParkingLot(id) {
+            document.querySelectorAll('.rule-card').forEach(card => {
+                card.classList.remove('active');
+                const check = card.querySelector('.fa-check');
+                if (check) check.remove();
+            });
+            event.currentTarget.classList.add('active');
+            const check = document.createElement('i');
+            check.className = 'fa-solid fa-check text-brand-600';
+            event.currentTarget.querySelector('.flex').appendChild(check);
+        }
+
+        // 费用计算器弹窗
+        function openCalculatorModal() {
+            document.getElementById('calculator-modal').classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeCalculatorModal() {
+            document.getElementById('calculator-modal').classList.add('hidden');
+            document.body.style.overflow = '';
+        }
+
+        function calculateFee() {
+            alert('费用已重新计算！');
+        }
+
+        // 滑块与输入框双向绑定
+        document.addEventListener('DOMContentLoaded', function() {
+            // 免费时长
+            const freeTimeInput = document.getElementById('free-time-input');
+            const freeTimeSlider = document.getElementById('free-time-slider');
+            if (freeTimeInput && freeTimeSlider) {
+                freeTimeInput.addEventListener('input', function() {
+                    freeTimeSlider.value = this.value;
+                });
+            }
+
+            // 计费单价
+            const priceInput = document.getElementById('price-input');
+            const priceSlider = document.getElementById('price-slider');
+            if (priceInput && priceSlider) {
+                priceInput.addEventListener('input', function() {
+                    priceSlider.value = this.value;
+                });
+            }
+
+            // 每日封顶
+            const capInput = document.getElementById('cap-input');
+            const capSlider = document.getElementById('cap-slider');
+            if (capInput && capSlider) {
+                capInput.addEventListener('input', function() {
+                    capSlider.value = this.value;
+                });
+            }
+        });
+    </script>
+</body>
+</html>

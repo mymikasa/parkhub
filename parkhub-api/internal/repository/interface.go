@@ -1,0 +1,99 @@
+package repository
+
+import (
+	"context"
+	"time"
+
+	"github.com/parkhub/api/internal/domain"
+)
+
+// TenantRepo 租户数据访问接口
+type TenantRepo interface {
+	Create(ctx context.Context, tenant *domain.Tenant) error
+	Update(ctx context.Context, tenant *domain.Tenant) error
+	FindByID(ctx context.Context, id string) (*domain.Tenant, error)
+	FindAll(ctx context.Context, filter TenantFilter) ([]*domain.Tenant, int64, error)
+	ExistsByCompanyName(ctx context.Context, companyName string) (bool, error)
+}
+
+// TenantFilter 租户查询过滤器
+type TenantFilter struct {
+	Status   *domain.TenantStatus
+	Keyword  string
+	Page     int
+	PageSize int
+}
+
+// UserRepo 用户数据访问接口
+type UserRepo interface {
+	Create(ctx context.Context, user *domain.User) error
+	Update(ctx context.Context, user *domain.User) error
+	FindByID(ctx context.Context, id string) (*domain.User, error)
+	FindByUsername(ctx context.Context, username string) (*domain.User, error)
+	FindByEmail(ctx context.Context, email string) (*domain.User, error)
+	FindByPhone(ctx context.Context, phone string) (*domain.User, error)
+	FindByTenantID(ctx context.Context, tenantID string, filter UserFilter) ([]*domain.User, int64, error)
+	ExistsByUsername(ctx context.Context, username string) (bool, error)
+	ExistsByEmail(ctx context.Context, email string) (bool, error)
+	ExistsByPhone(ctx context.Context, phone string) (bool, error)
+	Delete(ctx context.Context, id string) error
+}
+
+// UserFilter 用户查询过滤器
+type UserFilter struct {
+	TenantID string
+	Role     *domain.UserRole
+	Status   *domain.UserStatus
+	Keyword  string
+	Page     int
+	PageSize int
+}
+
+// RefreshTokenRepo 刷新令牌数据访问接口
+type RefreshTokenRepo interface {
+	Create(ctx context.Context, token *RefreshToken) error
+	FindByTokenHash(ctx context.Context, tokenHash string) (*RefreshToken, error)
+	Revoke(ctx context.Context, id string) error
+	RevokeByUserID(ctx context.Context, userID string) error
+	DeleteExpired(ctx context.Context) error
+}
+
+// RefreshToken 刷新令牌实体
+type RefreshToken struct {
+	ID         string
+	UserID     string
+	TokenHash  string
+	DeviceInfo *string
+	IPAddress  *string
+	ExpiresAt  time.Time
+	Revoked    bool
+	CreatedAt  time.Time
+}
+
+// SmsCodeRepo 短信验证码数据访问接口
+type SmsCodeRepo interface {
+	Create(ctx context.Context, code *SmsCode) error
+	FindLatestValid(ctx context.Context, phone, purpose string) (*SmsCode, error)
+	MarkUsed(ctx context.Context, id string) error
+	DeleteExpired(ctx context.Context) error
+	CheckSendFrequency(ctx context.Context, phone string) (bool, error)
+}
+
+// SmsCode 短信验证码实体
+type SmsCode struct {
+	ID        string
+	Phone     string
+	Code      string
+	Purpose   SmsCodePurpose
+	ExpiresAt time.Time
+	Used      bool
+	CreatedAt time.Time
+}
+
+// SmsCodePurpose 验证码用途
+type SmsCodePurpose string
+
+const (
+	SmsCodePurposeLogin        SmsCodePurpose = "login"
+	SmsCodePurposeResetPassword SmsCodePurpose = "reset_password"
+)

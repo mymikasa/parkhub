@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ParkHub · 智慧停车管理平台</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#eff6ff',
+                            100: '#dbeafe',
+                            500: '#3b82f6',
+                            600: '#2563eb',
+                            700: '#1d4ed8',
+                            900: '#1e3a5f',
+                        },
+                        surface: {
+                            DEFAULT: '#ffffff',
+                            muted: '#f8fafc',
+                            border: '#e2e8f0',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .login-bg {
+            background: linear-gradient(135deg, #1e3a5f 0%, #2563eb 100%);
+        }
+        .glass-card {
+            backdrop-filter: blur(20px);
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+        }
+        .input-focus:focus {
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+            transition: all 0.2s ease;
+        }
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%);
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
+            transform: translateY(-1px);
+        }
+        .btn-primary:active {
+            transform: translateY(0);
+        }
+        .stat-card {
+            backdrop-filter: blur(12px);
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+        }
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-8px); }
+        }
+        .float-animation {
+            animation: float 6s ease-in-out infinite;
+        }
+        .float-animation-delay {
+            animation: float 6s ease-in-out 2s infinite;
+        }
+    </style>
+</head>
+<body class="font-sans antialiased">
+    <div class="flex min-h-screen">
+
+        <!-- 左侧品牌区域 -->
+        <div class="hidden lg:flex lg:w-[55%] login-bg relative overflow-hidden flex-col justify-between p-12">
+
+            <!-- 背景装饰 -->
+            <div class="absolute top-0 right-0 w-96 h-96 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2"></div>
+            <div class="absolute bottom-0 left-0 w-72 h-72 bg-white/5 rounded-full translate-y-1/3 -translate-x-1/3"></div>
+            <div class="absolute top-1/2 left-1/2 w-[600px] h-[600px] bg-white/[0.02] rounded-full -translate-x-1/2 -translate-y-1/2"></div>
+
+            <!-- 顶部 Logo -->
+            <div class="relative z-10">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-white/15 rounded-xl flex items-center justify-center backdrop-blur-sm border border-white/20">
+                        <i class="fa-solid fa-square-parking text-white text-lg"></i>
+                    </div>
+                    <span class="text-white text-xl font-semibold tracking-tight">ParkHub</span>
+                </div>
+            </div>
+
+            <!-- 中部主视觉 -->
+            <div class="relative z-10 flex-1 flex flex-col justify-center -mt-8">
+                <h1 class="text-white text-4xl xl:text-5xl font-bold leading-tight mb-4">
+                    智慧停车<br>管理平台
+                </h1>
+                <p class="text-blue-200/80 text-lg max-w-md leading-relaxed mb-12">
+                    为物业公司与商业综合体打造的一站式停车管理解决方案，涵盖车辆出入管理、智能计费、设备联动与数据分析。
+                </p>
+
+                <!-- 数据卡片 -->
+                <div class="flex gap-4">
+                    <div class="stat-card rounded-2xl p-5 float-animation">
+                        <div class="flex items-center gap-3 mb-3">
+                            <div class="w-9 h-9 bg-emerald-400/20 rounded-lg flex items-center justify-center">
+                                <i class="fa-solid fa-car text-emerald-400 text-sm"></i>
+                            </div>
+                            <span class="text-blue-200/60 text-sm">今日通行</span>
+                        </div>
+                        <div class="text-white text-2xl font-bold">12,847</div>
+                        <div class="text-emerald-400 text-xs mt-1">
+                            <i class="fa-solid fa-arrow-up text-[10px]"></i> 较昨日 +8.3%
+                        </div>
+                    </div>
+                    <div class="stat-card rounded-2xl p-5 float-animation-delay">
+                        <div class="flex items-center gap-3 mb-3">
+                            <div class="w-9 h-9 bg-amber-400/20 rounded-lg flex items-center justify-center">
+                                <i class="fa-solid fa-building text-amber-400 text-sm"></i>
+                            </div>
+                            <span class="text-blue-200/60 text-sm">接入车场</span>
+                        </div>
+                        <div class="text-white text-2xl font-bold">326</div>
+                        <div class="text-amber-400 text-xs mt-1">
+                            <i class="fa-solid fa-arrow-up text-[10px]"></i> 本月新增 12 家
+                        </div>
+                    </div>
+                    <div class="stat-card rounded-2xl p-5 float-animation">
+                        <div class="flex items-center gap-3 mb-3">
+                            <div class="w-9 h-9 bg-violet-400/20 rounded-lg flex items-center justify-center">
+                                <i class="fa-solid fa-microchip text-violet-400 text-sm"></i>
+                            </div>
+                            <span class="text-blue-200/60 text-sm">在线设备</span>
+                        </div>
+                        <div class="text-white text-2xl font-bold">1,204</div>
+                        <div class="text-emerald-400 text-xs mt-1">
+                            <i class="fa-solid fa-circle text-[8px]"></i> 在线率 99.6%
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 底部信息 -->
+            <div class="relative z-10">
+                <p class="text-blue-200/40 text-sm">&copy; 2026 ParkHub. 让每一次停车都更智能。</p>
+            </div>
+        </div>
+
+        <!-- 右侧登录区域 -->
+        <div class="w-full lg:w-[45%] flex flex-col bg-white">
+
+            <!-- 移动端顶部 Logo -->
+            <div class="lg:hidden flex items-center gap-3 p-6">
+                <div class="w-9 h-9 bg-brand-600 rounded-xl flex items-center justify-center">
+                    <i class="fa-solid fa-square-parking text-white text-base"></i>
+                </div>
+                <span class="text-gray-900 text-lg font-semibold">ParkHub</span>
+            </div>
+
+            <!-- 登录表单 -->
+            <div class="flex-1 flex items-center justify-center px-6 sm:px-12 lg:px-16 xl:px-24">
+                <div class="w-full max-w-[400px]">
+
+                    <!-- 标题 -->
+                    <div class="mb-8">
+                        <h2 class="text-gray-900 text-2xl font-bold mb-2">欢迎回来</h2>
+                        <p class="text-gray-500 text-sm">登录您的账号以继续管理停车场</p>
+                    </div>
+
+                    <!-- 登录方式切换 -->
+                    <div class="flex bg-gray-100 rounded-lg p-1 mb-8">
+                        <button id="tab-account" onclick="switchTab('account')" class="flex-1 py-2.5 px-4 rounded-md text-sm font-medium transition-all bg-white text-gray-900 shadow-sm">
+                            <i class="fa-solid fa-user mr-1.5 text-xs"></i>账号登录
+                        </button>
+                        <button id="tab-phone" onclick="switchTab('phone')" class="flex-1 py-2.5 px-4 rounded-md text-sm font-medium transition-all text-gray-500 hover:text-gray-700">
+                            <i class="fa-solid fa-mobile-screen mr-1.5 text-xs"></i>手机号登录
+                        </button>
+                    </div>
+
+                    <!-- 账号密码表单 -->
+                    <form id="form-account" class="space-y-5">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1.5">账号</label>
+                            <div class="relative">
+                                <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                                    <i class="fa-regular fa-user text-gray-400 text-sm"></i>
+                                </div>
+                                <input
+                                    type="text"
+                                    placeholder="请输入账号或邮箱"
+                                    value="admin@parkhub.cn"
+                                    class="input-focus w-full h-11 pl-10 pr-4 rounded-lg border border-gray-200 text-sm text-gray-900 placeholder-gray-400 outline-none transition-all hover:border-gray-300 focus:border-brand-500"
+                                >
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1.5">密码</label>
+                            <div class="relative">
+                                <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                                    <i class="fa-solid fa-lock text-gray-400 text-sm"></i>
+                                </div>
+                                <input
+                                    id="password-input"
+                                    type="password"
+                                    placeholder="请输入密码"
+                                    value="••••••••"
+                                    class="input-focus w-full h-11 pl-10 pr-11 rounded-lg border border-gray-200 text-sm text-gray-900 placeholder-gray-400 outline-none transition-all hover:border-gray-300 focus:border-brand-500"
+                                >
+                                <button type="button" onclick="togglePassword()" class="absolute inset-y-0 right-0 pr-3.5 flex items-center">
+                                    <i id="eye-icon" class="fa-regular fa-eye-slash text-gray-400 text-sm hover:text-gray-600 transition-colors"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center justify-between">
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input type="checkbox" checked class="w-4 h-4 rounded border-gray-300 text-brand-600 focus:ring-brand-500 focus:ring-offset-0 cursor-pointer">
+                                <span class="text-sm text-gray-600">记住登录状态</span>
+                            </label>
+                            <a href="#" class="text-sm text-brand-600 hover:text-brand-700 font-medium transition-colors">忘记密码？</a>
+                        </div>
+
+                        <button type="button" onclick="handleLogin()" class="btn-primary w-full h-11 rounded-lg text-white text-sm font-medium flex items-center justify-center gap-2">
+                            登录
+                        </button>
+                    </form>
+
+                    <!-- 手机号表单 -->
+                    <form id="form-phone" class="space-y-5 hidden">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1.5">手机号</label>
+                            <div class="relative">
+                                <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                                    <i class="fa-solid fa-mobile-screen text-gray-400 text-sm"></i>
+                                </div>
+                                <input
+                                    type="tel"
+                                    placeholder="请输入手机号"
+                                    value="138 8888 6666"
+                                    class="input-focus w-full h-11 pl-10 pr-4 rounded-lg border border-gray-200 text-sm text-gray-900 placeholder-gray-400 outline-none transition-all hover:border-gray-300 focus:border-brand-500"
+                                >
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1.5">验证码</label>
+                            <div class="flex gap-3">
+                                <div class="relative flex-1">
+                                    <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                                        <i class="fa-solid fa-shield-halved text-gray-400 text-sm"></i>
+                                    </div>
+                                    <input
+                                        type="text"
+                                        placeholder="请输入验证码"
+                                        class="input-focus w-full h-11 pl-10 pr-4 rounded-lg border border-gray-200 text-sm text-gray-900 placeholder-gray-400 outline-none transition-all hover:border-gray-300 focus:border-brand-500"
+                                    >
+                                </div>
+                                <button type="button" id="sms-btn" onclick="sendSms()" class="h-11 px-5 rounded-lg border border-brand-200 bg-brand-50 text-brand-600 text-sm font-medium hover:bg-brand-100 transition-colors whitespace-nowrap">
+                                    获取验证码
+                                </button>
+                            </div>
+                        </div>
+
+                        <button type="button" onclick="handleLogin()" class="btn-primary w-full h-11 rounded-lg text-white text-sm font-medium flex items-center justify-center gap-2 mt-8">
+                            登录
+                        </button>
+                    </form>
+
+                    <!-- 分割线 -->
+                    <div class="flex items-center gap-4 my-8">
+                        <div class="flex-1 h-px bg-gray-200"></div>
+                        <span class="text-xs text-gray-400">其他方式</span>
+                        <div class="flex-1 h-px bg-gray-200"></div>
+                    </div>
+
+                    <!-- 第三方登录 -->
+                    <div class="flex justify-center gap-4">
+                        <button class="w-11 h-11 rounded-lg border border-gray-200 flex items-center justify-center hover:bg-gray-50 hover:border-gray-300 transition-all group">
+                            <i class="fa-brands fa-weixin text-lg text-gray-400 group-hover:text-green-500 transition-colors"></i>
+                        </button>
+                        <button class="w-11 h-11 rounded-lg border border-gray-200 flex items-center justify-center hover:bg-gray-50 hover:border-gray-300 transition-all group">
+                            <i class="fa-solid fa-comment-dots text-lg text-gray-400 group-hover:text-blue-500 transition-colors"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 底部 -->
+            <div class="px-6 py-6 text-center lg:hidden">
+                <p class="text-gray-400 text-xs">&copy; 2026 ParkHub. 让每一次停车都更智能。</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function switchTab(tab) {
+            const tabAccount = document.getElementById('tab-account');
+            const tabPhone = document.getElementById('tab-phone');
+            const formAccount = document.getElementById('form-account');
+            const formPhone = document.getElementById('form-phone');
+
+            if (tab === 'account') {
+                tabAccount.className = 'flex-1 py-2.5 px-4 rounded-md text-sm font-medium transition-all bg-white text-gray-900 shadow-sm';
+                tabPhone.className = 'flex-1 py-2.5 px-4 rounded-md text-sm font-medium transition-all text-gray-500 hover:text-gray-700';
+                formAccount.classList.remove('hidden');
+                formPhone.classList.add('hidden');
+            } else {
+                tabPhone.className = 'flex-1 py-2.5 px-4 rounded-md text-sm font-medium transition-all bg-white text-gray-900 shadow-sm';
+                tabAccount.className = 'flex-1 py-2.5 px-4 rounded-md text-sm font-medium transition-all text-gray-500 hover:text-gray-700';
+                formPhone.classList.remove('hidden');
+                formAccount.classList.add('hidden');
+            }
+        }
+
+        function togglePassword() {
+            const input = document.getElementById('password-input');
+            const icon = document.getElementById('eye-icon');
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.className = 'fa-regular fa-eye text-gray-400 text-sm hover:text-gray-600 transition-colors';
+            } else {
+                input.type = 'password';
+                icon.className = 'fa-regular fa-eye-slash text-gray-400 text-sm hover:text-gray-600 transition-colors';
+            }
+        }
+
+        function sendSms() {
+            const btn = document.getElementById('sms-btn');
+            let seconds = 60;
+            btn.disabled = true;
+            btn.className = 'h-11 px-5 rounded-lg border border-gray-200 bg-gray-50 text-gray-400 text-sm font-medium whitespace-nowrap cursor-not-allowed';
+            btn.textContent = `${seconds}s 后重发`;
+
+            const timer = setInterval(() => {
+                seconds--;
+                btn.textContent = `${seconds}s 后重发`;
+                if (seconds <= 0) {
+                    clearInterval(timer);
+                    btn.disabled = false;
+                    btn.className = 'h-11 px-5 rounded-lg border border-brand-200 bg-brand-50 text-brand-600 text-sm font-medium hover:bg-brand-100 transition-colors whitespace-nowrap';
+                    btn.textContent = '获取验证码';
+                }
+            }, 1000);
+        }
+
+        function handleLogin() {
+            const btn = event.target;
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i>登录中...';
+            btn.disabled = true;
+
+            setTimeout(() => {
+                btn.innerHTML = '<i class="fa-solid fa-check mr-2"></i>登录成功';
+                btn.className = btn.className.replace('btn-primary', '') + ' bg-emerald-500';
+
+                setTimeout(() => {
+                    btn.innerHTML = originalText;
+                    btn.disabled = false;
+                    btn.className = btn.className.replace('bg-emerald-500', 'btn-primary');
+                }, 1500);
+            }, 1200);
+        }
+    </script>
+</body>
+</html>
