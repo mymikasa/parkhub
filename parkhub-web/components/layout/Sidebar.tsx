@@ -1,5 +1,7 @@
 "use client";
 
+import { useRouter } from "next/navigation";
+import { useAuthContext } from "@/lib/auth/store";
 import { Icon } from "@/components/icons/FontAwesome";
 import {
   faSquareParking,
@@ -41,6 +43,14 @@ const navGroups = [
 ];
 
 export function Sidebar() {
+  const router = useRouter();
+  const { user, logout } = useAuthContext();
+
+  const handleLogout = async () => {
+    await logout();
+    router.push("/login");
+  };
+
   return (
     <aside className="w-64 sidebar-gradient fixed h-full flex flex-col">
       {/* Logo */}
@@ -80,14 +90,17 @@ export function Sidebar() {
         <div className="flex items-center gap-3">
           <Avatar className="w-9 h-9">
             <AvatarFallback className="bg-gradient-to-br from-emerald-400 to-emerald-600 text-white text-sm font-medium">
-              万
+              {user?.name?.[0] || "万"}
             </AvatarFallback>
           </Avatar>
           <div className="flex-1 min-w-0">
-            <div className="text-white text-sm font-medium truncate">万科物业</div>
-            <div className="text-blue-200/60 text-xs">租户管理员</div>
+            <div className="text-white text-sm font-medium truncate">{user?.name || "万科物业"}</div>
+            <div className="text-blue-200/60 text-xs">{user?.role || "租户管理员"}</div>
           </div>
-          <button className="text-white/50 hover:text-white/80 transition-colors">
+          <button
+            onClick={handleLogout}
+            className="text-white/50 hover:text-white/80 transition-colors"
+          >
             <Icon icon={faRightFromBracket} />
           </button>
         </div>

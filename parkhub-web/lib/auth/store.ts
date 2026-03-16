@@ -169,7 +169,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = useCallback(async () => {
     const storage = loadTokens();
     try {
-      await authApi.logout(storage?.refresh_token);
+      await authApi.logout(storage?.access_token || "", storage?.refresh_token);
     } catch {
       // Ignore errors on logout
     }

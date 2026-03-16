@@ -68,11 +68,11 @@ export async function refreshToken(refreshTkn: string): Promise<AuthResponse> {
   });
 }
 
-export async function logout(refreshTkn?: string): Promise<{ message: string }> {
+export async function logout(accessToken: string, refreshTkn?: string): Promise<{ message: string }> {
   return request<{ message: string }>('/api/v1/auth/logout', {
     method: 'POST',
     body: JSON.stringify({ refresh_token: refreshTkn }),
-  });
+  }, accessToken);
 }
 
 export async function getCurrentUser(accessToken: string): Promise<User> {

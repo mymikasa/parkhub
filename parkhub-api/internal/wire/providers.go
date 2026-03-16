@@ -6,6 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/parkhub/api/internal/config"
 	"github.com/parkhub/api/internal/pkg/jwt"
+	"github.com/parkhub/api/internal/pkg/validator"
 )
 
 // NewGinEngine creates a configured gin.Engine.
@@ -13,6 +14,10 @@ func NewGinEngine(cfg *config.Config) *gin.Engine {
 	if cfg.AppEnv == "production" {
 		gin.SetMode(gin.ReleaseMode)
 	}
+
+	// Register custom validators
+	validator.RegisterMobileValidator()
+
 	return gin.Default()
 }
 
