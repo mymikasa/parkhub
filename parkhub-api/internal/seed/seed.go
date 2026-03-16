@@ -1,26 +1,22 @@
 package seed
 
 import (
-	"context"
-	"database/sql"
-	"fmt"
 	"log"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/parkhub/api/internal/domain"
 	"github.com/parkhub/api/internal/pkg/crypto"
+	"github.com/parkhub/api/internal/repository/dao"
+	"gorm.io/gorm"
 )
 
 // SeedData 初始化种子数据
-func SeedData(db *sql.DB) error {
-	ctx := context.Background()
-
+func SeedData(db *gorm.DB) error {
 	// 检查是否已有数据
-	var count int
-	err := db.QueryRowContext(ctx, "SELECT COUNT(*) FROM users").Scan(&count)
-	if err != nil {
-		return fmt.Errorf("failed to check existing users: %w", err)
+	var count int64
+	if err := db.Model(&dao.UserDAO{}).Count(&count).Error; err != nil {
+		return err
 	}
 	if count > 0 {
 		log.Println("Seed data already exists, skipping...")
@@ -29,69 +25,100 @@ func SeedData(db *sql.DB) error {
 
 	log.Println("Seeding initial data...")
 
+	now := time.Now()
+
 	// 1. 创建平台租户（用于平台管理员）
 	platformTenantID := uuid.New().String()
-	_, err = db.ExecContext(ctx, `
-		INSERT INTO tenants (id, company_name, contact_name, contact_phone, status, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?)
-	`, platformTenantID, "ParkHub 平台", "平台管理员", "13800000000", string(domain.TenantStatusActive), time.Now(), time.Now())
-	if err != nil {
-		return fmt.Errorf("failed to create platform tenant: %w", err)
+	if err := db.Create(&dao.TenantDAO{
+		ID:           platformTenantID,
+		CompanyName:  "ParkHub 平台",
+		ContactName:  "平台管理员",
+		ContactPhone: "13800000000",
+		Status:       string(domain.TenantStatusActive),
+		CreatedAt:    now,
+		UpdatedAt:    now,
+	}).Error; err != nil {
+		return err
 	}
 
 	// 2. 创建平台管理员
 	passwordHash, err := crypto.HashPassword("Admin@123456")
 	if err != nil {
-		return fmt.Errorf("failed to hash password: %w", err)
+		return err
 	}
-
 	platformAdminID := uuid.New().String()
-	_, err = db.ExecContext(ctx, `
-		INSERT INTO users (id, tenant_id, username, email, phone, password_hash, real_name, role, status, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-	`, platformAdminID, nil, "platform_admin", "platform@parkhub.cn", "13800000001", passwordHash, "平台管理员", string(domain.RolePlatformAdmin), string(domain.UserStatusActive), time.Now(), time.Now())
-	if err != nil {
-		return fmt.Errorf("failed to create platform admin: %w", err)
+	if err := db.Create(&dao.UserDAO{
+		ID:           platformAdminID,
+		TenantID:     nil,
+		Username:     "platform_admin",
+		Email:        strPtr("platform@parkhub.cn"),
+		Phone:        strPtr("13800000001"),
+		PasswordHash: passwordHash,
+		RealName:     "平台管理员",
+		Role:         string(domain.RolePlatformAdmin),
+		Status:       string(domain.UserStatusActive),
+		CreatedAt:    now,
+		UpdatedAt:    now,
+	}).Error; err != nil {
+		return err
 	}
 
 	// 3. 创建演示租户
 	demoTenantID := uuid.New().String()
-	_, err = db.ExecContext(ctx, `
-		INSERT INTO tenants (id, company_name, contact_name, contact_phone, status, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?)
-	`, demoTenantID, "演示停车场公司", "张三", "13800000002", string(domain.TenantStatusActive), time.Now(), time.Now())
-	if err != nil {
-		return fmt.Errorf("failed to create demo tenant: %w", err)
+	if err := db.Create(&dao.TenantDAO{
+		ID:           demoTenantID,
+		CompanyName:  "演示停车场公司",
+		ContactName:  "张三",
+		ContactPhone: "13800000002",
+		Status:       string(domain.TenantStatusActive),
+		CreatedAt:    now,
+		UpdatedAt:    now,
+	}).Error; err != nil {
+		return err
 	}
 
 	// 4. 创建租户管理员
 	tenantAdminPassword, err := crypto.HashPassword("Tenant@123456")
 	if err != nil {
-		return fmt.Errorf("failed to hash password: %w", err)
+		return err
 	}
-
 	tenantAdminID := uuid.New().String()
-	_, err = db.ExecContext(ctx, `
-		INSERT INTO users (id, tenant_id, username, email, phone, password_hash, real_name, role, status, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-	`, tenantAdminID, demoTenantID, "tenant_admin", "tenant@parkhub.cn", "13800000003", tenantAdminPassword, "租户管理员", string(domain.RoleTenantAdmin), string(domain.UserStatusActive), time.Now(), time.Now())
-	if err != nil {
-		return fmt.Errorf("failed to create tenant admin: %w", err)
+	if err := db.Create(&dao.UserDAO{
+		ID:           tenantAdminID,
+		TenantID:     &demoTenantID,
+		Username:     "tenant_admin",
+		Email:        strPtr("tenant@parkhub.cn"),
+		Phone:        strPtr("13800000003"),
+		PasswordHash: tenantAdminPassword,
+		RealName:     "租户管理员",
+		Role:         string(domain.RoleTenantAdmin),
+		Status:       string(domain.UserStatusActive),
+		CreatedAt:    now,
+		UpdatedAt:    now,
+	}).Error; err != nil {
+		return err
 	}
 
 	// 5. 创建操作员
 	operatorPassword, err := crypto.HashPassword("Operator@123456")
 	if err != nil {
-		return fmt.Errorf("failed to hash password: %w", err)
+		return err
 	}
-
 	operatorID := uuid.New().String()
-	_, err = db.ExecContext(ctx, `
-		INSERT INTO users (id, tenant_id, username, email, phone, password_hash, real_name, role, status, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-	`, operatorID, demoTenantID, "operator", "operator@parkhub.cn", "13800000004", operatorPassword, "操作员", string(domain.RoleOperator), string(domain.UserStatusActive), time.Now(), time.Now())
-	if err != nil {
-		return fmt.Errorf("failed to create operator: %w", err)
+	if err := db.Create(&dao.UserDAO{
+		ID:           operatorID,
+		TenantID:     &demoTenantID,
+		Username:     "operator",
+		Email:        strPtr("operator@parkhub.cn"),
+		Phone:        strPtr("13800000004"),
+		PasswordHash: operatorPassword,
+		RealName:     "操作员",
+		Role:         string(domain.RoleOperator),
+		Status:       string(domain.UserStatusActive),
+		CreatedAt:    now,
+		UpdatedAt:    now,
+	}).Error; err != nil {
+		return err
 	}
 
 	log.Println("Seed data created successfully!")
@@ -119,3 +146,5 @@ func SeedData(db *sql.DB) error {
 
 	return nil
 }
+
+func strPtr(s string) *string { return &s }

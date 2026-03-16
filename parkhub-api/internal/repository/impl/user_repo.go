@@ -2,209 +2,151 @@ package impl
 
 import (
 	"context"
-	"database/sql"
 	"errors"
-	"time"
 
 	"github.com/google/wire"
 	"github.com/parkhub/api/internal/domain"
 	"github.com/parkhub/api/internal/repository"
+	"github.com/parkhub/api/internal/repository/dao"
+	"gorm.io/gorm"
 )
 
 // UserRepoSet is the Wire provider set for UserRepo.
 var UserRepoSet = wire.NewSet(NewUserRepo)
 
 type userRepo struct {
-	db *sql.DB
+	db *gorm.DB
 }
 
-func NewUserRepo(db *sql.DB) repository.UserRepo {
+func NewUserRepo(db *gorm.DB) repository.UserRepo {
 	return &userRepo{db: db}
 }
 
 func (r *userRepo) Create(ctx context.Context, user *domain.User) error {
-	query := `
-		INSERT INTO users (id, tenant_id, username, email, phone, password_hash, real_name, role, status, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-	`
-	var tenantID interface{}
-	if user.TenantID != nil {
-		tenantID = *user.TenantID
-	}
-
-	_, err := r.db.ExecContext(ctx, query,
-		user.ID,
-		tenantID,
-		user.Username,
-		user.Email,
-		user.Phone,
-		user.PasswordHash,
-		user.RealName,
-		string(user.Role),
-		string(user.Status),
-		user.CreatedAt,
-		user.UpdatedAt,
-	)
-	return err
+	return r.db.WithContext(ctx).Create(dao.ToUserDAO(user)).Error
 }
 
 func (r *userRepo) Update(ctx context.Context, user *domain.User) error {
-	query := `
-		UPDATE users
-		SET real_name = ?, role = ?, status = ?, last_login_at = ?, updated_at = ?
-		WHERE id = ?
-	`
-	var lastLoginAt interface{}
-	if user.LastLoginAt != nil {
-		lastLoginAt = *user.LastLoginAt
+	d := dao.ToUserDAO(user)
+	result := r.db.WithContext(ctx).Model(d).Updates(map[string]any{
+		"real_name":     d.RealName,
+		"role":          d.Role,
+		"status":        d.Status,
+		"last_login_at": d.LastLoginAt,
+		"updated_at":    d.UpdatedAt,
+	})
+	if result.Error != nil {
+		return result.Error
 	}
-
-	result, err := r.db.ExecContext(ctx, query,
-		user.RealName,
-		string(user.Role),
-		string(user.Status),
-		lastLoginAt,
-		time.Now(),
-		user.ID,
-	)
-	if err != nil {
-		return err
-	}
-	rows, err := result.RowsAffected()
-	if err != nil {
-		return err
-	}
-	if rows == 0 {
+	if result.RowsAffected == 0 {
 		return domain.ErrUserNotFound
 	}
 	return nil
 }
 
 func (r *userRepo) FindByID(ctx context.Context, id string) (*domain.User, error) {
-	query := `
-		SELECT id, tenant_id, username, email, phone, password_hash, real_name, role, status, last_login_at, created_at, updated_at
-		FROM users WHERE id = ?
-	`
-	return r.scanUser(r.db.QueryRowContext(ctx, query, id))
-}
-
-func (r *userRepo) FindByUsername(ctx context.Context, username string) (*domain.User, error) {
-	query := `
-		SELECT id, tenant_id, username, email, phone, password_hash, real_name, role, status, last_login_at, created_at, updated_at
-		FROM users WHERE username = ?
-	`
-	return r.scanUser(r.db.QueryRowContext(ctx, query, username))
-}
-
-func (r *userRepo) FindByEmail(ctx context.Context, email string) (*domain.User, error) {
-	query := `
-		SELECT id, tenant_id, username, email, phone, password_hash, real_name, role, status, last_login_at, created_at, updated_at
-		FROM users WHERE email = ?
-	`
-	return r.scanUser(r.db.QueryRowContext(ctx, query, email))
-}
-
-func (r *userRepo) FindByPhone(ctx context.Context, phone string) (*domain.User, error) {
-	query := `
-		SELECT id, tenant_id, username, email, phone, password_hash, real_name, role, status, last_login_at, created_at, updated_at
-		FROM users WHERE phone = ?
-	`
-	return r.scanUser(r.db.QueryRowContext(ctx, query, phone))
-}
-
-func (r *userRepo) FindByTenantID(ctx context.Context, tenantID string, filter repository.UserFilter) ([]*domain.User, int64, error) {
-	// TODO: Implement with proper filtering and pagination
-	return nil, 0, nil
-}
-
-func (r *userRepo) ExistsByUsername(ctx context.Context, username string) (bool, error) {
-	query := `SELECT COUNT(*) FROM users WHERE username = ?`
-	var count int
-	err := r.db.QueryRowContext(ctx, query, username).Scan(&count)
-	if err != nil {
-		return false, err
-	}
-	return count > 0, nil
-}
-
-func (r *userRepo) ExistsByEmail(ctx context.Context, email string) (bool, error) {
-	query := `SELECT COUNT(*) FROM users WHERE email = ?`
-	var count int
-	err := r.db.QueryRowContext(ctx, query, email).Scan(&count)
-	if err != nil {
-		return false, err
-	}
-	return count > 0, nil
-}
-
-func (r *userRepo) ExistsByPhone(ctx context.Context, phone string) (bool, error) {
-	query := `SELECT COUNT(*) FROM users WHERE phone = ?`
-	var count int
-	err := r.db.QueryRowContext(ctx, query, phone).Scan(&count)
-	if err != nil {
-		return false, err
-	}
-	return count > 0, nil
-}
-
-func (r *userRepo) Delete(ctx context.Context, id string) error {
-	query := `DELETE FROM users WHERE id = ?`
-	result, err := r.db.ExecContext(ctx, query, id)
-	if err != nil {
-		return err
-	}
-	rows, err := result.RowsAffected()
-	if err != nil {
-		return err
-	}
-	if rows == 0 {
-		return domain.ErrUserNotFound
-	}
-	return nil
-}
-
-func (r *userRepo) scanUser(row *sql.Row) (*domain.User, error) {
-	user := &domain.User{}
-	var tenantID, email, phone, lastLoginAt sql.NullString
-	var role, status string
-
-	err := row.Scan(
-		&user.ID,
-		&tenantID,
-		&user.Username,
-		&email,
-		&phone,
-		&user.PasswordHash,
-		&user.RealName,
-		&role,
-		&status,
-		&lastLoginAt,
-		&user.CreatedAt,
-		&user.UpdatedAt,
-	)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+	var d dao.UserDAO
+	if err := r.db.WithContext(ctx).Where("id = ?", id).First(&d).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, domain.ErrUserNotFound
 		}
 		return nil, err
 	}
+	return d.ToDomain(), nil
+}
 
-	if tenantID.Valid {
-		user.TenantID = &tenantID.String
+func (r *userRepo) FindByUsername(ctx context.Context, username string) (*domain.User, error) {
+	var d dao.UserDAO
+	if err := r.db.WithContext(ctx).Where("username = ?", username).First(&d).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, domain.ErrUserNotFound
+		}
+		return nil, err
 	}
-	if email.Valid {
-		user.Email = &email.String
+	return d.ToDomain(), nil
+}
+
+func (r *userRepo) FindByEmail(ctx context.Context, email string) (*domain.User, error) {
+	var d dao.UserDAO
+	if err := r.db.WithContext(ctx).Where("email = ?", email).First(&d).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, domain.ErrUserNotFound
+		}
+		return nil, err
 	}
-	if phone.Valid {
-		user.Phone = &phone.String
+	return d.ToDomain(), nil
+}
+
+func (r *userRepo) FindByPhone(ctx context.Context, phone string) (*domain.User, error) {
+	var d dao.UserDAO
+	if err := r.db.WithContext(ctx).Where("phone = ?", phone).First(&d).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, domain.ErrUserNotFound
+		}
+		return nil, err
 	}
-	if lastLoginAt.Valid {
-		t, _ := time.Parse("2006-01-02 15:04:05", lastLoginAt.String)
-		user.LastLoginAt = &t
+	return d.ToDomain(), nil
+}
+
+func (r *userRepo) FindByTenantID(ctx context.Context, tenantID string, filter repository.UserFilter) ([]*domain.User, int64, error) {
+	q := r.db.WithContext(ctx).Model(&dao.UserDAO{}).Where("tenant_id = ?", tenantID)
+	if filter.Role != nil {
+		q = q.Where("role = ?", string(*filter.Role))
+	}
+	if filter.Status != nil {
+		q = q.Where("status = ?", string(*filter.Status))
+	}
+	if filter.Keyword != "" {
+		like := "%" + filter.Keyword + "%"
+		q = q.Where("username LIKE ? OR real_name LIKE ?", like, like)
 	}
 
-	user.Role = domain.UserRole(role)
-	user.Status = domain.UserStatus(status)
+	var total int64
+	if err := q.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
 
-	return user, nil
+	if filter.Page > 0 && filter.PageSize > 0 {
+		q = q.Offset((filter.Page - 1) * filter.PageSize).Limit(filter.PageSize)
+	}
+
+	var rows []dao.UserDAO
+	if err := q.Find(&rows).Error; err != nil {
+		return nil, 0, err
+	}
+
+	users := make([]*domain.User, len(rows))
+	for i := range rows {
+		users[i] = rows[i].ToDomain()
+	}
+	return users, total, nil
+}
+
+func (r *userRepo) ExistsByUsername(ctx context.Context, username string) (bool, error) {
+	var count int64
+	err := r.db.WithContext(ctx).Model(&dao.UserDAO{}).Where("username = ?", username).Count(&count).Error
+	return count > 0, err
+}
+
+func (r *userRepo) ExistsByEmail(ctx context.Context, email string) (bool, error) {
+	var count int64
+	err := r.db.WithContext(ctx).Model(&dao.UserDAO{}).Where("email = ?", email).Count(&count).Error
+	return count > 0, err
+}
+
+func (r *userRepo) ExistsByPhone(ctx context.Context, phone string) (bool, error) {
+	var count int64
+	err := r.db.WithContext(ctx).Model(&dao.UserDAO{}).Where("phone = ?", phone).Count(&count).Error
+	return count > 0, err
+}
+
+func (r *userRepo) Delete(ctx context.Context, id string) error {
+	result := r.db.WithContext(ctx).Delete(&dao.UserDAO{}, "id = ?", id)
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return domain.ErrUserNotFound
+	}
+	return nil
 }

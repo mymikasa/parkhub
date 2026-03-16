@@ -30,6 +30,9 @@ var (
 	ErrPermissionDenied = errors.New("权限不足")
 	ErrUnauthorized     = errors.New("未授权访问")
 
+	// 通用
+	ErrNotFound = errors.New("资源不存在")
+
 	// 用户相关
 	ErrUsernameExists = errors.New("用户名已存在")
 	ErrEmailExists    = errors.New("邮箱已被使用")
@@ -86,7 +89,8 @@ const (
 
 // IsNotFoundError 判断是否为资源未找到错误
 func IsNotFoundError(err error) bool {
-	return errors.Is(err, ErrUserNotFound) ||
+	return errors.Is(err, ErrNotFound) ||
+		errors.Is(err, ErrUserNotFound) ||
 		errors.Is(err, ErrTenantNotFound) ||
 		errors.Is(err, ErrAccountNotFound)
 }

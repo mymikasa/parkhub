@@ -2,95 +2,59 @@ package impl
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"time"
 
 	"github.com/google/wire"
+	"github.com/parkhub/api/internal/domain"
 	"github.com/parkhub/api/internal/repository"
+	"github.com/parkhub/api/internal/repository/dao"
+	"gorm.io/gorm"
 )
 
 // SmsCodeRepoSet is the Wire provider set for SmsCodeRepo.
 var SmsCodeRepoSet = wire.NewSet(NewSmsCodeRepo)
 
 type smsCodeRepo struct {
-	db *sql.DB
+	db *gorm.DB
 }
 
-func NewSmsCodeRepo(db *sql.DB) repository.SmsCodeRepo {
+func NewSmsCodeRepo(db *gorm.DB) repository.SmsCodeRepo {
 	return &smsCodeRepo{db: db}
 }
 
-func (r *smsCodeRepo) Create(ctx context.Context, code *repository.SmsCode) error {
-	query := `
-		INSERT INTO sms_codes (id, phone, code, purpose, expires_at, used, created_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?)
-	`
-	_, err := r.db.ExecContext(ctx, query,
-		code.ID,
-		code.Phone,
-		code.Code,
-		string(code.Purpose),
-		code.ExpiresAt,
-		code.Used,
-		code.CreatedAt,
-	)
-	return err
+func (r *smsCodeRepo) Create(ctx context.Context, code *domain.SmsCode) error {
+	return r.db.WithContext(ctx).Create(dao.ToSmsCodeDAO(code)).Error
 }
 
-func (r *smsCodeRepo) FindLatestValid(ctx context.Context, phone, purpose string) (*repository.SmsCode, error) {
-	query := `
-		SELECT id, phone, code, purpose, expires_at, used, created_at
-		FROM sms_codes
-		WHERE phone = ? AND purpose = ? AND used = 0 AND expires_at > ?
-		ORDER BY created_at DESC
-		LIMIT 1
-	`
-	code := &repository.SmsCode{}
-	var purposeStr string
-
-	err := r.db.QueryRowContext(ctx, query, phone, purpose, time.Now()).Scan(
-		&code.ID,
-		&code.Phone,
-		&code.Code,
-		&purposeStr,
-		&code.ExpiresAt,
-		&code.Used,
-		&code.CreatedAt,
-	)
+func (r *smsCodeRepo) FindLatestValid(ctx context.Context, phone, purpose string) (*domain.SmsCode, error) {
+	var d dao.SmsCodeDAO
+	err := r.db.WithContext(ctx).
+		Where("phone = ? AND purpose = ? AND used = ? AND expires_at > ?", phone, purpose, false, time.Now()).
+		Order("created_at DESC").
+		First(&d).Error
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, errors.New("valid sms code not found")
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, domain.ErrNotFound
 		}
 		return nil, err
 	}
-
-	code.Purpose = repository.SmsCodePurpose(purposeStr)
-	return code, nil
+	return d.ToDomain(), nil
 }
 
 func (r *smsCodeRepo) MarkUsed(ctx context.Context, id string) error {
-	query := `UPDATE sms_codes SET used = 1 WHERE id = ?`
-	_, err := r.db.ExecContext(ctx, query, id)
-	return err
+	return r.db.WithContext(ctx).Model(&dao.SmsCodeDAO{}).Where("id = ?", id).Update("used", true).Error
 }
 
 func (r *smsCodeRepo) DeleteExpired(ctx context.Context) error {
-	query := `DELETE FROM sms_codes WHERE expires_at < ? OR used = 1`
-	_, err := r.db.ExecContext(ctx, query, time.Now())
-	return err
+	return r.db.WithContext(ctx).Where("expires_at < ? OR used = ?", time.Now(), true).Delete(&dao.SmsCodeDAO{}).Error
 }
 
 // CheckSendFrequency 检查发送频率（60秒内不能重复发送）
 func (r *smsCodeRepo) CheckSendFrequency(ctx context.Context, phone string) (bool, error) {
-	query := `
-		SELECT COUNT(*) FROM sms_codes
-		WHERE phone = ? AND created_at > ?
-	`
-	var count int
-	err := r.db.QueryRowContext(ctx, query, phone, time.Now().Add(-60*time.Second)).Scan(&count)
-	if err != nil {
-		return false, err
-	}
-	return count == 0, nil
+	var count int64
+	err := r.db.WithContext(ctx).Model(&dao.SmsCodeDAO{}).
+		Where("phone = ? AND created_at > ?", phone, time.Now().Add(-60*time.Second)).
+		Count(&count).Error
+	return count == 0, err
 }

@@ -96,7 +96,7 @@ func (s *authServiceImpl) Login(ctx context.Context, req *service.LoginRequest) 
 
 	// 6. 存储 Refresh Token
 	refreshTokenHash := sha256.Sum256([]byte(refreshToken))
-	rt := &repository.RefreshToken{
+	rt := &domain.RefreshToken{
 		ID:         uuid.New().String(),
 		UserID:     user.ID,
 		TokenHash:  hex.EncodeToString(refreshTokenHash[:]),
@@ -141,11 +141,11 @@ func (s *authServiceImpl) SendSmsCode(ctx context.Context, req *service.SendSmsC
 	code := "123456"
 
 	// 4. 存储验证码
-	smsCode := &repository.SmsCode{
+	smsCode := &domain.SmsCode{
 		ID:        uuid.New().String(),
 		Phone:     req.Phone,
 		Code:      code,
-		Purpose:   repository.SmsCodePurpose(req.Purpose),
+		Purpose:   domain.SmsCodePurpose(req.Purpose),
 		ExpiresAt: time.Now().Add(5 * time.Minute),
 		Used:      false,
 		CreatedAt: time.Now(),
@@ -215,7 +215,7 @@ func (s *authServiceImpl) SmsLogin(ctx context.Context, req *service.SmsLoginReq
 	}
 
 	refreshTokenHash := sha256.Sum256([]byte(refreshToken))
-	rt := &repository.RefreshToken{
+	rt := &domain.RefreshToken{
 		ID:         uuid.New().String(),
 		UserID:     user.ID,
 		TokenHash:  hex.EncodeToString(refreshTokenHash[:]),
@@ -266,7 +266,7 @@ func (s *authServiceImpl) RefreshToken(ctx context.Context, refreshToken string)
 	}
 
 	newRefreshTokenHash := sha256.Sum256([]byte(newRefreshToken))
-	newRt := &repository.RefreshToken{
+	newRt := &domain.RefreshToken{
 		ID:         uuid.New().String(),
 		UserID:     claims.UserID,
 		TokenHash:  hex.EncodeToString(newRefreshTokenHash[:]),

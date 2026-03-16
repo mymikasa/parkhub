@@ -7,19 +7,19 @@
 package wire
 
 import (
-	"database/sql"
 	"github.com/parkhub/api/internal/config"
 	"github.com/parkhub/api/internal/handler"
 	"github.com/parkhub/api/internal/repository/impl"
 	"github.com/parkhub/api/internal/router"
 	impl2 "github.com/parkhub/api/internal/service/impl"
+	"gorm.io/gorm"
 )
 
 // Injectors from wire.go:
 
 // InitializeApp wires all dependencies and returns a configured Router.
 // Call r.Setup() then r.GetEngine() to start serving.
-func InitializeApp(cfg *config.Config, db *sql.DB) (*router.Router, error) {
+func InitializeApp(cfg *config.Config, db *gorm.DB) (*router.Router, error) {
 	engine := NewGinEngine(cfg)
 	jwtManager := NewJWTManager(cfg)
 	userRepo := impl.NewUserRepo(db)

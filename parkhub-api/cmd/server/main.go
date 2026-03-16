@@ -32,7 +32,7 @@ func main() {
 
 	slog.Info("starting parkhub-api", "env", cfg.AppEnv, "port", cfg.AppPort)
 
-	db, cleanup, err := appdb.New(cfg)
+	gormDB, cleanup, err := appdb.New(cfg)
 	if err != nil {
 		slog.Error("failed to connect to database", "error", err)
 		os.Exit(1)
@@ -40,17 +40,17 @@ func main() {
 	defer cleanup()
 
 	migrationsDir := "./migrations"
-	if err := appdb.RunMigrations(db, migrationsDir); err != nil {
+	if err := appdb.RunMigrations(gormDB, migrationsDir); err != nil {
 		slog.Error("failed to run migrations", "error", err)
 		os.Exit(1)
 	}
 
-	if err := seed.SeedData(db); err != nil {
+	if err := seed.SeedData(gormDB); err != nil {
 		slog.Error("failed to seed data", "error", err)
 		os.Exit(1)
 	}
 
-	r, err := appwire.InitializeApp(cfg, db)
+	r, err := appwire.InitializeApp(cfg, gormDB)
 	if err != nil {
 		slog.Error("failed to initialize app", "error", err)
 		os.Exit(1)

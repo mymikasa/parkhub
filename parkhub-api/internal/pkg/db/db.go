@@ -1,38 +1,52 @@
 package db
 
 import (
-	"database/sql"
 	"fmt"
+	"log/slog"
 	"time"
 
+	gormmysql "gorm.io/driver/mysql"
+	"gorm.io/gorm"
+	gormlogger "gorm.io/gorm/logger"
+
 	"github.com/parkhub/api/internal/config"
-	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
-// New initializes a PostgreSQL connection pool using the pgx driver.
-// Returns the *sql.DB and a cleanup function to close it.
-func New(cfg *config.Config) (*sql.DB, func(), error) {
-	dsn := fmt.Sprintf(
-		"host=%s port=%s user=%s password=%s dbname=%s sslmode=%s",
-		cfg.DBHost, cfg.DBPort, cfg.DBUser, cfg.DBPassword, cfg.DBName, cfg.DBSSLMode,
-	)
+// New initializes a MySQL connection pool using GORM.
+// Returns the *gorm.DB and a cleanup function to close it.
+func New(cfg *config.Config) (*gorm.DB, func(), error) {
+	logLevel := gormlogger.Info
+	if cfg.AppEnv == "production" {
+		logLevel = gormlogger.Silent
+	}
 
-	db, err := sql.Open("pgx", dsn)
+	db, err := gorm.Open(gormmysql.Open(cfg.DSN()), &gorm.Config{
+		Logger: gormlogger.Default.LogMode(logLevel),
+	})
 	if err != nil {
 		return nil, nil, fmt.Errorf("open database: %w", err)
 	}
 
-	db.SetMaxOpenConns(cfg.DBMaxOpenConns)
-	db.SetMaxIdleConns(cfg.DBMaxIdleConns)
-	db.SetConnMaxLifetime(30 * time.Minute)
+	sqlDB, err := db.DB()
+	if err != nil {
+		return nil, nil, fmt.Errorf("get sql.DB: %w", err)
+	}
 
-	if err := db.Ping(); err != nil {
-		db.Close()
+	sqlDB.SetMaxOpenConns(cfg.DBMaxOpenConns)
+	sqlDB.SetMaxIdleConns(cfg.DBMaxIdleConns)
+	sqlDB.SetConnMaxLifetime(30 * time.Minute)
+
+	if err := sqlDB.Ping(); err != nil {
+		sqlDB.Close()
 		return nil, nil, fmt.Errorf("ping database: %w", err)
 	}
 
+	slog.Info("database connected", "host", cfg.DBHost, "port", cfg.DBPort, "db", cfg.DBName)
+
 	cleanup := func() {
-		db.Close()
+		if err := sqlDB.Close(); err != nil {
+			slog.Error("database close error", "error", err)
+		}
 	}
 
 	return db, cleanup, nil

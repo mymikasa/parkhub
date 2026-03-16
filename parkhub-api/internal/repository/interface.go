@@ -2,7 +2,6 @@ package repository
 
 import (
 	"context"
-	"time"
 
 	"github.com/parkhub/api/internal/domain"
 )
@@ -51,49 +50,18 @@ type UserFilter struct {
 
 // RefreshTokenRepo 刷新令牌数据访问接口
 type RefreshTokenRepo interface {
-	Create(ctx context.Context, token *RefreshToken) error
-	FindByTokenHash(ctx context.Context, tokenHash string) (*RefreshToken, error)
+	Create(ctx context.Context, token *domain.RefreshToken) error
+	FindByTokenHash(ctx context.Context, tokenHash string) (*domain.RefreshToken, error)
 	Revoke(ctx context.Context, id string) error
 	RevokeByUserID(ctx context.Context, userID string) error
 	DeleteExpired(ctx context.Context) error
 }
 
-// RefreshToken 刷新令牌实体
-type RefreshToken struct {
-	ID         string
-	UserID     string
-	TokenHash  string
-	DeviceInfo *string
-	IPAddress  *string
-	ExpiresAt  time.Time
-	Revoked    bool
-	CreatedAt  time.Time
-}
-
 // SmsCodeRepo 短信验证码数据访问接口
 type SmsCodeRepo interface {
-	Create(ctx context.Context, code *SmsCode) error
-	FindLatestValid(ctx context.Context, phone, purpose string) (*SmsCode, error)
+	Create(ctx context.Context, code *domain.SmsCode) error
+	FindLatestValid(ctx context.Context, phone, purpose string) (*domain.SmsCode, error)
 	MarkUsed(ctx context.Context, id string) error
 	DeleteExpired(ctx context.Context) error
 	CheckSendFrequency(ctx context.Context, phone string) (bool, error)
 }
-
-// SmsCode 短信验证码实体
-type SmsCode struct {
-	ID        string
-	Phone     string
-	Code      string
-	Purpose   SmsCodePurpose
-	ExpiresAt time.Time
-	Used      bool
-	CreatedAt time.Time
-}
-
-// SmsCodePurpose 验证码用途
-type SmsCodePurpose string
-
-const (
-	SmsCodePurposeLogin        SmsCodePurpose = "login"
-	SmsCodePurposeResetPassword SmsCodePurpose = "reset_password"
-)

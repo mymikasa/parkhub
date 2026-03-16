@@ -1,18 +1,19 @@
 package db
 
 import (
-	"database/sql"
 	"fmt"
 	"log/slog"
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
+
+	"gorm.io/gorm"
 )
 
 // RunMigrations applies pending .up.sql migration files from migrationsDir.
 // It tracks applied migrations in a schema_migrations table to prevent re-execution.
-func RunMigrations(db *sql.DB, migrationsDir string) error {
+func RunMigrations(db *gorm.DB, migrationsDir string) error {
 	if err := ensureMigrationsTable(db); err != nil {
 		return fmt.Errorf("ensure migrations table: %w", err)
 	}
@@ -49,58 +50,51 @@ func RunMigrations(db *sql.DB, migrationsDir string) error {
 	return nil
 }
 
-func ensureMigrationsTable(db *sql.DB) error {
-	_, err := db.Exec(`
+func ensureMigrationsTable(db *gorm.DB) error {
+	return db.Exec(`
 		CREATE TABLE IF NOT EXISTS schema_migrations (
-			filename   TEXT PRIMARY KEY,
-			applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+			filename   VARCHAR(255) PRIMARY KEY,
+			applied_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 		)
-	`)
-	return err
+	`).Error
 }
 
-func isMigrationApplied(db *sql.DB, filename string) (bool, error) {
-	var count int
-	err := db.QueryRow(
-		`SELECT COUNT(*) FROM schema_migrations WHERE filename = $1`, filename,
-	).Scan(&count)
+func isMigrationApplied(db *gorm.DB, filename string) (bool, error) {
+	var count int64
+	err := db.Raw(`SELECT COUNT(*) FROM schema_migrations WHERE filename = ?`, filename).Scan(&count).Error
 	return count > 0, err
 }
 
-func applyMigration(db *sql.DB, filename, content string) error {
-	tx, err := db.Begin()
-	if err != nil {
-		return err
-	}
-	defer func() {
-		if err != nil {
-			tx.Rollback()
+func applyMigration(db *gorm.DB, filename, content string) error {
+	return db.Transaction(func(tx *gorm.DB) error {
+		for _, stmt := range splitStatements(content) {
+			if err := tx.Exec(stmt).Error; err != nil {
+				return fmt.Errorf("execute statement: %w\nSQL: %s", err, stmt)
+			}
 		}
-	}()
-
-	// Execute each statement separated by semicolons
-	for _, stmt := range splitStatements(content) {
-		if _, err = tx.Exec(stmt); err != nil {
-			return fmt.Errorf("execute statement: %w\nSQL: %s", err, stmt)
-		}
-	}
-
-	if _, err = tx.Exec(
-		`INSERT INTO schema_migrations (filename) VALUES ($1)`, filename,
-	); err != nil {
-		return err
-	}
-
-	return tx.Commit()
+		return tx.Exec(`INSERT INTO schema_migrations (filename) VALUES (?)`, filename).Error
+	})
 }
 
 func splitStatements(content string) []string {
 	var stmts []string
 	for _, s := range strings.Split(content, ";") {
+		s = removeComments(s)
 		s = strings.TrimSpace(s)
-		if s != "" && !strings.HasPrefix(s, "--") {
+		if s != "" {
 			stmts = append(stmts, s)
 		}
 	}
 	return stmts
+}
+
+func removeComments(s string) string {
+	var lines []string
+	for _, line := range strings.Split(s, "\n") {
+		line = strings.TrimSpace(line)
+		if line != "" && !strings.HasPrefix(line, "--") {
+			lines = append(lines, line)
+		}
+	}
+	return strings.Join(lines, "\n")
 }

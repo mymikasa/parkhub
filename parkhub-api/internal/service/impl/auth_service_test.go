@@ -3,7 +3,6 @@ package impl
 import (
 	"context"
 	"crypto/sha256"
-	"database/sql"
 	"encoding/hex"
 	"errors"
 	"testing"
@@ -140,15 +139,15 @@ func (m *mockTenantRepo) ExistsByCompanyName(ctx context.Context, companyName st
 }
 
 type mockRefreshTokenRepo struct {
-	tokens map[string]*repository.RefreshToken
+	tokens map[string]*domain.RefreshToken
 }
 
-func (m *mockRefreshTokenRepo) Create(ctx context.Context, token *repository.RefreshToken) error {
+func (m *mockRefreshTokenRepo) Create(ctx context.Context, token *domain.RefreshToken) error {
 	m.tokens[token.ID] = token
 	return nil
 }
 
-func (m *mockRefreshTokenRepo) FindByTokenHash(ctx context.Context, tokenHash string) (*repository.RefreshToken, error) {
+func (m *mockRefreshTokenRepo) FindByTokenHash(ctx context.Context, tokenHash string) (*domain.RefreshToken, error) {
 	for _, token := range m.tokens {
 		if token.TokenHash == tokenHash {
 			return token, nil
@@ -178,15 +177,15 @@ func (m *mockRefreshTokenRepo) DeleteExpired(ctx context.Context) error {
 }
 
 type mockSmsCodeRepo struct {
-	codes map[string]*repository.SmsCode
+	codes map[string]*domain.SmsCode
 }
 
-func (m *mockSmsCodeRepo) Create(ctx context.Context, code *repository.SmsCode) error {
+func (m *mockSmsCodeRepo) Create(ctx context.Context, code *domain.SmsCode) error {
 	m.codes[code.ID] = code
 	return nil
 }
 
-func (m *mockSmsCodeRepo) FindLatestValid(ctx context.Context, phone, purpose string) (*repository.SmsCode, error) {
+func (m *mockSmsCodeRepo) FindLatestValid(ctx context.Context, phone, purpose string) (*domain.SmsCode, error) {
 	for _, code := range m.codes {
 		if code.Phone == phone && string(code.Purpose) == purpose && !code.Used && code.ExpiresAt.After(time.Now()) {
 			return code, nil
@@ -215,8 +214,8 @@ func (m *mockSmsCodeRepo) CheckSendFrequency(ctx context.Context, phone string) 
 func setupTestAuthService() (service.AuthService, *mockUserRepo, *mockTenantRepo) {
 	userRepo := &mockUserRepo{users: make(map[string]*domain.User)}
 	tenantRepo := &mockTenantRepo{tenants: make(map[string]*domain.Tenant)}
-	refreshTokenRepo := &mockRefreshTokenRepo{tokens: make(map[string]*repository.RefreshToken)}
-	smsCodeRepo := &mockSmsCodeRepo{codes: make(map[string]*repository.SmsCode)}
+	refreshTokenRepo := &mockRefreshTokenRepo{tokens: make(map[string]*domain.RefreshToken)}
+	smsCodeRepo := &mockSmsCodeRepo{codes: make(map[string]*domain.SmsCode)}
 	jwtManager := jwt.NewJWTManager("test-secret-key", time.Hour, 24*time.Hour, "parkhub")
 
 	// 创建测试租户
@@ -489,10 +488,6 @@ func TestTenantIsolation(t *testing.T) {
 	}
 }
 
-// Utility function for SQL DB mock (used in actual implementation)
-func mockDB() *sql.DB {
-	return nil
-}
 
 func hashToken(token string) string {
 	hash := sha256.Sum256([]byte(token))

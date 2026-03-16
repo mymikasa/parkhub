@@ -17,7 +17,6 @@ type Config struct {
 	DBUser     string
 	DBPassword string
 	DBName     string
-	DBSSLMode  string
 
 	DBMaxOpenConns int
 	DBMaxIdleConns int
@@ -37,11 +36,10 @@ func Load() (*Config, error) {
 		AppPort:        getEnv("APP_PORT", "8080"),
 		AppEnv:         getEnv("APP_ENV", "development"),
 		DBHost:         getEnv("DB_HOST", ""),
-		DBPort:         getEnv("DB_PORT", "5432"),
+		DBPort:         getEnv("DB_PORT", "3306"),
 		DBUser:         getEnv("DB_USER", ""),
 		DBPassword:     getEnv("DB_PASSWORD", ""),
 		DBName:         getEnv("DB_NAME", ""),
-		DBSSLMode:      getEnv("DB_SSL_MODE", "disable"),
 		DBMaxOpenConns: getEnvInt("DB_MAX_OPEN_CONNS", 25),
 		DBMaxIdleConns: getEnvInt("DB_MAX_IDLE_CONNS", 5),
 		JWTSecret:      getEnv("JWT_SECRET", ""),
@@ -57,6 +55,13 @@ func Load() (*Config, error) {
 	cfg.JWTRefreshTTL = getEnvDuration("JWT_REFRESH_TTL", 7*24*time.Hour)
 
 	return cfg, nil
+}
+
+// DSN returns the MySQL DSN connection string.
+func (c *Config) DSN() string {
+	return fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&parseTime=True&loc=Local",
+		c.DBUser, c.DBPassword, c.DBHost, c.DBPort, c.DBName,
+	)
 }
 
 func (c *Config) validate() error {
