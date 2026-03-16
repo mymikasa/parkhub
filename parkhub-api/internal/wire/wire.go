@@ -24,7 +24,9 @@ func InitializeApp(cfg *config.Config, db *gorm.DB) (*router.Router, error) {
 		repoimpl.RefreshTokenRepoSet,
 		repoimpl.SmsCodeRepoSet,
 		svcimpl.AuthServiceSet,
+		svcimpl.TenantServiceSet,
 		handler.AuthHandlerSet,
+		handler.TenantHandlerSet,
 		router.RouterSet,
 	)
 	return nil, nil

@@ -13,9 +13,10 @@ var RouterSet = wire.NewSet(NewRouter)
 
 // Router 路由器
 type Router struct {
-	engine      *gin.Engine
-	jwtManager  *jwt.JWTManager
-	authHandler *handler.AuthHandler
+	engine        *gin.Engine
+	jwtManager    *jwt.JWTManager
+	authHandler   *handler.AuthHandler
+	tenantHandler *handler.TenantHandler
 }
 
 // NewRouter 创建路由器
@@ -23,11 +24,13 @@ func NewRouter(
 	engine *gin.Engine,
 	jwtManager *jwt.JWTManager,
 	authHandler *handler.AuthHandler,
+	tenantHandler *handler.TenantHandler,
 ) *Router {
 	return &Router{
-		engine:      engine,
-		jwtManager:  jwtManager,
-		authHandler: authHandler,
+		engine:        engine,
+		jwtManager:    jwtManager,
+		authHandler:   authHandler,
+		tenantHandler: tenantHandler,
 	}
 }
 
@@ -50,9 +53,7 @@ func (r *Router) Setup() {
 	v1 := r.engine.Group("/api/v1")
 	{
 		r.setupAuthRoutes(v1)
-		// 后续可添加其他模块路由
-		// r.setupUserRoutes(v1)
-		// r.setupTenantRoutes(v1)
+		r.setupTenantRoutes(v1)
 	}
 }
 
@@ -86,30 +87,28 @@ func (r *Router) setupAuthRoutes(rg *gin.RouterGroup) {
 	}
 }
 
-// SetupProtectedRoutes 设置需要认证和权限的路由
-// 可以在需要的地方使用
-func (r *Router) SetupProtectedRoutes(rg *gin.RouterGroup) {
-	// 租户管理路由（仅平台管理员和租户管理员）
+// setupTenantRoutes 设置租户管理路由
+func (r *Router) setupTenantRoutes(rg *gin.RouterGroup) {
 	tenants := rg.Group("/tenants")
 	tenants.Use(middleware.AuthMiddleware(r.jwtManager))
-	tenants.Use(middleware.IsTenantAdmin())
+	tenants.Use(middleware.RequireRoles("platform_admin"))
 	{
 		// GET /api/v1/tenants - 获取租户列表
-		// tenants.GET("", tenantHandler.List)
-		// GET /api/v1/tenants/:id - 获取租户详情
-		// tenants.GET("/:id", tenantHandler.Get)
-		// PUT /api/v1/tenants/:id - 更新租户
-		// tenants.PUT("/:id", tenantHandler.Update)
-	}
+		tenants.GET("", r.tenantHandler.List)
 
-	// 用户管理路由
-	users := rg.Group("/users")
-	users.Use(middleware.AuthMiddleware(r.jwtManager))
-	users.Use(middleware.IsOperator())
-	{
-		// GET /api/v1/users - 获取用户列表
-		// users.GET("", userHandler.List)
-		// GET /api/v1/users/:id - 获取用户详情
-		// users.GET("/:id", userHandler.Get)
+		// GET /api/v1/tenants/:id - 获取租户详情
+		tenants.GET("/:id", r.tenantHandler.Get)
+
+		// POST /api/v1/tenants - 创建租户
+		tenants.POST("", r.tenantHandler.Create)
+
+		// PUT /api/v1/tenants/:id - 更新租户
+		tenants.PUT("/:id", r.tenantHandler.Update)
+
+		// POST /api/v1/tenants/:id/freeze - 冻结租户
+		tenants.POST("/:id/freeze", r.tenantHandler.Freeze)
+
+		// POST /api/v1/tenants/:id/unfreeze - 解冻租户
+		tenants.POST("/:id/unfreeze", r.tenantHandler.Unfreeze)
 	}
 }
