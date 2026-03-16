@@ -1,0 +1,15 @@
+.git
+.gitignore
+.env
+.env.*
+*.log
+.DS_Store
+node_modules
+.next
+out
+build
+dist
+.idea
+.vscode
+*.swp
+*.swo
