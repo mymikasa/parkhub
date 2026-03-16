@@ -38,6 +38,9 @@ func (r *Router) GetEngine() *gin.Engine {
 
 // Setup 设置所有路由
 func (r *Router) Setup() {
+	// 全局中间件
+	r.engine.Use(middleware.CORSMiddleware())
+
 	// 健康检查
 	r.engine.GET("/health", func(c *gin.Context) {
 		c.JSON(200, gin.H{"status": "ok"})

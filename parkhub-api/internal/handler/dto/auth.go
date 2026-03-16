@@ -2,9 +2,9 @@ package dto
 
 // LoginRequest 账号密码登录请求
 type LoginRequest struct {
-	Account  string `json:"account" binding:"required"`           // 用户名或邮箱
-	Password string `json:"password" binding:"required,min=6)"`   // 密码
-	Remember bool   `json:"remember"`                             // 记住登录
+	Account  string `json:"account" binding:"required"`        // 用户名或邮箱
+	Password string `json:"password" binding:"required,min=6"` // 密码
+	Remember bool   `json:"remember"`                          // 记住登录
 }
 
 // SendSmsCodeRequest 发送验证码请求

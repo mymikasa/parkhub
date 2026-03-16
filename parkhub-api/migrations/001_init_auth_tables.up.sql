@@ -71,4 +71,4 @@ INSERT INTO tenants (id, company_name, contact_name, contact_phone, status) VALU
 ('tenant-platform', 'ParkHub平台', '系统管理员', '13800000000', 'active');
 
 INSERT INTO users (id, tenant_id, username, email, phone, password_hash, real_name, role, status) VALUES
-('user-platform-admin', NULL, 'platform_admin', 'admin@parkhub.cn', '13800000001', '$2a$12$LQv3c1yqBWVHxkd0Lj9k4uVxkd0Lj9k4uVxkd0Lj9k4uVxkd0Lj9k4', '超级管理员', 'platform_admin', 'active');
+('user-platform-admin', NULL, 'platform_admin', 'admin@parkhub.cn', '13800000001', '$2a$12$/T2Vdh0qcwQugOhzW2bTL.hrMUJ2hX5Sq5ZF9RCw5RrWtnHMaq5kC', '超级管理员', 'platform_admin', 'active');
