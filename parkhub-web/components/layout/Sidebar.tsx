@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useAuthContext } from "@/lib/auth/store";
+import { usePermissions } from "@/lib/auth/hooks";
 import { Icon } from "@/components/icons/FontAwesome";
 import {
   faSquareParking,
@@ -17,39 +18,44 @@ import {
 import { NavItem } from "./NavItem";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
-const navGroups = [
-  {
-    title: "平台管理",
-    items: [
-      { href: "/tenant-management", icon: <Icon icon={faBuilding} />, label: "租户管理" },
-    ],
-  },
-  {
-    title: "车场运营",
-    items: [
-      { href: "/parking-lot", icon: <Icon icon={faWarehouse} />, label: "停车场管理" },
-      { href: "/device-management", icon: <Icon icon={faMicrochip} />, label: "设备管理" },
-      { href: "/billing-rules", icon: <Icon icon={faCalculator} />, label: "计费规则" },
-    ],
-  },
-  {
-    title: "运营监控",
-    items: [
-      { href: "/realtime-monitor", icon: <Icon icon={faChartLine} />, label: "实时监控" },
-      { href: "/entry-exit-records", icon: <Icon icon={faListCheck} />, label: "出入记录" },
-      { href: "/operator-workspace", icon: <Icon icon={faDesktop} />, label: "操作员工作台" },
-    ],
-  },
-];
-
 export function Sidebar() {
   const router = useRouter();
   const { user, logout } = useAuthContext();
+  const permissions = usePermissions();
 
   const handleLogout = async () => {
     await logout();
     router.push("/login");
   };
+
+  const navGroups = [
+    ...(permissions.isPlatformAdmin
+      ? [
+          {
+            title: "平台管理",
+            items: [
+              { href: "/tenant-management", icon: <Icon icon={faBuilding} />, label: "租户管理" },
+            ],
+          },
+        ]
+      : []),
+    {
+      title: "车场运营",
+      items: [
+        { href: "/parking-lot", icon: <Icon icon={faWarehouse} />, label: "停车场管理" },
+        { href: "/device-management", icon: <Icon icon={faMicrochip} />, label: "设备管理" },
+        { href: "/billing-rules", icon: <Icon icon={faCalculator} />, label: "计费规则" },
+      ],
+    },
+    {
+      title: "运营监控",
+      items: [
+        { href: "/realtime-monitor", icon: <Icon icon={faChartLine} />, label: "实时监控" },
+        { href: "/entry-exit-records", icon: <Icon icon={faListCheck} />, label: "出入记录" },
+        { href: "/operator-workspace", icon: <Icon icon={faDesktop} />, label: "操作员工作台" },
+      ],
+    },
+  ];
 
   return (
     <aside className="w-64 sidebar-gradient fixed h-full flex flex-col">
@@ -90,12 +96,15 @@ export function Sidebar() {
         <div className="flex items-center gap-3">
           <Avatar className="w-9 h-9">
             <AvatarFallback className="bg-gradient-to-br from-emerald-400 to-emerald-600 text-white text-sm font-medium">
-              {user?.name?.[0] || "万"}
+              {user?.real_name?.[0] || "万"}
             </AvatarFallback>
           </Avatar>
           <div className="flex-1 min-w-0">
-            <div className="text-white text-sm font-medium truncate">{user?.name || "万科物业"}</div>
-            <div className="text-blue-200/60 text-xs">{user?.role || "租户管理员"}</div>
+            <div className="text-white text-sm font-medium truncate">{user?.real_name || "万科物业"}</div>
+            <div className="text-blue-200/60 text-xs">
+              {user?.role === 'platform_admin' ? '平台管理员' : 
+               user?.role === 'tenant_admin' ? '租户管理员' : '操作员'}
+            </div>
           </div>
           <button
             onClick={handleLogout}

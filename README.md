@@ -96,5 +96,5 @@ pnpm dev
 
 ## 技术栈
 
-- **后端**: Go 1.23, Gin, MySQL 8.0, JWT
+- **后端**: Go 1.26, Gin, GORM, MySQL 8.0, JWT
 - **前端**: Next.js 15, React 19, Tailwind CSS, shadcn/ui

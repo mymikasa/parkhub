@@ -1,8 +1,8 @@
 # ParkHub MVP 产品需求文档（PRD）
 
-> **版本**：v1.0.0
+> **版本**：v1.1.0
 > **状态**：评审中
-> **更新日期**：2026-03-14
+> **更新日期**：2026-03-16
 > **产品经理**：Claude
 > **关联设计稿**：`/pages/*.html`
 
@@ -57,6 +57,8 @@ ParkHub 是面向物业公司与商业综合体的一站式停车管理 SaaS 平
 ## 三、页面功能规格
 
 ### 3.1 登录页（login.html）
+
+> **设计稿**：[pages/login.html](../pages/login.html)
 
 #### 3.1.1 页面定位
 - **访问角色**：所有后台用户
@@ -124,6 +126,8 @@ ParkHub 是面向物业公司与商业综合体的一站式停车管理 SaaS 平
 ---
 
 ### 3.2 租户管理页（tenant-management.html）
+
+> **设计稿**：[pages/tenant-management.html](../pages/tenant-management.html)
 
 #### 3.2.1 页面定位
 - **访问角色**：平台管理员
@@ -221,6 +225,8 @@ ParkHub 是面向物业公司与商业综合体的一站式停车管理 SaaS 平
 
 ### 3.3 停车场管理页（parking-lot.html）
 
+> **设计稿**：[pages/parking-lot.html](../pages/parking-lot.html)
+
 #### 3.3.1 页面定位
 - **访问角色**：租户管理员
 - **业务目标**：管理本租户旗下所有停车场，配置出入口
@@ -312,6 +318,8 @@ ParkHub 是面向物业公司与商业综合体的一站式停车管理 SaaS 平
 
 ### 3.4 设备管理页（device-management.html）
 
+> **设计稿**：[pages/device-management.html](../pages/device-management.html)
+
 #### 3.4.1 页面定位
 - **访问角色**：租户管理员
 - **业务目标**：管理一体机设备，监控在线状态，执行远程操作
@@ -390,6 +398,8 @@ ParkHub 是面向物业公司与商业综合体的一站式停车管理 SaaS 平
 ---
 
 ### 3.5 计费规则配置页（billing-rules.html）
+
+> **设计稿**：[pages/billing-rules.html](../pages/billing-rules.html)
 
 #### 3.5.1 页面定位
 - **访问角色**：租户管理员
@@ -495,6 +505,8 @@ ParkHub 是面向物业公司与商业综合体的一站式停车管理 SaaS 平
 
 ### 3.6 实时监控页（realtime-monitor.html）
 
+> **设计稿**：[pages/realtime-monitor.html](../pages/realtime-monitor.html)
+
 #### 3.6.1 页面定位
 - **访问角色**：租户管理员、操作员
 - **业务目标**：实时查看车场运营状态、通行记录
@@ -572,6 +584,8 @@ ParkHub 是面向物业公司与商业综合体的一站式停车管理 SaaS 平
 ---
 
 ### 3.7 出入记录页（entry-exit-records.html）
+
+> **设计稿**：[pages/entry-exit-records.html](../pages/entry-exit-records.html)
 
 #### 3.7.1 页面定位
 - **访问角色**：租户管理员、操作员
@@ -679,6 +693,8 @@ ParkHub 是面向物业公司与商业综合体的一站式停车管理 SaaS 平
 ---
 
 ### 3.8 操作员工作台（operator-workspace.html）
+
+> **设计稿**：[pages/operator-workspace.html](../pages/operator-workspace.html)
 
 #### 3.8.1 页面定位
 - **访问角色**：操作员
@@ -788,6 +804,8 @@ ParkHub 是面向物业公司与商业综合体的一站式停车管理 SaaS 平
 ---
 
 ### 3.9 扫码缴费页（payment.html）
+
+> **设计稿**：[pages/payment.html](../pages/payment.html)
 
 #### 3.9.1 页面定位
 - **访问角色**：车主（H5）

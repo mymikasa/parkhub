@@ -47,10 +47,10 @@ type SmsLoginRequest struct {
 
 // LoginResponse 登录响应
 type LoginResponse struct {
-	AccessToken  string       `json:"access_token"`
-	RefreshToken string       `json:"refresh_token"`
-	ExpiresIn    int64        `json:"expires_in"`
-	User         *UserInfo    `json:"user"`
+	AccessToken  string    `json:"access_token"`
+	RefreshToken string    `json:"refresh_token"`
+	ExpiresIn    int64     `json:"expires_in"`
+	User         *UserInfo `json:"user"`
 }
 
 // UserInfo 用户信息
@@ -62,4 +62,55 @@ type UserInfo struct {
 	RealName string  `json:"real_name"`
 	Role     string  `json:"role"`
 	TenantID *string `json:"tenant_id"`
+}
+
+// TenantService 租户服务接口
+type TenantService interface {
+	// Create 创建租户
+	Create(ctx context.Context, req *CreateTenantRequest) (*domain.Tenant, error)
+
+	// GetByID 根据ID获取租户
+	GetByID(ctx context.Context, id string) (*domain.Tenant, error)
+
+	// List 获取租户列表
+	List(ctx context.Context, filter TenantFilter) (*TenantListResponse, error)
+
+	// Update 更新租户
+	Update(ctx context.Context, id string, req *UpdateTenantRequest) (*domain.Tenant, error)
+
+	// Freeze 冻结租户
+	Freeze(ctx context.Context, id string) error
+
+	// Unfreeze 解冻租户
+	Unfreeze(ctx context.Context, id string) error
+}
+
+// CreateTenantRequest 创建租户请求
+type CreateTenantRequest struct {
+	CompanyName  string
+	ContactName  string
+	ContactPhone string
+}
+
+// UpdateTenantRequest 更新租户请求
+type UpdateTenantRequest struct {
+	CompanyName  string
+	ContactName  string
+	ContactPhone string
+}
+
+// TenantFilter 租户查询过滤器
+type TenantFilter struct {
+	Status   *domain.TenantStatus
+	Keyword  string
+	Page     int
+	PageSize int
+}
+
+// TenantListResponse 租户列表响应
+type TenantListResponse struct {
+	Items    []*domain.Tenant
+	Total    int64
+	Page     int
+	PageSize int
 }

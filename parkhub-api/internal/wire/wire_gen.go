@@ -28,6 +28,8 @@ func InitializeApp(cfg *config.Config, db *gorm.DB) (*router.Router, error) {
 	smsCodeRepo := impl.NewSmsCodeRepo(db)
 	authService := impl2.NewAuthService(userRepo, tenantRepo, refreshTokenRepo, smsCodeRepo, jwtManager)
 	authHandler := handler.NewAuthHandler(authService)
-	routerRouter := router.NewRouter(engine, jwtManager, authHandler)
+	tenantService := impl2.NewTenantService(tenantRepo)
+	tenantHandler := handler.NewTenantHandler(tenantService)
+	routerRouter := router.NewRouter(engine, jwtManager, authHandler, tenantHandler)
 	return routerRouter, nil
 }
