@@ -2,11 +2,14 @@ package router
 
 import (
 	"github.com/gin-gonic/gin"
+	"github.com/google/wire"
 	"github.com/parkhub/api/internal/handler"
 	"github.com/parkhub/api/internal/middleware"
 	"github.com/parkhub/api/internal/pkg/jwt"
-	"github.com/parkhub/api/internal/service"
 )
+
+// RouterSet is the Wire provider set for Router.
+var RouterSet = wire.NewSet(NewRouter)
 
 // Router 路由器
 type Router struct {
@@ -19,13 +22,18 @@ type Router struct {
 func NewRouter(
 	engine *gin.Engine,
 	jwtManager *jwt.JWTManager,
-	authService service.AuthService,
+	authHandler *handler.AuthHandler,
 ) *Router {
 	return &Router{
 		engine:      engine,
 		jwtManager:  jwtManager,
-		authHandler: handler.NewAuthHandler(authService),
+		authHandler: authHandler,
 	}
+}
+
+// GetEngine returns the underlying gin.Engine.
+func (r *Router) GetEngine() *gin.Engine {
+	return r.engine
 }
 
 // Setup 设置所有路由

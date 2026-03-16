@@ -6,9 +6,13 @@ import (
 	"errors"
 	"time"
 
+	"github.com/google/wire"
 	"github.com/parkhub/api/internal/domain"
 	"github.com/parkhub/api/internal/repository"
 )
+
+// TenantRepoSet is the Wire provider set for TenantRepo.
+var TenantRepoSet = wire.NewSet(NewTenantRepo)
 
 type tenantRepo struct {
 	db *sql.DB

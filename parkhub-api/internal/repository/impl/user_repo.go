@@ -6,9 +6,13 @@ import (
 	"errors"
 	"time"
 
+	"github.com/google/wire"
 	"github.com/parkhub/api/internal/domain"
 	"github.com/parkhub/api/internal/repository"
 )
+
+// UserRepoSet is the Wire provider set for UserRepo.
+var UserRepoSet = wire.NewSet(NewUserRepo)
 
 type userRepo struct {
 	db *sql.DB

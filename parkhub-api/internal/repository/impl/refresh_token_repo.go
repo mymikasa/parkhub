@@ -6,8 +6,12 @@ import (
 	"errors"
 	"time"
 
+	"github.com/google/wire"
 	"github.com/parkhub/api/internal/repository"
 )
+
+// RefreshTokenRepoSet is the Wire provider set for RefreshTokenRepo.
+var RefreshTokenRepoSet = wire.NewSet(NewRefreshTokenRepo)
 
 type refreshTokenRepo struct {
 	db *sql.DB

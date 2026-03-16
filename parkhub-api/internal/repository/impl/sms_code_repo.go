@@ -6,8 +6,12 @@ import (
 	"errors"
 	"time"
 
+	"github.com/google/wire"
 	"github.com/parkhub/api/internal/repository"
 )
+
+// SmsCodeRepoSet is the Wire provider set for SmsCodeRepo.
+var SmsCodeRepoSet = wire.NewSet(NewSmsCodeRepo)
 
 type smsCodeRepo struct {
 	db *sql.DB

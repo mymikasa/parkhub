@@ -9,12 +9,16 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/google/wire"
 	"github.com/parkhub/api/internal/domain"
 	"github.com/parkhub/api/internal/pkg/crypto"
 	"github.com/parkhub/api/internal/pkg/jwt"
 	"github.com/parkhub/api/internal/repository"
 	"github.com/parkhub/api/internal/service"
 )
+
+// AuthServiceSet is the Wire provider set for AuthService.
+var AuthServiceSet = wire.NewSet(NewAuthService)
 
 type authServiceImpl struct {
 	userRepo         repository.UserRepo

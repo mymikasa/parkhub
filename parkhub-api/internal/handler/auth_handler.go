@@ -1,12 +1,18 @@
 package handler
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/wire"
+	"github.com/parkhub/api/internal/domain"
 	"github.com/parkhub/api/internal/handler/dto"
 	"github.com/parkhub/api/internal/service"
 )
+
+// AuthHandlerSet is the Wire provider set for AuthHandler.
+var AuthHandlerSet = wire.NewSet(NewAuthHandler)
 
 // AuthHandler 认证处理器
 type AuthHandler struct {
@@ -249,65 +255,54 @@ func (h *AuthHandler) toLoginResponse(resp *service.LoginResponse) *dto.LoginRes
 	}
 }
 
-// handleError 统一错误处理
+// handleError maps domain errors to HTTP responses using error code assertions.
 func (h *AuthHandler) handleError(c *gin.Context, err error) {
-	// 根据错误类型返回不同的状态码和错误信息
-	errMsg := err.Error()
+	var domainErr *domain.DomainError
+	if errors.As(err, &domainErr) {
+		status := domainErrToHTTPStatus(domainErr.Code)
+		c.JSON(status, dto.ErrorResponse{
+			Code:    domainErr.Code,
+			Message: domainErr.Message,
+		})
+		return
+	}
 
+	// Sentinel errors from domain package (unwrapped plain errors)
 	switch {
-	case contains(errMsg, "账号或密码错误", "invalid credentials"):
-		c.JSON(http.StatusUnauthorized, dto.ErrorResponse{
-			Code:    "INVALID_CREDENTIALS",
-			Message: "账号或密码错误",
-		})
-	case contains(errMsg, "账号已被冻结", "account frozen"):
-		c.JSON(http.StatusForbidden, dto.ErrorResponse{
-			Code:    "ACCOUNT_FROZEN",
-			Message: "账号已被冻结，请联系管理员",
-		})
-	case contains(errMsg, "租户已被冻结", "tenant frozen"):
-		c.JSON(http.StatusForbidden, dto.ErrorResponse{
-			Code:    "TENANT_FROZEN",
-			Message: "租户已被冻结，请联系平台管理员",
-		})
-	case contains(errMsg, "验证码", "sms code"):
-		c.JSON(http.StatusBadRequest, dto.ErrorResponse{
-			Code:    "INVALID_SMS_CODE",
-			Message: "验证码错误或已过期",
-		})
-	case contains(errMsg, "发送频率", "too frequent"):
-		c.JSON(http.StatusTooManyRequests, dto.ErrorResponse{
-			Code:    "SMS_TOO_FREQUENT",
-			Message: "验证码发送过于频繁，请稍后再试",
-		})
-	case contains(errMsg, "手机号未注册", "phone not registered"):
-		c.JSON(http.StatusBadRequest, dto.ErrorResponse{
-			Code:    "PHONE_NOT_REGISTERED",
-			Message: "该手机号未注册",
-		})
-	case contains(errMsg, "token", "Token", "过期"):
-		c.JSON(http.StatusUnauthorized, dto.ErrorResponse{
-			Code:    "TOKEN_EXPIRED",
-			Message: "登录已过期，请重新登录",
-		})
+	case errors.Is(err, domain.ErrInvalidCredentials):
+		c.JSON(http.StatusUnauthorized, dto.ErrorResponse{Code: "INVALID_CREDENTIALS", Message: err.Error()})
+	case errors.Is(err, domain.ErrAccountFrozen):
+		c.JSON(http.StatusForbidden, dto.ErrorResponse{Code: "ACCOUNT_FROZEN", Message: err.Error()})
+	case errors.Is(err, domain.ErrTenantFrozen):
+		c.JSON(http.StatusForbidden, dto.ErrorResponse{Code: "TENANT_FROZEN", Message: err.Error()})
+	case errors.Is(err, domain.ErrInvalidSmsCode), errors.Is(err, domain.ErrSmsCodeExpired):
+		c.JSON(http.StatusBadRequest, dto.ErrorResponse{Code: "INVALID_SMS_CODE", Message: err.Error()})
+	case errors.Is(err, domain.ErrSmsCodeTooFrequent):
+		c.JSON(http.StatusTooManyRequests, dto.ErrorResponse{Code: "SMS_TOO_FREQUENT", Message: err.Error()})
+	case errors.Is(err, domain.ErrPhoneNotRegistered):
+		c.JSON(http.StatusBadRequest, dto.ErrorResponse{Code: "PHONE_NOT_REGISTERED", Message: err.Error()})
+	case errors.Is(err, domain.ErrTokenExpired), errors.Is(err, domain.ErrTokenInvalid),
+		errors.Is(err, domain.ErrRefreshTokenExpired), errors.Is(err, domain.ErrRefreshTokenUsed):
+		c.JSON(http.StatusUnauthorized, dto.ErrorResponse{Code: "TOKEN_EXPIRED", Message: err.Error()})
+	case errors.Is(err, domain.ErrPermissionDenied), errors.Is(err, domain.ErrUnauthorized):
+		c.JSON(http.StatusForbidden, dto.ErrorResponse{Code: "PERMISSION_DENIED", Message: err.Error()})
 	default:
-		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{
-			Code:    "INTERNAL_ERROR",
-			Message: "服务器内部错误",
-		})
+		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{Code: "INTERNAL_ERROR", Message: "服务器内部错误"})
 	}
 }
 
-// contains 检查字符串是否包含任意一个子串
-func contains(s string, substrs ...string) bool {
-	for _, substr := range substrs {
-		if len(s) >= len(substr) {
-			for i := 0; i <= len(s)-len(substr); i++ {
-				if s[i:i+len(substr)] == substr {
-					return true
-				}
-			}
-		}
+// domainErrToHTTPStatus maps DomainError codes to HTTP status codes.
+func domainErrToHTTPStatus(code string) int {
+	switch code {
+	case domain.CodeInvalidCredentials, domain.CodeTokenExpired, domain.CodeTokenInvalid,
+		domain.CodeTokenMissing, domain.CodeRefreshTokenExpired:
+		return http.StatusUnauthorized
+	case domain.CodeAccountFrozen, domain.CodeTenantFrozen, domain.CodePermissionDenied:
+		return http.StatusForbidden
+	case domain.CodeSmsCodeInvalid, domain.CodeSmsCodeExpired, domain.CodeUsernameExists,
+		domain.CodePhoneExists, domain.CodeNotFound:
+		return http.StatusBadRequest
+	default:
+		return http.StatusInternalServerError
 	}
-	return false
 }
