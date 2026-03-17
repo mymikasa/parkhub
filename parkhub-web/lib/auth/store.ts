@@ -214,6 +214,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // Token expired, try to refresh
         const newToken = await doRefresh(storage.refresh_token);
         if (!newToken) {
+          clearTokens(); // Clear localStorage/cookie tokens
           setUser(null);
           clearUserSession();
         }
@@ -231,6 +232,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     } catch {
       // Token invalid, clear everything
+      clearTokens(); // Clear localStorage/cookie tokens
       setUser(null);
       clearUserSession();
     }
@@ -273,10 +275,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Ignore errors on logout
     }
     clearTokens();
+    clearUserSession(); // Clear user cache on logout
     if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
     setUser(null);
   }, []);
-    clearUserSession(); // Clear user cache on logout
 
   const value: AuthContextValue = {
     user,
