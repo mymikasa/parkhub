@@ -2,6 +2,7 @@ package jwt
 
 import (
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -15,7 +16,7 @@ const (
 
 // 默认有效期
 const (
-	DefaultAccessTokenTTL  = 2 * time.Hour    // Access Token 2小时
+	DefaultAccessTokenTTL  = 2 * time.Hour      // Access Token 2小时
 	DefaultRefreshTokenTTL = 7 * 24 * time.Hour // Refresh Token 7天
 )
 
@@ -78,6 +79,7 @@ func (m *JWTManager) generateToken(userID string, tenantID *string, role, tokenT
 		Role:     role,
 		Type:     tokenType,
 		RegisteredClaims: jwt.RegisteredClaims{
+			ID:        fmt.Sprintf("%d", now.UnixNano()),
 			IssuedAt:  jwt.NewNumericDate(now),
 			ExpiresAt: jwt.NewNumericDate(now.Add(ttl)),
 			Issuer:    m.issuer,
