@@ -2,6 +2,8 @@ FROM golang:1.26-alpine
 
 RUN apk add --no-cache git ca-certificates tzdata
 
+ENV GOPROXY=https://goproxy.cn,direct
+
 WORKDIR /app
 
 RUN go install github.com/air-verse/air@latest
