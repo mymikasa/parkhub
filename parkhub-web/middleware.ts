@@ -32,7 +32,30 @@ interface JwtPayload {
   exp?: number;
 }
 
+// Token cache for performance optimization
+// Caches parsed JWT payloads for 5 minutes to avoid repeated parsing
+const tokenCache = new Map<string, { payload: JwtPayload; expiry: number }>();
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
+// Clean up expired cache entries every 10 minutes
+if (typeof setInterval !== 'undefined') {
+  setInterval(() => {
+    const now = Date.now();
+    for (const [key, value] of tokenCache.entries()) {
+      if (value.expiry < now) {
+        tokenCache.delete(key);
+      }
+    }
+  }, 10 * 60 * 1000);
+}
+
 function parseJwtPayload(token: string): JwtPayload | null {
+  // Check cache first
+  const cached = tokenCache.get(token);
+  if (cached && cached.expiry > Date.now()) {
+    return cached.payload;
+  }
+
   try {
     const parts = token.split('.');
     if (parts.length !== 3) return null;
@@ -40,7 +63,15 @@ function parseJwtPayload(token: string): JwtPayload | null {
     // base64url decode
     const base64 = payload.replace(/-/g, '+').replace(/_/g, '/');
     const json = atob(base64);
-    return JSON.parse(json) as JwtPayload;
+    const result = JSON.parse(json) as JwtPayload;
+    
+    // Cache the result
+    tokenCache.set(token, {
+      payload: result,
+      expiry: Date.now() + CACHE_TTL_MS
+    });
+    
+    return result;
   } catch {
     return null;
   }
