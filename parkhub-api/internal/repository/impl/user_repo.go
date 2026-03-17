@@ -192,3 +192,39 @@ func (r *userRepo) Delete(ctx context.Context, id string) error {
 	}
 	return nil
 }
+
+func (r *userRepo) CountStats(ctx context.Context, tenantID string) (*repository.UserStats, error) {
+	type countRow struct {
+		Status string
+		Role   string
+		Cnt    int64
+	}
+
+	q := r.db.WithContext(ctx).Model(&dao.UserDAO{}).Select("status, role, COUNT(*) as cnt").Group("status, role")
+	if tenantID != "" {
+		q = q.Where("tenant_id = ?", tenantID)
+	}
+
+	var rows []countRow
+	if err := q.Find(&rows).Error; err != nil {
+		return nil, err
+	}
+
+	stats := &repository.UserStats{}
+	for _, row := range rows {
+		stats.Total += row.Cnt
+		switch row.Status {
+		case "active":
+			stats.ActiveCount += row.Cnt
+		case "frozen":
+			stats.FrozenCount += row.Cnt
+		}
+		switch row.Role {
+		case "tenant_admin":
+			stats.AdminCount += row.Cnt
+		case "operator":
+			stats.OperatorCount += row.Cnt
+		}
+	}
+	return stats, nil
+}

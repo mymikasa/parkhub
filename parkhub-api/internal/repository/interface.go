@@ -37,6 +37,16 @@ type UserRepo interface {
 	ExistsByEmail(ctx context.Context, email string) (bool, error)
 	ExistsByPhone(ctx context.Context, phone string) (bool, error)
 	Delete(ctx context.Context, id string) error
+	CountStats(ctx context.Context, tenantID string) (*UserStats, error)
+}
+
+// UserStats 用户统计信息
+type UserStats struct {
+	Total        int64
+	ActiveCount  int64
+	FrozenCount  int64
+	AdminCount   int64
+	OperatorCount int64
 }
 
 // UserFilter 用户查询过滤器

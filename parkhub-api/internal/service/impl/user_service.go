@@ -232,11 +232,22 @@ func (s *userServiceImpl) List(ctx context.Context, req *service.ListUsersReques
 		return nil, err
 	}
 
+	// Fetch stats scoped to the same tenant
+	statsTenantID := filter.TenantID
+	stats, err := s.userRepo.CountStats(ctx, statsTenantID)
+	if err != nil {
+		return nil, err
+	}
+
 	return &service.UserListResponse{
-		Items:    users,
-		Total:    total,
-		Page:     req.Page,
-		PageSize: req.PageSize,
+		Items:         users,
+		Total:         total,
+		Page:          req.Page,
+		PageSize:      req.PageSize,
+		ActiveCount:   stats.ActiveCount,
+		FrozenCount:   stats.FrozenCount,
+		AdminCount:    stats.AdminCount,
+		OperatorCount: stats.OperatorCount,
 	}, nil
 }
 

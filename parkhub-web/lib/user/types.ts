@@ -20,6 +20,10 @@ export interface UserListResponse {
   total: number;
   page: number;
   page_size: number;
+  active_count: number;
+  frozen_count: number;
+  admin_count: number;
+  operator_count: number;
 }
 
 export interface UserFilter {

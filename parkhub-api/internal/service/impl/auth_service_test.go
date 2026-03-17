@@ -76,6 +76,10 @@ func (m *mockUserRepo) FindAll(ctx context.Context, filter repository.UserFilter
 	return nil, 0, nil
 }
 
+func (m *mockUserRepo) CountStats(ctx context.Context, tenantID string) (*repository.UserStats, error) {
+	return &repository.UserStats{}, nil
+}
+
 func (m *mockUserRepo) ExistsByUsername(ctx context.Context, username string) (bool, error) {
 	for _, user := range m.users {
 		if user.Username == username {

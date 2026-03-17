@@ -56,10 +56,14 @@ func (h *UserHandler) List(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, dto.UserListResponse{
-		Items:    items,
-		Total:    resp.Total,
-		Page:     resp.Page,
-		PageSize: resp.PageSize,
+		Items:         items,
+		Total:         resp.Total,
+		Page:          resp.Page,
+		PageSize:      resp.PageSize,
+		ActiveCount:   resp.ActiveCount,
+		FrozenCount:   resp.FrozenCount,
+		AdminCount:    resp.AdminCount,
+		OperatorCount: resp.OperatorCount,
 	})
 }
 

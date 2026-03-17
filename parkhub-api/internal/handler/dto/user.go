@@ -54,10 +54,14 @@ type UserDTO struct {
 
 // UserListResponse 用户列表响应
 type UserListResponse struct {
-	Items    []UserDTO `json:"items"`
-	Total    int64     `json:"total"`
-	Page     int       `json:"page"`
-	PageSize int       `json:"page_size"`
+	Items         []UserDTO `json:"items"`
+	Total         int64     `json:"total"`
+	Page          int       `json:"page"`
+	PageSize      int       `json:"page_size"`
+	ActiveCount   int64     `json:"active_count"`
+	FrozenCount   int64     `json:"frozen_count"`
+	AdminCount    int64     `json:"admin_count"`
+	OperatorCount int64     `json:"operator_count"`
 }
 
 // LoginLogDTO 登录日志

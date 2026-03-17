@@ -35,7 +35,7 @@ import {
 import { useUsers, useCreateUser, useUpdateUser, useFreezeUser, useUnfreezeUser, useResetPassword, useImportUsers } from '@/lib/user/hooks';
 import type { User, UserStatus, UserRole, UserFilter, CreateUserRequest, UpdateUserRequest } from '@/lib/user/types';
 import { useTenants } from '@/lib/tenant/hooks';
-import { usePermissions } from '@/lib/auth/hooks';
+import { usePermissions, useAuth } from '@/lib/auth/hooks';
 
 // Avatar gradient colors by first character hash
 const AVATAR_GRADIENTS = [
@@ -71,6 +71,7 @@ const ROLE_BADGE_CLASSES: Record<UserRole, string> = {
 
 export default function UserManagementPage() {
   const { canManageUsers, isPlatformAdmin } = usePermissions();
+  const { user: currentUser } = useAuth();
 
   const [statusFilter, setStatusFilter] = useState<UserStatus | 'all'>('all');
   const [roleFilter, setRoleFilter] = useState<UserRole | 'all'>('all');
@@ -97,6 +98,7 @@ export default function UserManagementPage() {
   };
 
   const { data: usersData, isLoading, refetch } = useUsers(filter);
+  // Only platform_admin can access the tenants API; tenant_admin uses their own tenant_id
   const { data: tenantsData } = useTenants({ page: 1, page_size: 100 });
   const createUser = useCreateUser();
   const updateUser = useUpdateUser();
@@ -111,11 +113,11 @@ export default function UserManagementPage() {
   const tenants = tenantsData?.items || [];
 
   const stats = {
-    total: total,
-    active: users.filter((u: User) => u.status === 'active').length,
-    frozen: users.filter((u: User) => u.status === 'frozen').length,
-    tenant_admins: users.filter((u: User) => u.role === 'tenant_admin').length,
-    operators: users.filter((u: User) => u.role === 'operator').length,
+    total: usersData?.active_count != null ? (usersData.active_count + usersData.frozen_count) : total,
+    active: usersData?.active_count ?? 0,
+    frozen: usersData?.frozen_count ?? 0,
+    tenant_admins: usersData?.admin_count ?? 0,
+    operators: usersData?.operator_count ?? 0,
   };
 
   const handleCreate = async (data: CreateUserRequest) => {
@@ -588,6 +590,8 @@ export default function UserManagementPage() {
         onSubmit={handleCreate}
         tenants={tenants}
         isLoading={createUser.isPending}
+        isPlatformAdmin={isPlatformAdmin}
+        currentUserTenantId={currentUser?.tenant_id ?? undefined}
       />
 
       {/* Edit User Dialog */}
@@ -698,19 +702,27 @@ function UserFormDialog({
   onSubmit,
   tenants,
   isLoading,
+  isPlatformAdmin,
+  currentUserTenantId,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSubmit: (data: CreateUserRequest) => void;
   tenants: Array<{ id: string; company_name: string }>;
   isLoading: boolean;
+  isPlatformAdmin: boolean;
+  currentUserTenantId?: string;
 }) {
+  // tenant_admin: auto-set tenant_id to their own tenant, only allow creating operators
+  const defaultTenantId = isPlatformAdmin ? '' : (currentUserTenantId ?? '');
+  const defaultRole = isPlatformAdmin ? 'operator' : 'operator';
+
   const [formData, setFormData] = useState<CreateUserRequest>({
     username: '',
     real_name: '',
     password: '',
-    role: 'operator',
-    tenant_id: '',
+    role: defaultRole,
+    tenant_id: defaultTenantId,
     email: '',
     phone: '',
   });
@@ -721,8 +733,8 @@ function UserFormDialog({
       username: '',
       real_name: '',
       password: '',
-      role: 'operator',
-      tenant_id: '',
+      role: defaultRole,
+      tenant_id: defaultTenantId,
       email: '',
       phone: '',
     });
@@ -857,32 +869,40 @@ function UserFormDialog({
                     <Label className="block text-sm font-medium text-gray-700 mb-2">
                       角色 <span className="text-red-500">*</span>
                     </Label>
-                    <Select value={formData.role} onValueChange={(value) => value && setFormData({ ...formData, role: value as UserRole })}>
-                    <SelectTrigger className="h-11 w-full rounded-lg border border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20">
-                        <SelectValue placeholder="选择角色" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="tenant_admin">租户管理员</SelectItem>
-                        <SelectItem value="operator">操作员</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    {isPlatformAdmin ? (
+                      <Select value={formData.role} onValueChange={(value) => value && setFormData({ ...formData, role: value as UserRole })}>
+                        <SelectTrigger className="h-11 w-full rounded-lg border border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20">
+                          <SelectValue placeholder="选择角色" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="tenant_admin">租户管理员</SelectItem>
+                          <SelectItem value="operator">操作员</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <Input value="操作员" disabled className="h-11 rounded-lg border-gray-200 bg-gray-50 text-sm" />
+                    )}
                   </div>
                   <div>
                     <Label className="block text-sm font-medium text-gray-700 mb-2">
                       所属租户 <span className="text-red-500">*</span>
                     </Label>
-                    <Select value={formData.tenant_id} onValueChange={(value) => value && setFormData({ ...formData, tenant_id: value })}>
-                      <SelectTrigger className="h-11 w-full rounded-lg border border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20">
-                        <SelectValue placeholder="选择租户" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {tenants.map((tenant) => (
-                          <SelectItem key={tenant.id} value={tenant.id}>
-                            {tenant.company_name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    {isPlatformAdmin ? (
+                      <Select value={formData.tenant_id} onValueChange={(value) => value && setFormData({ ...formData, tenant_id: value })}>
+                        <SelectTrigger className="h-11 w-full rounded-lg border border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20">
+                          <SelectValue placeholder="选择租户" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {tenants.map((tenant) => (
+                            <SelectItem key={tenant.id} value={tenant.id}>
+                              {tenant.company_name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <Input value="当前租户" disabled className="h-11 rounded-lg border-gray-200 bg-gray-50 text-sm" />
+                    )}
                   </div>
                 </div>
               </div>

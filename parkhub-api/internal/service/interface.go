@@ -182,10 +182,14 @@ type ImportUsersRequest struct {
 
 // UserListResponse 用户列表响应
 type UserListResponse struct {
-	Items    []*domain.User
-	Total    int64
-	Page     int
-	PageSize int
+	Items         []*domain.User
+	Total         int64
+	Page          int
+	PageSize      int
+	ActiveCount   int64
+	FrozenCount   int64
+	AdminCount    int64
+	OperatorCount int64
 }
 
 // LoginLogListResponse 登录日志列表响应
