@@ -72,6 +72,10 @@ func (m *mockUserRepo) FindByTenantID(ctx context.Context, tenantID string, filt
 	return nil, 0, nil
 }
 
+func (m *mockUserRepo) FindAll(ctx context.Context, filter repository.UserFilter) ([]*domain.User, int64, error) {
+	return nil, 0, nil
+}
+
 func (m *mockUserRepo) ExistsByUsername(ctx context.Context, username string) (bool, error) {
 	for _, user := range m.users {
 		if user.Username == username {
@@ -209,6 +213,16 @@ func (m *mockSmsCodeRepo) CheckSendFrequency(ctx context.Context, phone string) 
 	return true, nil
 }
 
+type mockLoginLogRepo struct{}
+
+func (m *mockLoginLogRepo) Create(ctx context.Context, log *domain.LoginLog) error {
+	return nil
+}
+
+func (m *mockLoginLogRepo) FindByUserID(ctx context.Context, userID string, page, pageSize int) ([]*domain.LoginLog, int64, error) {
+	return nil, 0, nil
+}
+
 // Test helpers
 
 func setupTestAuthService() (service.AuthService, *mockUserRepo, *mockTenantRepo) {
@@ -216,6 +230,7 @@ func setupTestAuthService() (service.AuthService, *mockUserRepo, *mockTenantRepo
 	tenantRepo := &mockTenantRepo{tenants: make(map[string]*domain.Tenant)}
 	refreshTokenRepo := &mockRefreshTokenRepo{tokens: make(map[string]*domain.RefreshToken)}
 	smsCodeRepo := &mockSmsCodeRepo{codes: make(map[string]*domain.SmsCode)}
+	loginLogRepo := &mockLoginLogRepo{}
 	jwtManager := jwt.NewJWTManager("test-secret-key", time.Hour, 24*time.Hour, "parkhub")
 
 	// 创建测试租户
@@ -247,7 +262,7 @@ func setupTestAuthService() (service.AuthService, *mockUserRepo, *mockTenantRepo
 	}
 	userRepo.users[user.ID] = user
 
-	authService := NewAuthService(userRepo, tenantRepo, refreshTokenRepo, smsCodeRepo, jwtManager)
+	authService := NewAuthService(userRepo, tenantRepo, refreshTokenRepo, smsCodeRepo, loginLogRepo, jwtManager)
 	return authService, userRepo, tenantRepo
 }
 

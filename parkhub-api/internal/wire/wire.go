@@ -23,10 +23,15 @@ func InitializeApp(cfg *config.Config, db *gorm.DB) (*router.Router, error) {
 		repoimpl.TenantRepoSet,
 		repoimpl.RefreshTokenRepoSet,
 		repoimpl.SmsCodeRepoSet,
+		repoimpl.LoginLogRepoSet,
+		repoimpl.AuditLogRepoSet,
 		svcimpl.AuthServiceSet,
 		svcimpl.TenantServiceSet,
+		svcimpl.UserServiceSet,
+		svcimpl.AuditLogServiceSet,
 		handler.AuthHandlerSet,
 		handler.TenantHandlerSet,
+		handler.UserHandlerSet,
 		router.RouterSet,
 	)
 	return nil, nil

@@ -34,10 +34,14 @@ var (
 	ErrNotFound = errors.New("资源不存在")
 
 	// 用户相关
-	ErrUsernameExists = errors.New("用户名已存在")
-	ErrEmailExists    = errors.New("邮箱已被使用")
-	ErrPhoneExists    = errors.New("手机号已被使用")
-	ErrUserNotFound   = errors.New("用户不存在")
+	ErrUsernameExists          = errors.New("用户名已存在")
+	ErrEmailExists             = errors.New("邮箱已被使用")
+	ErrPhoneExists             = errors.New("手机号已被使用")
+	ErrUserNotFound            = errors.New("用户不存在")
+	ErrCannotManageHigherRole  = errors.New("无法管理更高权限的用户")
+	ErrCannotFreezeYourself    = errors.New("不能冻结自己的账号")
+	ErrPasswordTooWeak         = errors.New("密码强度不足，需要至少8位且包含大小写字母和数字")
+	ErrOldPasswordIncorrect    = errors.New("原密码错误")
 
 	// 租户相关
 	ErrTenantNotFound = errors.New("租户不存在")
@@ -84,7 +88,11 @@ const (
 	CodeRefreshTokenExpired  = "REFRESH_TOKEN_EXPIRED"
 	CodeUsernameExists       = "USERNAME_EXISTS"
 	CodePhoneExists          = "PHONE_EXISTS"
-	CodeNotFound             = "NOT_FOUND"
+	CodeNotFound                = "NOT_FOUND"
+	CodeCannotManageHigherRole  = "CANNOT_MANAGE_HIGHER_ROLE"
+	CodeCannotFreezeYourself    = "CANNOT_FREEZE_YOURSELF"
+	CodePasswordTooWeak         = "PASSWORD_TOO_WEAK"
+	CodeOldPasswordIncorrect    = "OLD_PASSWORD_INCORRECT"
 )
 
 // IsNotFoundError 判断是否为资源未找到错误

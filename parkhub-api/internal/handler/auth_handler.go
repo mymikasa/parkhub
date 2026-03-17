@@ -48,8 +48,10 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	}
 
 	resp, err := h.authService.Login(c.Request.Context(), &service.LoginRequest{
-		Account:  req.Account,
-		Password: req.Password,
+		Account:   req.Account,
+		Password:  req.Password,
+		IP:        c.ClientIP(),
+		UserAgent: c.Request.UserAgent(),
 	})
 	if err != nil {
 		h.handleError(c, err)
