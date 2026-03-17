@@ -3,7 +3,21 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getValidAccessToken } from '@/lib/auth/store';
 import * as authApi from './api';
-import type { User, LoginRequest, SmsLoginRequest, SendSmsCodeRequest } from './types';
+import type { User, LoginRequest, SmsLoginRequest, SendSmsCodeRequest, TokenStorage } from './types';
+
+const TOKEN_KEY = 'parkhub_auth';
+
+function saveTokens(data: TokenStorage): void {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem(TOKEN_KEY, JSON.stringify(data));
+  document.cookie = `access_token=${data.access_token}; path=/; max-age=${Math.floor((data.expires_at - Date.now()) / 1000)}; SameSite=Lax`;
+}
+
+function clearTokens(): void {
+  if (typeof window === 'undefined') return;
+  localStorage.removeItem(TOKEN_KEY);
+  document.cookie = 'access_token=; path=/; max-age=0; SameSite=Lax';
+}
 
 export const authKeys = {
   all: ['auth'] as const,
@@ -32,6 +46,12 @@ export function useLogin() {
       return res;
     },
     onSuccess: (data) => {
+      const storage: TokenStorage = {
+        access_token: data.access_token,
+        refresh_token: data.refresh_token,
+        expires_at: Date.now() + data.expires_in * 1000,
+      };
+      saveTokens(storage);
       queryClient.setQueryData(authKeys.user(), data.user);
     },
   });
@@ -46,6 +66,12 @@ export function useSmsLogin() {
       return res;
     },
     onSuccess: (data) => {
+      const storage: TokenStorage = {
+        access_token: data.access_token,
+        refresh_token: data.refresh_token,
+        expires_at: Date.now() + data.expires_in * 1000,
+      };
+      saveTokens(storage);
       queryClient.setQueryData(authKeys.user(), data.user);
     },
   });
@@ -69,11 +95,8 @@ export function useLogout() {
         : {};
       await authApi.logout(storage.access_token || '', storage.refresh_token);
     },
-    onSuccess: () => {
-      if (typeof window !== 'undefined') {
-        localStorage.removeItem('parkhub_auth');
-        document.cookie = 'access_token=; path=/; max-age=0; SameSite=Lax';
-      }
+    onSettled: () => {
+      clearTokens();
       queryClient.setQueryData(authKeys.user(), null);
       queryClient.clear();
     },
