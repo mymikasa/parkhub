@@ -138,6 +138,15 @@ func (m *mockTenantRepo) ExistsByCompanyName(ctx context.Context, companyName st
 	return false, nil
 }
 
+func (m *mockTenantRepo) ExistsByCompanyNameExcluding(ctx context.Context, companyName string, excludeID string) (bool, error) {
+	for _, tenant := range m.tenants {
+		if tenant.CompanyName == companyName && tenant.ID != excludeID {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
 type mockRefreshTokenRepo struct {
 	tokens map[string]*domain.RefreshToken
 }

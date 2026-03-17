@@ -83,6 +83,20 @@ func (s *tenantServiceImpl) Update(ctx context.Context, id string, req *service.
 		return nil, err
 	}
 
+	// Check for duplicate company name if it changed
+	if req.CompanyName != tenant.CompanyName {
+		exists, err := s.tenantRepo.ExistsByCompanyNameExcluding(ctx, req.CompanyName, id)
+		if err != nil {
+			return nil, err
+		}
+		if exists {
+			return nil, &domain.DomainError{
+				Code:    "COMPANY_NAME_EXISTS",
+				Message: "公司名称已存在",
+			}
+		}
+	}
+
 	tenant.UpdateCompanyName(req.CompanyName)
 	tenant.UpdateContact(req.ContactName, req.ContactPhone)
 

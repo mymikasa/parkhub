@@ -51,7 +51,7 @@ function buildQueryString(filter: TenantFilter): string {
     params.append('status', filter.status);
   }
   if (filter.search) {
-    params.append('search', filter.search);
+    params.append('keyword', filter.search);
   }
   if (filter.page) {
     params.append('page', filter.page.toString());

@@ -13,6 +13,7 @@ type TenantRepo interface {
 	FindByID(ctx context.Context, id string) (*domain.Tenant, error)
 	FindAll(ctx context.Context, filter TenantFilter) ([]*domain.Tenant, int64, error)
 	ExistsByCompanyName(ctx context.Context, companyName string) (bool, error)
+	ExistsByCompanyNameExcluding(ctx context.Context, companyName string, excludeID string) (bool, error)
 }
 
 // TenantFilter 租户查询过滤器

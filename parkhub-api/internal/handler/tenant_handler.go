@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"errors"
 	"net/http"
 	"strconv"
 
@@ -170,20 +171,42 @@ func (h *TenantHandler) handleError(c *gin.Context, err error) {
 		return
 	}
 
-	if err == domain.ErrTenantNotFound {
-		c.JSON(http.StatusNotFound, dto.ErrorResponse{
-			Code:    "TENANT_NOT_FOUND",
-			Message: "租户不存在",
+	// Structured domain errors (DomainError with code + message)
+	var domainErr *domain.DomainError
+	if errors.As(err, &domainErr) {
+		status := tenantDomainErrToHTTPStatus(domainErr.Code)
+		c.JSON(status, dto.ErrorResponse{
+			Code:    domainErr.Code,
+			Message: domainErr.Message,
 		})
 		return
 	}
 
-	status := http.StatusInternalServerError
-	code := "INTERNAL_ERROR"
-	message := "服务器内部错误"
+	// Sentinel errors
+	switch {
+	case errors.Is(err, domain.ErrTenantNotFound):
+		c.JSON(http.StatusNotFound, dto.ErrorResponse{
+			Code:    "TENANT_NOT_FOUND",
+			Message: "租户不存在",
+		})
+	default:
+		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{
+			Code:    "INTERNAL_ERROR",
+			Message: "服务器内部错误",
+		})
+	}
+}
 
-	c.JSON(status, dto.ErrorResponse{
-		Code:    code,
-		Message: message,
-	})
+// tenantDomainErrToHTTPStatus maps tenant-related DomainError codes to HTTP status codes.
+func tenantDomainErrToHTTPStatus(code string) int {
+	switch code {
+	case "COMPANY_NAME_EXISTS", "TENANT_ALREADY_FROZEN", "TENANT_ALREADY_ACTIVE":
+		return http.StatusConflict
+	case domain.CodeNotFound:
+		return http.StatusNotFound
+	case domain.CodePermissionDenied:
+		return http.StatusForbidden
+	default:
+		return http.StatusBadRequest
+	}
 }

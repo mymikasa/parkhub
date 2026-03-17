@@ -91,3 +91,11 @@ func (r *tenantRepo) ExistsByCompanyName(ctx context.Context, companyName string
 	err := r.db.WithContext(ctx).Model(&dao.TenantDAO{}).Where("company_name = ?", companyName).Count(&count).Error
 	return count > 0, err
 }
+
+func (r *tenantRepo) ExistsByCompanyNameExcluding(ctx context.Context, companyName string, excludeID string) (bool, error) {
+	var count int64
+	err := r.db.WithContext(ctx).Model(&dao.TenantDAO{}).
+		Where("company_name = ? AND id != ?", companyName, excludeID).
+		Count(&count).Error
+	return count > 0, err
+}
