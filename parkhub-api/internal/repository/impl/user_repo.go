@@ -29,11 +29,14 @@ func (r *userRepo) Create(ctx context.Context, user *domain.User) error {
 func (r *userRepo) Update(ctx context.Context, user *domain.User) error {
 	d := dao.ToUserDAO(user)
 	result := r.db.WithContext(ctx).Model(d).Updates(map[string]any{
-		"real_name":     d.RealName,
-		"role":          d.Role,
-		"status":        d.Status,
-		"last_login_at": d.LastLoginAt,
-		"updated_at":    d.UpdatedAt,
+		"real_name":      d.RealName,
+		"email":          d.Email,
+		"phone":          d.Phone,
+		"password_hash":  d.PasswordHash,
+		"role":           d.Role,
+		"status":         d.Status,
+		"last_login_at":  d.LastLoginAt,
+		"updated_at":     d.UpdatedAt,
 	})
 	if result.Error != nil {
 		return result.Error
@@ -122,6 +125,45 @@ func (r *userRepo) FindByTenantID(ctx context.Context, tenantID string, filter r
 	return users, total, nil
 }
 
+func (r *userRepo) FindAll(ctx context.Context, filter repository.UserFilter) ([]*domain.User, int64, error) {
+	q := r.db.WithContext(ctx).Model(&dao.UserDAO{})
+	if filter.TenantID != "" {
+		q = q.Where("tenant_id = ?", filter.TenantID)
+	}
+	if filter.Role != nil {
+		q = q.Where("role = ?", string(*filter.Role))
+	}
+	if filter.Status != nil {
+		q = q.Where("status = ?", string(*filter.Status))
+	}
+	if filter.Keyword != "" {
+		like := "%" + filter.Keyword + "%"
+		q = q.Where("username LIKE ? OR real_name LIKE ? OR email LIKE ?", like, like, like)
+	}
+
+	var total int64
+	if err := q.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	if filter.Page > 0 && filter.PageSize > 0 {
+		q = q.Offset((filter.Page - 1) * filter.PageSize).Limit(filter.PageSize)
+	}
+
+	q = q.Order("created_at DESC")
+
+	var rows []dao.UserDAO
+	if err := q.Find(&rows).Error; err != nil {
+		return nil, 0, err
+	}
+
+	users := make([]*domain.User, len(rows))
+	for i := range rows {
+		users[i] = rows[i].ToDomain()
+	}
+	return users, total, nil
+}
+
 func (r *userRepo) ExistsByUsername(ctx context.Context, username string) (bool, error) {
 	var count int64
 	err := r.db.WithContext(ctx).Model(&dao.UserDAO{}).Where("username = ?", username).Count(&count).Error
@@ -149,4 +191,40 @@ func (r *userRepo) Delete(ctx context.Context, id string) error {
 		return domain.ErrUserNotFound
 	}
 	return nil
+}
+
+func (r *userRepo) CountStats(ctx context.Context, tenantID string) (*repository.UserStats, error) {
+	type countRow struct {
+		Status string
+		Role   string
+		Cnt    int64
+	}
+
+	q := r.db.WithContext(ctx).Model(&dao.UserDAO{}).Select("status, role, COUNT(*) as cnt").Group("status, role")
+	if tenantID != "" {
+		q = q.Where("tenant_id = ?", tenantID)
+	}
+
+	var rows []countRow
+	if err := q.Find(&rows).Error; err != nil {
+		return nil, err
+	}
+
+	stats := &repository.UserStats{}
+	for _, row := range rows {
+		stats.Total += row.Cnt
+		switch row.Status {
+		case "active":
+			stats.ActiveCount += row.Cnt
+		case "frozen":
+			stats.FrozenCount += row.Cnt
+		}
+		switch row.Role {
+		case "tenant_admin":
+			stats.AdminCount += row.Cnt
+		case "operator":
+			stats.OperatorCount += row.Cnt
+		}
+	}
+	return stats, nil
 }

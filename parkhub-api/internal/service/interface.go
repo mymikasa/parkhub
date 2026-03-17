@@ -29,8 +29,10 @@ type AuthService interface {
 
 // LoginRequest 登录请求
 type LoginRequest struct {
-	Account  string // 用户名或邮箱
-	Password string
+	Account   string // 用户名或邮箱
+	Password  string
+	IP        string
+	UserAgent string
 }
 
 // SendSmsCodeRequest 发送验证码请求
@@ -62,6 +64,180 @@ type UserInfo struct {
 	RealName string  `json:"real_name"`
 	Role     string  `json:"role"`
 	TenantID *string `json:"tenant_id"`
+}
+
+// UserService 用户管理服务接口
+type UserService interface {
+	// Create 创建用户
+	Create(ctx context.Context, req *CreateUserRequest) (*domain.User, error)
+	// GetByID 获取用户详情
+	GetByID(ctx context.Context, req *GetUserRequest) (*domain.User, error)
+	// List 获取用户列表
+	List(ctx context.Context, req *ListUsersRequest) (*UserListResponse, error)
+	// Update 更新用户
+	Update(ctx context.Context, req *UpdateUserRequest) (*domain.User, error)
+	// Freeze 冻结用户
+	Freeze(ctx context.Context, req *UserActionRequest) error
+	// Unfreeze 解冻用户
+	Unfreeze(ctx context.Context, req *UserActionRequest) error
+	// ResetPassword 重置密码
+	ResetPassword(ctx context.Context, req *ResetPasswordRequest) error
+	// UpdateProfile 修改个人资料
+	UpdateProfile(ctx context.Context, userID string, req *UpdateProfileRequest) (*domain.User, error)
+	// ChangePassword 修改密码
+	ChangePassword(ctx context.Context, userID string, req *ChangePasswordRequest) error
+	// GetLoginLogs 获取登录日志
+	GetLoginLogs(ctx context.Context, userID string, page, pageSize int) (*LoginLogListResponse, error)
+	// ImportUsers 批量导入用户
+	ImportUsers(ctx context.Context, req *ImportUsersRequest) (*ImportResult, error)
+}
+
+// CreateUserRequest 创建用户请求
+type CreateUserRequest struct {
+	OperatorID       string
+	OperatorRole     string
+	OperatorTenantID string
+	Username         string
+	RealName         string
+	Role             string
+	TenantID         string
+	Password         string
+	Email            string
+	Phone            string
+	IP               string
+}
+
+// GetUserRequest 获取用户请求
+type GetUserRequest struct {
+	OperatorRole     string
+	OperatorTenantID string
+	UserID           string
+}
+
+// ListUsersRequest 用户列表请求
+type ListUsersRequest struct {
+	OperatorRole     string
+	OperatorTenantID string
+	TenantID         string
+	Role             string
+	Status           string
+	Keyword          string
+	Page             int
+	PageSize         int
+}
+
+// UpdateUserRequest 更新用户请求
+type UpdateUserRequest struct {
+	OperatorID       string
+	OperatorRole     string
+	OperatorTenantID string
+	UserID           string
+	RealName         string
+	Email            string
+	Phone            string
+	Role             string
+	IP               string
+}
+
+// UserActionRequest 用户操作请求（冻结/解冻）
+type UserActionRequest struct {
+	OperatorID       string
+	OperatorRole     string
+	OperatorTenantID string
+	UserID           string
+	IP               string
+}
+
+// ResetPasswordRequest 重置密码请求
+type ResetPasswordRequest struct {
+	OperatorID       string
+	OperatorRole     string
+	OperatorTenantID string
+	UserID           string
+	NewPassword      string
+	IP               string
+}
+
+// UpdateProfileRequest 修改个人资料请求
+type UpdateProfileRequest struct {
+	RealName string
+	Email    string
+	Phone    string
+}
+
+// ChangePasswordRequest 修改密码请求
+type ChangePasswordRequest struct {
+	OldPassword string
+	NewPassword string
+}
+
+// ImportUsersRequest 批量导入请求
+type ImportUsersRequest struct {
+	OperatorID       string
+	OperatorRole     string
+	OperatorTenantID string
+	Users            []CreateUserRequest
+	IP               string
+}
+
+// UserListResponse 用户列表响应
+type UserListResponse struct {
+	Items         []*domain.User
+	Total         int64
+	Page          int
+	PageSize      int
+	ActiveCount   int64
+	FrozenCount   int64
+	AdminCount    int64
+	OperatorCount int64
+}
+
+// LoginLogListResponse 登录日志列表响应
+type LoginLogListResponse struct {
+	Items    []*domain.LoginLog
+	Total    int64
+	Page     int
+	PageSize int
+}
+
+// ImportResult 导入结果
+type ImportResult struct {
+	Total   int
+	Success int
+	Failed  int
+	Errors  []ImportError
+}
+
+// ImportError 导入错误
+type ImportError struct {
+	Row     int
+	Message string
+}
+
+// AuditLogService 审计日志服务接口
+type AuditLogService interface {
+	// Log 记录审计日志
+	Log(ctx context.Context, log *domain.AuditLog) error
+	// List 获取审计日志列表
+	List(ctx context.Context, req *ListAuditLogsRequest) (*AuditLogListResponse, error)
+}
+
+// ListAuditLogsRequest 审计日志列表请求
+type ListAuditLogsRequest struct {
+	OperatorRole     string
+	OperatorTenantID string
+	UserID           string
+	Action           string
+	Page             int
+	PageSize         int
+}
+
+// AuditLogListResponse 审计日志列表响应
+type AuditLogListResponse struct {
+	Items    []*domain.AuditLog
+	Total    int64
+	Page     int
+	PageSize int
 }
 
 // TenantService 租户服务接口

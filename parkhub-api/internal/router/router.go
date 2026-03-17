@@ -17,6 +17,7 @@ type Router struct {
 	jwtManager    *jwt.JWTManager
 	authHandler   *handler.AuthHandler
 	tenantHandler *handler.TenantHandler
+	userHandler   *handler.UserHandler
 }
 
 // NewRouter 创建路由器
@@ -25,12 +26,14 @@ func NewRouter(
 	jwtManager *jwt.JWTManager,
 	authHandler *handler.AuthHandler,
 	tenantHandler *handler.TenantHandler,
+	userHandler *handler.UserHandler,
 ) *Router {
 	return &Router{
 		engine:        engine,
 		jwtManager:    jwtManager,
 		authHandler:   authHandler,
 		tenantHandler: tenantHandler,
+		userHandler:   userHandler,
 	}
 }
 
@@ -54,6 +57,7 @@ func (r *Router) Setup() {
 	{
 		r.setupAuthRoutes(v1)
 		r.setupTenantRoutes(v1)
+		r.setupUserRoutes(v1)
 	}
 }
 
@@ -110,5 +114,42 @@ func (r *Router) setupTenantRoutes(rg *gin.RouterGroup) {
 
 		// POST /api/v1/tenants/:id/unfreeze - 解冻租户
 		tenants.POST("/:id/unfreeze", r.tenantHandler.Unfreeze)
+	}
+}
+
+// setupUserRoutes 设置用户管理路由
+func (r *Router) setupUserRoutes(rg *gin.RouterGroup) {
+	users := rg.Group("/users")
+	users.Use(middleware.AuthMiddleware(r.jwtManager))
+
+	// 个人中心路由（任意已认证用户）
+	me := users.Group("/me")
+	{
+		me.PUT("/profile", r.userHandler.UpdateProfile)
+		me.PUT("/password", r.userHandler.ChangePassword)
+		me.GET("/login-logs", r.userHandler.GetMyLoginLogs)
+	}
+
+	// 用户管理路由（需要 platform_admin 或 tenant_admin）
+	admin := users.Group("")
+	admin.Use(middleware.RequireRoles("platform_admin", "tenant_admin"))
+	{
+		admin.GET("", r.userHandler.List)
+		admin.GET("/:id", r.userHandler.Get)
+		admin.POST("", r.userHandler.Create)
+		admin.PUT("/:id", r.userHandler.Update)
+		admin.POST("/:id/freeze", r.userHandler.Freeze)
+		admin.POST("/:id/unfreeze", r.userHandler.Unfreeze)
+		admin.POST("/:id/reset-password", r.userHandler.ResetPassword)
+		admin.POST("/import", r.userHandler.ImportUsers)
+		admin.GET("/:id/login-logs", r.userHandler.GetUserLoginLogs)
+	}
+
+	// 审计日志路由
+	auditLogs := rg.Group("/audit-logs")
+	auditLogs.Use(middleware.AuthMiddleware(r.jwtManager))
+	auditLogs.Use(middleware.RequireRoles("platform_admin", "tenant_admin"))
+	{
+		auditLogs.GET("", r.userHandler.ListAuditLogs)
 	}
 }

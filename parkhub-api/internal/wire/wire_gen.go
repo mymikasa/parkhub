@@ -26,10 +26,15 @@ func InitializeApp(cfg *config.Config, db *gorm.DB) (*router.Router, error) {
 	tenantRepo := impl.NewTenantRepo(db)
 	refreshTokenRepo := impl.NewRefreshTokenRepo(db)
 	smsCodeRepo := impl.NewSmsCodeRepo(db)
-	authService := impl2.NewAuthService(userRepo, tenantRepo, refreshTokenRepo, smsCodeRepo, jwtManager)
+	loginLogRepo := impl.NewLoginLogRepo(db)
+	authService := impl2.NewAuthService(userRepo, tenantRepo, refreshTokenRepo, smsCodeRepo, loginLogRepo, jwtManager)
 	authHandler := handler.NewAuthHandler(authService)
 	tenantService := impl2.NewTenantService(tenantRepo)
 	tenantHandler := handler.NewTenantHandler(tenantService)
-	routerRouter := router.NewRouter(engine, jwtManager, authHandler, tenantHandler)
+	auditLogRepo := impl.NewAuditLogRepo(db)
+	auditLogService := impl2.NewAuditLogService(auditLogRepo)
+	userService := impl2.NewUserService(userRepo, tenantRepo, loginLogRepo, auditLogService)
+	userHandler := handler.NewUserHandler(userService, auditLogService)
+	routerRouter := router.NewRouter(engine, jwtManager, authHandler, tenantHandler, userHandler)
 	return routerRouter, nil
 }

@@ -32,10 +32,21 @@ type UserRepo interface {
 	FindByEmail(ctx context.Context, email string) (*domain.User, error)
 	FindByPhone(ctx context.Context, phone string) (*domain.User, error)
 	FindByTenantID(ctx context.Context, tenantID string, filter UserFilter) ([]*domain.User, int64, error)
+	FindAll(ctx context.Context, filter UserFilter) ([]*domain.User, int64, error)
 	ExistsByUsername(ctx context.Context, username string) (bool, error)
 	ExistsByEmail(ctx context.Context, email string) (bool, error)
 	ExistsByPhone(ctx context.Context, phone string) (bool, error)
 	Delete(ctx context.Context, id string) error
+	CountStats(ctx context.Context, tenantID string) (*UserStats, error)
+}
+
+// UserStats 用户统计信息
+type UserStats struct {
+	Total        int64
+	ActiveCount  int64
+	FrozenCount  int64
+	AdminCount   int64
+	OperatorCount int64
 }
 
 // UserFilter 用户查询过滤器
@@ -64,4 +75,25 @@ type SmsCodeRepo interface {
 	MarkUsed(ctx context.Context, id string) error
 	DeleteExpired(ctx context.Context) error
 	CheckSendFrequency(ctx context.Context, phone string) (bool, error)
+}
+
+// LoginLogRepo 登录日志数据访问接口
+type LoginLogRepo interface {
+	Create(ctx context.Context, log *domain.LoginLog) error
+	FindByUserID(ctx context.Context, userID string, page, pageSize int) ([]*domain.LoginLog, int64, error)
+}
+
+// AuditLogRepo 审计日志数据访问接口
+type AuditLogRepo interface {
+	Create(ctx context.Context, log *domain.AuditLog) error
+	FindAll(ctx context.Context, filter AuditLogFilter) ([]*domain.AuditLog, int64, error)
+}
+
+// AuditLogFilter 审计日志查询过滤器
+type AuditLogFilter struct {
+	TenantID string
+	UserID   string
+	Action   string
+	Page     int
+	PageSize int
 }

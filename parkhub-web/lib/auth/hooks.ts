@@ -25,6 +25,7 @@ export function useUser(): User | null {
 // ──────────────────────────────────────────────
 export interface Permissions {
   canManageTenants: boolean;
+  canManageUsers: boolean;
   canManageParkingLots: boolean;
   canManageDevices: boolean;
   canManageBillingRules: boolean;
@@ -39,6 +40,7 @@ export interface Permissions {
 const ROLE_PERMISSIONS: Record<UserRole, Permissions> = {
   platform_admin: {
     canManageTenants: true,
+    canManageUsers: true,
     canManageParkingLots: true,
     canManageDevices: true,
     canManageBillingRules: true,
@@ -51,6 +53,7 @@ const ROLE_PERMISSIONS: Record<UserRole, Permissions> = {
   },
   tenant_admin: {
     canManageTenants: false,
+    canManageUsers: true,
     canManageParkingLots: true,
     canManageDevices: true,
     canManageBillingRules: true,
@@ -63,6 +66,7 @@ const ROLE_PERMISSIONS: Record<UserRole, Permissions> = {
   },
   operator: {
     canManageTenants: false,
+    canManageUsers: false,
     canManageParkingLots: false,
     canManageDevices: true,
     canManageBillingRules: false,
@@ -77,6 +81,7 @@ const ROLE_PERMISSIONS: Record<UserRole, Permissions> = {
 
 const EMPTY_PERMISSIONS: Permissions = {
   canManageTenants: false,
+  canManageUsers: false,
   canManageParkingLots: false,
   canManageDevices: false,
   canManageBillingRules: false,

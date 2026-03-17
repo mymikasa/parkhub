@@ -25,6 +25,7 @@ type authServiceImpl struct {
 	tenantRepo       repository.TenantRepo
 	refreshTokenRepo repository.RefreshTokenRepo
 	smsCodeRepo      repository.SmsCodeRepo
+	loginLogRepo     repository.LoginLogRepo
 	jwtManager       *jwt.JWTManager
 }
 
@@ -33,6 +34,7 @@ func NewAuthService(
 	tenantRepo repository.TenantRepo,
 	refreshTokenRepo repository.RefreshTokenRepo,
 	smsCodeRepo repository.SmsCodeRepo,
+	loginLogRepo repository.LoginLogRepo,
 	jwtManager *jwt.JWTManager,
 ) service.AuthService {
 	return &authServiceImpl{
@@ -40,6 +42,7 @@ func NewAuthService(
 		tenantRepo:       tenantRepo,
 		refreshTokenRepo: refreshTokenRepo,
 		smsCodeRepo:      smsCodeRepo,
+		loginLogRepo:     loginLogRepo,
 		jwtManager:       jwtManager,
 	}
 }
@@ -64,11 +67,13 @@ func (s *authServiceImpl) Login(ctx context.Context, req *service.LoginRequest) 
 
 	// 2. 检查用户状态
 	if !user.IsActive() {
+		s.recordLoginLog(ctx, user.ID, req.IP, req.UserAgent, domain.LoginLogStatusFailed, "账号已冻结")
 		return nil, domain.ErrAccountFrozen
 	}
 
 	// 3. 验证密码
 	if !crypto.VerifyPassword(req.Password, user.PasswordHash) {
+		s.recordLoginLog(ctx, user.ID, req.IP, req.UserAgent, domain.LoginLogStatusFailed, "密码错误")
 		return nil, domain.ErrInvalidCredentials
 	}
 
@@ -107,6 +112,9 @@ func (s *authServiceImpl) Login(ctx context.Context, req *service.LoginRequest) 
 	if err := s.refreshTokenRepo.Create(ctx, rt); err != nil {
 		return nil, err
 	}
+
+	// 记录登录成功
+	s.recordLoginLog(ctx, user.ID, req.IP, req.UserAgent, domain.LoginLogStatusSuccess, "")
 
 	return &service.LoginResponse{
 		AccessToken:  accessToken,
@@ -317,4 +325,16 @@ func (s *authServiceImpl) toUserInfo(user *domain.User) *service.UserInfo {
 		Role:     string(user.Role),
 		TenantID: user.TenantID,
 	}
+}
+
+func (s *authServiceImpl) recordLoginLog(ctx context.Context, userID, ip, userAgent string, status domain.LoginLogStatus, reason string) {
+	_ = s.loginLogRepo.Create(ctx, &domain.LoginLog{
+		ID:        uuid.New().String(),
+		UserID:    userID,
+		IP:        ip,
+		UserAgent: userAgent,
+		Status:    status,
+		Reason:    reason,
+		CreatedAt: time.Now(),
+	})
 }

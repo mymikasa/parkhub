@@ -14,6 +14,7 @@ import {
   faListCheck,
   faDesktop,
   faRightFromBracket,
+  faUsers,
 } from "@fortawesome/free-solid-svg-icons";
 import { NavItem } from "./NavItem";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -29,12 +30,17 @@ export function Sidebar() {
   };
 
   const navGroups = [
-    ...(permissions.isPlatformAdmin
+    ...((permissions.isPlatformAdmin || permissions.canManageUsers)
       ? [
           {
             title: "平台管理",
             items: [
-              { href: "/tenant-management", icon: <Icon icon={faBuilding} />, label: "租户管理" },
+              ...(permissions.isPlatformAdmin
+                ? [{ href: "/tenant-management", icon: <Icon icon={faBuilding} />, label: "租户管理" }]
+                : []),
+              ...(permissions.canManageUsers
+                ? [{ href: "/user-management", icon: <Icon icon={faUsers} />, label: "用户管理" }]
+                : []),
             ],
           },
         ]
@@ -94,18 +100,20 @@ export function Sidebar() {
       {/* User Info */}
       <div className="p-4 border-t border-white/10">
         <div className="flex items-center gap-3">
-          <Avatar className="w-9 h-9">
-            <AvatarFallback className="bg-gradient-to-br from-emerald-400 to-emerald-600 text-white text-sm font-medium">
-              {user?.real_name?.[0] || "万"}
-            </AvatarFallback>
-          </Avatar>
-          <div className="flex-1 min-w-0">
+          <button onClick={() => router.push("/profile")} className="shrink-0">
+            <Avatar className="w-9 h-9">
+              <AvatarFallback className="bg-gradient-to-br from-emerald-400 to-emerald-600 text-white text-sm font-medium">
+                {user?.real_name?.[0] || "万"}
+              </AvatarFallback>
+            </Avatar>
+          </button>
+          <button onClick={() => router.push("/profile")} className="flex-1 min-w-0 text-left">
             <div className="text-white text-sm font-medium truncate">{user?.real_name || "万科物业"}</div>
             <div className="text-blue-200/60 text-xs">
-              {user?.role === 'platform_admin' ? '平台管理员' : 
+              {user?.role === 'platform_admin' ? '平台管理员' :
                user?.role === 'tenant_admin' ? '租户管理员' : '操作员'}
             </div>
-          </div>
+          </button>
           <button
             onClick={handleLogout}
             className="text-white/50 hover:text-white/80 transition-colors"
