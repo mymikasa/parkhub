@@ -45,6 +45,36 @@ function isTokenNearExpiry(storage: TokenStorage): boolean {
 }
 
 // ──────────────────────────────────────────────
+// Session Storage helpers (for user caching)
+// ──────────────────────────────────────────────
+
+const USER_SESSION_KEY = 'user_session';
+
+function saveUserSession(user: User): void {
+  if (typeof window === 'undefined') return;
+  try {
+    sessionStorage.setItem(USER_SESSION_KEY, JSON.stringify(user));
+  } catch {
+    // Ignore errors
+  }
+}
+
+function loadUserSession(): User | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const cached = sessionStorage.getItem(USER_SESSION_KEY);
+    return cached ? JSON.parse(cached) : null;
+  } catch {
+    return null;
+  }
+}
+
+function clearUserSession(): void {
+  if (typeof window === 'undefined') return;
+  sessionStorage.removeItem(USER_SESSION_KEY);
+}
+
+// ──────────────────────────────────────────────
 // Context
 // ──────────────────────────────────────────────
 
@@ -61,8 +91,11 @@ export function useAuthContext(): AuthContextValue {
 // ──────────────────────────────────────────────
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  // Initialize user from sessionStorage cache to avoid loading state
+  const [user, setUser] = useState<User | null>(() => {
+    return loadUserSession();
+  });
+  const [isLoading, setIsLoading] = useState(false); // Start with false since we have cached user
   const refreshLock = useRef(false);
   const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -102,6 +135,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // ── Initialise from stored tokens ──────────
   useEffect(() => {
     async function init() {
+      // Check if we have a cached user from sessionStorage
+      const cachedUser = loadUserSession();
+      
+      // If we have cached user, set it immediately and verify in background
+      if (cachedUser) {
+        setUser(cachedUser);
+        setIsLoading(false);
+        
+        // Verify token in background
+        void verifyTokenInBackground();
+        return;
+      }
+
+      // No cached user, proceed with normal initialization
       const storage = loadTokens();
       if (!storage) {
         setIsLoading(false);
@@ -120,6 +167,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         try {
           const currentUser = await authApi.getCurrentUser(storage.access_token);
           setUser(currentUser);
+          saveUserSession(currentUser);
           if (isTokenNearExpiry(storage)) {
             void doRefresh(storage.refresh_token);
           } else {
@@ -127,16 +175,65 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
         } catch {
           clearTokens();
+          clearUserSession();
         }
       }
       setIsLoading(false);
     }
 
-    void init();
+    // Use requestIdleCallback for better performance
+    if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
+      requestIdleCallback(
+        () => {
+          void init();
+        },
+        { timeout: 1000 } // Maximum delay of 1 second
+      );
+    } else {
+      // Fallback: delay 100ms
+      setTimeout(() => {
+        void init();
+      }, 100);
+    }
 
     return () => {
       if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
     };
+  }, [doRefresh, scheduleRefresh]);
+
+  // ── Background token verification ───────────
+  const verifyTokenInBackground = useCallback(async () => {
+    const storage = loadTokens();
+    if (!storage) {
+      clearUserSession();
+      return;
+    }
+
+    try {
+      if (isTokenExpired(storage)) {
+        // Token expired, try to refresh
+        const newToken = await doRefresh(storage.refresh_token);
+        if (!newToken) {
+          setUser(null);
+          clearUserSession();
+        }
+      } else {
+        // Token still valid, verify user
+        const currentUser = await authApi.getCurrentUser(storage.access_token);
+        setUser(currentUser);
+        saveUserSession(currentUser);
+        
+        if (isTokenNearExpiry(storage)) {
+          void doRefresh(storage.refresh_token);
+        } else {
+          scheduleRefresh(storage);
+        }
+      }
+    } catch {
+      // Token invalid, clear everything
+      setUser(null);
+      clearUserSession();
+    }
   }, [doRefresh, scheduleRefresh]);
 
   // ── Login ──────────────────────────────────
@@ -149,6 +246,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
     saveTokens(storage);
     setUser(res.user);
+    saveUserSession(res.user); // Cache user in sessionStorage
     scheduleRefresh(storage);
   }, [scheduleRefresh]);
 
@@ -162,6 +260,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
     saveTokens(storage);
     setUser(res.user);
+    saveUserSession(res.user); // Cache user in sessionStorage
     scheduleRefresh(storage);
   }, [scheduleRefresh]);
 
@@ -177,6 +276,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
     setUser(null);
   }, []);
+    clearUserSession(); // Clear user cache on logout
 
   const value: AuthContextValue = {
     user,
