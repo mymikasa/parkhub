@@ -448,11 +448,23 @@ func TestGetCurrentUser_Success(t *testing.T) {
 }
 
 func TestTenantIsolation(t *testing.T) {
-	authService, userRepo, _ := setupTestAuthService()
+	authService, userRepo, tenantRepo := setupTestAuthService()
+
+	// 创建另一个租户
+	otherTenantID := "tenant-2"
+	otherTenant := &domain.Tenant{
+		ID:           otherTenantID,
+		CompanyName:  "其他公司",
+		ContactName:  "其他联系人",
+		ContactPhone: "13900139000",
+		Status:       domain.TenantStatusActive,
+		CreatedAt:    time.Now(),
+		UpdatedAt:    time.Now(),
+	}
+	tenantRepo.tenants[otherTenant.ID] = otherTenant
 
 	// 创建另一个租户的用户
 	passwordHash, _ := crypto.HashPassword("Password123")
-	otherTenantID := "tenant-2"
 	otherUser := &domain.User{
 		ID:           "user-2",
 		TenantID:     &otherTenantID,
@@ -487,7 +499,6 @@ func TestTenantIsolation(t *testing.T) {
 		t.Error("Users from different tenants should have different tenant IDs")
 	}
 }
-
 
 func hashToken(token string) string {
 	hash := sha256.Sum256([]byte(token))
