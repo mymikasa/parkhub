@@ -21,7 +21,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 export function Sidebar() {
   const router = useRouter();
-  const { user, logout } = useAuthContext();
+  const { user, logout, isLoading } = useAuthContext();
   const permissions = usePermissions();
 
   const handleLogout = async () => {
@@ -103,15 +103,19 @@ export function Sidebar() {
           <button onClick={() => router.push("/profile")} className="shrink-0">
             <Avatar className="w-9 h-9">
               <AvatarFallback className="bg-gradient-to-br from-emerald-400 to-emerald-600 text-white text-sm font-medium">
-                {user?.real_name?.[0] || "万"}
+                {isLoading ? "" : (user?.real_name?.[0] || "U")}
               </AvatarFallback>
             </Avatar>
           </button>
           <button onClick={() => router.push("/profile")} className="flex-1 min-w-0 text-left">
-            <div className="text-white text-sm font-medium truncate">{user?.real_name || "万科物业"}</div>
+            <div className="text-white text-sm font-medium truncate">
+              {isLoading ? "\u00A0" : (user?.real_name || "用户")}
+            </div>
             <div className="text-blue-200/60 text-xs">
-              {user?.role === 'platform_admin' ? '平台管理员' :
-               user?.role === 'tenant_admin' ? '租户管理员' : '操作员'}
+              {isLoading ? "\u00A0" : (
+                user?.role === 'platform_admin' ? '平台管理员' :
+                user?.role === 'tenant_admin' ? '租户管理员' : '操作员'
+              )}
             </div>
           </button>
           <button

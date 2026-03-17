@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -463,11 +463,13 @@ export default function TenantManagementPage() {
           setIsConfirmDialogOpen(open);
           if (!open) { setSelectedTenant(null); setConfirmAction(null); }
         }}
-        title={confirmAction === 'freeze' ? '确认冻结' : '确认解冻'}
+        title={confirmAction === 'freeze' ? '确认冻结' : confirmAction === 'unfreeze' ? '确认解冻' : ''}
         description={
           confirmAction === 'freeze'
             ? `确定要冻结租户"${selectedTenant?.company_name}"吗？冻结后该租户将无法使用系统。`
-            : `确定要解冻租户"${selectedTenant?.company_name}"吗？`
+            : confirmAction === 'unfreeze'
+              ? `确定要解冻租户"${selectedTenant?.company_name}"吗？`
+              : ''
         }
         onConfirm={() => {
           if (selectedTenant && confirmAction) {
@@ -703,7 +705,15 @@ function ConfirmDialog({
   isLoading: boolean;
   variant?: 'default' | 'destructive';
 }) {
-  const isDestructive = variant === 'destructive';
+  const [cachedData, setCachedData] = useState({ title, description, variant });
+
+  useEffect(() => {
+    if (open) {
+      setCachedData({ title, description, variant });
+    }
+  }, [open, title, description, variant]);
+
+  const isDestructive = cachedData.variant === 'destructive';
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -714,13 +724,13 @@ function ConfirmDialog({
               {isDestructive ? <Snowflake className="text-white w-5 h-5" /> : <RotateCcw className="text-white w-5 h-5" />}
             </div>
             <DialogTitle className="text-lg font-semibold text-white">
-              {title}
+              {cachedData.title}
             </DialogTitle>
           </div>
         </div>
 
         <div className="p-6">
-          <p className="text-sm text-gray-600 leading-relaxed">{description}</p>
+          <p className="text-sm text-gray-600 leading-relaxed">{cachedData.description}</p>
           {isDestructive && (
             <div className="mt-4 p-3 bg-red-50 rounded-lg border border-red-100">
               <p className="text-xs text-red-600">
