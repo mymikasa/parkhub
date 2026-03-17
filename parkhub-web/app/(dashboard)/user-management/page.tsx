@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useRef } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -1231,13 +1231,13 @@ function ConfirmDialog({
   isLoading: boolean;
   variant?: 'default' | 'destructive';
 }) {
+  const prevOpenRef = useRef(open);
   const [cachedData, setCachedData] = useState({ title, description, variant });
 
-  useEffect(() => {
-    if (open) {
-      setCachedData({ title, description, variant });
-    }
-  }, [open, title, description, variant]);
+  if (open && !prevOpenRef.current) {
+    setCachedData({ title, description, variant });
+  }
+  prevOpenRef.current = open;
 
   const isDestructive = cachedData.variant === 'destructive';
 

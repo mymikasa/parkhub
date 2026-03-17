@@ -70,6 +70,10 @@ export function useLogout() {
       await authApi.logout(storage.access_token || '', storage.refresh_token);
     },
     onSuccess: () => {
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('parkhub_auth');
+        document.cookie = 'access_token=; path=/; max-age=0; SameSite=Lax';
+      }
       queryClient.setQueryData(authKeys.user(), null);
       queryClient.clear();
     },
