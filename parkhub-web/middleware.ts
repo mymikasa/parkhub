@@ -34,8 +34,10 @@ interface JwtPayload {
 
 // Token cache for performance optimization
 // Caches parsed JWT payloads for 5 minutes to avoid repeated parsing
-const tokenCache = new Map<string, { payload: JwtPayload; expiry: number }>();
+// Uses LRU (Least Recently Used) eviction when cache is full
+const tokenCache = new Map<string, { payload: JwtPayload; expiry: number; lastAccess: number }>();
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+const MAX_CACHE_SIZE = 1000; // Maximum number of tokens to cache
 
 // Clean up expired cache entries every 10 minutes
 if (typeof setInterval !== 'undefined') {
@@ -49,10 +51,31 @@ if (typeof setInterval !== 'undefined') {
   }, 10 * 60 * 1000);
 }
 
+// Evict least recently used entries when cache is full
+function evictLRU(): void {
+  if (tokenCache.size < MAX_CACHE_SIZE) return;
+  
+  let oldestKey: string | null = null;
+  let oldestAccess = Infinity;
+  
+  for (const [key, value] of tokenCache.entries()) {
+    if (value.lastAccess < oldestAccess) {
+      oldestAccess = value.lastAccess;
+      oldestKey = key;
+    }
+  }
+  
+  if (oldestKey) {
+    tokenCache.delete(oldestKey);
+  }
+}
+
 function parseJwtPayload(token: string): JwtPayload | null {
   // Check cache first
   const cached = tokenCache.get(token);
   if (cached && cached.expiry > Date.now()) {
+    // Update last access time
+    cached.lastAccess = Date.now();
     return cached.payload;
   }
 
@@ -65,10 +88,14 @@ function parseJwtPayload(token: string): JwtPayload | null {
     const json = atob(base64);
     const result = JSON.parse(json) as JwtPayload;
     
+    // Evict LRU if cache is full
+    evictLRU();
+    
     // Cache the result
     tokenCache.set(token, {
       payload: result,
-      expiry: Date.now() + CACHE_TTL_MS
+      expiry: Date.now() + CACHE_TTL_MS,
+      lastAccess: Date.now()
     });
     
     return result;
