@@ -35,10 +35,11 @@ import {
   Clock,
   Loader2,
   Pencil,
+  Plus,
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
-import { useDevices, useDeviceStats, useUpdateDeviceName } from "@/lib/device/hooks";
+import { useDevices, useDeviceStats, useCreateDevice, useUpdateDeviceName } from "@/lib/device/hooks";
 import { usePermissions } from "@/lib/auth/hooks";
 import type { Device, DeviceStatus, DeviceFilter } from "@/lib/device/types";
 
@@ -123,6 +124,9 @@ export default function DeviceManagementPage() {
   const total = data?.total || 0;
   const totalPages = Math.ceil(total / pageSize);
 
+  // Create dialog state
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
+
   // Edit dialog state
   const [editDevice, setEditDevice] = useState<Device | null>(null);
 
@@ -168,6 +172,15 @@ export default function DeviceManagementPage() {
                 <SelectItem value="disabled">已禁用</SelectItem>
               </SelectContent>
             </Select>
+            {!isOperator && (
+              <button
+                onClick={() => setShowCreateDialog(true)}
+                className="btn-primary h-10 px-5 rounded-lg text-white text-sm font-medium inline-flex items-center gap-2"
+              >
+                <Plus className="h-4 w-4" />
+                创建设备
+              </button>
+            )}
           </div>
         </div>
       </header>
@@ -294,6 +307,16 @@ export default function DeviceManagementPage() {
         </div>
       </div>
 
+      {/* Create Device Dialog */}
+      <CreateDeviceDialog
+        open={showCreateDialog}
+        onOpenChange={setShowCreateDialog}
+        onSuccess={() => {
+          setShowCreateDialog(false);
+          refetch();
+        }}
+      />
+
       {/* Edit Name Dialog */}
       <EditDeviceNameDialog
         device={editDevice}
@@ -409,6 +432,136 @@ function DeviceRow({
         )}
       </TableCell>
     </TableRow>
+  );
+}
+
+// Create Device Dialog
+function CreateDeviceDialog({
+  open,
+  onOpenChange,
+  onSuccess,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSuccess: () => void;
+}) {
+  const createMutation = useCreateDevice();
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm<{ id: string; name: string }>({
+    defaultValues: { id: "", name: "" },
+  });
+
+  useEffect(() => {
+    if (open) {
+      reset({ id: "", name: "" });
+    }
+  }, [open, reset]);
+
+  const onSubmit = async (data: { id: string; name: string }) => {
+    try {
+      await createMutation.mutateAsync({
+        id: data.id,
+        name: data.name || undefined,
+      });
+      toast.success("设备创建成功");
+      onSuccess();
+    } catch {
+      toast.error("创建失败，请重试");
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent
+        showCloseButton={false}
+        overlayClassName="bg-black/40 supports-backdrop-filter:backdrop-blur-[4px]"
+        className="sm:max-w-md rounded-2xl bg-white p-0 gap-0 overflow-hidden shadow-[0_25px_50px_-12px_rgba(0,0,0,0.25)] ring-0 border-0"
+      >
+        <div className="px-6 py-5 border-b border-surface-border flex items-center justify-between">
+          <DialogTitle className="text-lg font-semibold text-gray-900">
+            创建设备
+          </DialogTitle>
+          <DialogClose className="w-8 h-8 rounded-lg hover:bg-gray-100 flex items-center justify-center text-gray-400 hover:text-gray-600 transition-colors">
+            <Icon icon={faXmark} />
+          </DialogClose>
+        </div>
+        <form onSubmit={handleSubmit(onSubmit)}>
+          <div className="p-6 space-y-5">
+            <div>
+              <Label
+                htmlFor="device-serial"
+                className="text-sm font-medium text-gray-700 mb-1.5 block"
+              >
+                序列号 <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                id="device-serial"
+                {...register("id", {
+                  required: "请输入设备序列号",
+                  maxLength: { value: 100, message: "序列号不超过100个字符" },
+                })}
+                placeholder="如：SN-2026-A001"
+                className={`h-11 px-4 rounded-lg border-gray-200 text-sm font-mono ${errors.id ? "border-red-500" : ""}`}
+              />
+              {errors.id && (
+                <p className="text-sm text-red-500 mt-1">
+                  {errors.id.message}
+                </p>
+              )}
+            </div>
+            <div>
+              <Label
+                htmlFor="device-create-name"
+                className="text-sm font-medium text-gray-700 mb-1.5 block"
+              >
+                设备名称 <span className="text-gray-400 font-normal">(选填)</span>
+              </Label>
+              <Input
+                id="device-create-name"
+                {...register("name", {
+                  maxLength: { value: 50, message: "名称不超过50个字符" },
+                })}
+                placeholder="如：A区入口闸机"
+                className={`h-11 px-4 rounded-lg border-gray-200 text-sm ${errors.name ? "border-red-500" : ""}`}
+              />
+              {errors.name && (
+                <p className="text-sm text-red-500 mt-1">
+                  {errors.name.message}
+                </p>
+              )}
+            </div>
+          </div>
+          <div className="px-6 py-4 border-t border-surface-border flex items-center justify-end gap-3">
+            <button
+              type="button"
+              onClick={() => onOpenChange(false)}
+              className="h-10 px-5 rounded-lg border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+            >
+              取消
+            </button>
+            <button
+              type="submit"
+              disabled={createMutation.isPending}
+              className="btn-primary h-10 px-5 rounded-lg text-white text-sm font-medium disabled:opacity-50"
+            >
+              {createMutation.isPending ? (
+                <span className="flex items-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  创建中...
+                </span>
+              ) : (
+                "创建"
+              )}
+            </button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }
 
