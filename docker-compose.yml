@@ -20,6 +20,64 @@ services:
     networks:
       - parkhub-network
 
+  redis:
+    image: redis:7-alpine
+    container_name: parkhub-redis
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - parkhub-network
+
+  emqx:
+    image: emqx/emqx:5.4.0
+    container_name: parkhub-emqx
+    environment:
+      EMQX_NAME: parkhub
+      EMQX_HOST: 0.0.0.0
+      EMQX_NODE__COOKIE: parkhub_secret_cookie
+      EMQX_DASHBOARD__DEFAULT_USERNAME: admin
+      EMQX_DASHBOARD__DEFAULT_PASSWORD: public
+    ports:
+      - "${MQTT_PORT:-1883}:1883"
+      - "${MQTT_WS_PORT:-8083}:8083"
+      - "${MQTT_MANAGEMENT_PORT:-18083}:18083"
+    volumes:
+      - emqx_data:/opt/emqx/data
+      - emqx_log:/opt/emqx/log
+    healthcheck:
+      test: ["CMD", "emqx", "ctl", "status"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - parkhub-network
+
+  emqx-init:
+    image: curlimages/curl:latest
+    container_name: parkhub-emqx-init
+    depends_on:
+      emqx:
+        condition: service_healthy
+    environment:
+      EMQX_HOST: emqx
+      EMQX_API_PORT: 18083
+      DASHBOARD_USER: admin
+      DASHBOARD_PASS: public
+      BACKEND_USER: ${MQTT_BACKEND_USERNAME:-backend_service}
+      BACKEND_PASS: ${MQTT_BACKEND_PASSWORD:-backend_secret}
+    volumes:
+      - ./docker/emqx/init-backend-user.sh:/init.sh:ro
+    entrypoint: ["/bin/sh", "/init.sh"]
+    networks:
+      - parkhub-network
+
   api:
     build:
       context: ./parkhub-api
@@ -36,6 +94,10 @@ services:
       JWT_SECRET: ${JWT_SECRET:-dev-secret-key-change-in-production-min-32-chars}
       JWT_ISSUER: ${JWT_ISSUER:-parkhub}
       LOG_LEVEL: ${LOG_LEVEL:-debug}
+      REDIS_URL: redis://redis:6379
+      MQTT_BROKER_URL: tcp://emqx:1883
+      MQTT_BACKEND_USERNAME: ${MQTT_BACKEND_USERNAME:-backend_service}
+      MQTT_BACKEND_PASSWORD: ${MQTT_BACKEND_PASSWORD:-backend_secret}
     ports:
       - "${APP_PORT:-8080}:8080"
     volumes:
@@ -43,6 +105,10 @@ services:
       - go_mod_cache:/go/pkg/mod
     depends_on:
       mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      emqx:
         condition: service_healthy
     networks:
       - parkhub-network
@@ -65,6 +131,9 @@ services:
 
 volumes:
   mysql_data:
+  redis_data:
+  emqx_data:
+  emqx_log:
   go_mod_cache:
 
 networks:
