@@ -22,6 +22,14 @@ const (
 	offlineScanInterval = 1 * time.Minute
 )
 
+// atomicGetAndDel 原子读取并删除 Redis hash key，避免竞态
+var atomicGetAndDel = redis.NewScript(`
+	local vals = redis.call('HGETALL', KEYS[1])
+	if #vals == 0 then return nil end
+	redis.call('DEL', KEYS[1])
+	return vals
+`)
+
 // HeartbeatService 心跳处理服务
 type HeartbeatService struct {
 	mqttClient  pahomqtt.Client
@@ -65,11 +73,9 @@ func (s *HeartbeatService) Subscribe(c pahomqtt.Client) {
 	slog.Info("mqtt subscribed", "topic", heartbeatTopic)
 }
 
-// Start 启动心跳服务：订阅 MQTT、启动同步和离线扫描定时器
+// Start 启动心跳服务：启动同步和离线扫描定时器
+// 注意：MQTT 订阅由 OnConnect 回调处理（首次连接和重连时都会触发）
 func (s *HeartbeatService) Start() {
-	// 首次订阅
-	s.Subscribe(s.mqttClient)
-
 	// 启动定时同步 Redis → DB
 	s.wg.Add(1)
 	go s.syncLoop()
@@ -171,14 +177,8 @@ func (s *HeartbeatService) syncRedisToDatabase() {
 func (s *HeartbeatService) syncOneDevice(ctx context.Context, key string) {
 	deviceID := strings.TrimPrefix(key, redisKeyPrefix)
 
-	// 使用 Lua 脚本原子读取并删除，避免与 handleHeartbeat 的竞态
-	script := redis.NewScript(`
-		local vals = redis.call('HGETALL', KEYS[1])
-		if #vals == 0 then return nil end
-		redis.call('DEL', KEYS[1])
-		return vals
-	`)
-	result, err := script.Run(ctx, s.redisClient, []string{key}).StringSlice()
+	// 原子读取并删除，避免与 handleHeartbeat 的竞态
+	result, err := atomicGetAndDel.Run(ctx, s.redisClient, []string{key}).StringSlice()
 	if err != nil {
 		if err == redis.Nil {
 			return
@@ -272,12 +272,6 @@ func (s *HeartbeatService) detectOfflineDevices() {
 	if err := s.deviceRepo.BatchUpdateStatus(ctx, ids, domain.DeviceStatusOffline); err != nil {
 		slog.Error("batch update offline status failed", "error", err)
 		return
-	}
-
-	// 同步更新 Redis 中的状态（如果存在）
-	for _, id := range ids {
-		key := redisKeyPrefix + id
-		s.redisClient.HSet(ctx, key, "status", "offline")
 	}
 
 	slog.Info("devices marked offline", "count", len(ids), "device_ids", ids)
