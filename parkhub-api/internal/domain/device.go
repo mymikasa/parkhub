@@ -7,7 +7,7 @@ import (
 
 // Device 设备实体
 type Device struct {
-	ID              string     // 设备ID（序列号）
+	ID              string // 设备ID（序列号）
 	TenantID        string
 	Name            string
 	Status          DeviceStatus
@@ -33,6 +33,7 @@ const (
 var (
 	ErrDeviceNotFound    = errors.New("设备不存在")
 	ErrDeviceIDDuplicate = errors.New("设备序列号已存在")
+	ErrDeviceNotBound    = errors.New("设备当前未绑定")
 )
 
 // NewDevice 创建新设备（首次心跳上报时创建）
@@ -51,6 +52,28 @@ func NewDevice(id, tenantID string) *Device {
 func (d *Device) UpdateName(name string) {
 	d.Name = name
 	d.UpdatedAt = time.Now()
+}
+
+func (d *Device) CanBind() bool {
+	return d.Status == DeviceStatusPending || d.Status == DeviceStatusActive
+}
+
+func (d *Device) Bind(tenantID, parkingLotID, gateID string) {
+	now := time.Now()
+	d.TenantID = tenantID
+	d.ParkingLotID = &parkingLotID
+	d.GateID = &gateID
+	d.Status = DeviceStatusActive
+	d.UpdatedAt = now
+}
+
+func (d *Device) Unbind() {
+	now := time.Now()
+	d.TenantID = PlatformTenantID
+	d.ParkingLotID = nil
+	d.GateID = nil
+	d.Status = DeviceStatusPending
+	d.UpdatedAt = now
 }
 
 // IsOnline 是否在线

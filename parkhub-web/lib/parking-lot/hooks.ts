@@ -15,7 +15,7 @@ export const parkingLotKeys = {
   gates: (parkingLotId: string) => [...parkingLotKeys.all, 'gates', parkingLotId] as const,
 };
 
-export function useParkingLots(filter: ParkingLotFilter) {
+export function useParkingLots(filter: ParkingLotFilter, enabled = true) {
   return useQuery({
     queryKey: parkingLotKeys.list(filter),
     queryFn: async () => {
@@ -23,6 +23,7 @@ export function useParkingLots(filter: ParkingLotFilter) {
       if (!accessToken) throw new Error('未登录');
       return api.getParkingLots(filter, accessToken);
     },
+    enabled,
   });
 }
 

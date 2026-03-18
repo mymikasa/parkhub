@@ -229,5 +229,11 @@ func (r *Router) setupDeviceRoutes(rg *gin.RouterGroup) {
 
 		// PUT /api/v1/devices/:id - 更新设备名称（仅admin）
 		devices.PUT("/:id", middleware.RequireRoles("platform_admin", "tenant_admin"), r.deviceHandler.UpdateName)
+
+		// POST /api/v1/devices/:id/bind - 绑定设备（仅admin）
+		devices.POST("/:id/bind", middleware.RequireRoles("platform_admin", "tenant_admin"), r.deviceHandler.Bind)
+
+		// POST /api/v1/devices/:id/unbind - 解绑设备（仅admin）
+		devices.POST("/:id/unbind", middleware.RequireRoles("platform_admin", "tenant_admin"), r.deviceHandler.Unbind)
 	}
 }

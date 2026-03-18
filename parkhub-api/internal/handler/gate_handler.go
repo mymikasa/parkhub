@@ -75,7 +75,6 @@ func (h *GateHandler) Create(c *gin.Context) {
 		ParkingLotID: parkingLotID,
 		Name:         req.Name,
 		Type:         domain.GateType(req.Type),
-		DeviceID:     req.DeviceID,
 	}
 
 	gate, err := h.gateService.Create(c.Request.Context(), svcReq)
@@ -117,9 +116,8 @@ func (h *GateHandler) Update(c *gin.Context) {
 	}
 
 	svcReq := &service.UpdateGateRequest{
-		ID:       id,
-		Name:     req.Name,
-		DeviceID: req.DeviceID,
+		ID:   id,
+		Name: req.Name,
 	}
 
 	gate, err := h.gateService.Update(c.Request.Context(), svcReq)
@@ -185,6 +183,8 @@ func (h *GateHandler) toGateWithDeviceDTO(gate *domain.GateWithDevice) dto.GateW
 			CreatedAt:    gate.CreatedAt.Format("2006-01-02T15:04:05Z"),
 			UpdatedAt:    gate.UpdatedAt.Format("2006-01-02T15:04:05Z"),
 		},
+		BoundDeviceCount:   gate.BoundDeviceCount,
+		OfflineDeviceCount: gate.OfflineDeviceCount,
 	}
 	if gate.Device != nil {
 		result.Device = &dto.GateDeviceInfo{

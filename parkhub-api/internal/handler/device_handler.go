@@ -147,6 +147,59 @@ func (h *DeviceHandler) UpdateName(c *gin.Context) {
 	})
 }
 
+func (h *DeviceHandler) Bind(c *gin.Context) {
+	id := c.Param("id")
+	role := c.GetString("role")
+	tenantID := c.GetString("tenant_id")
+
+	var req dto.BindDeviceRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, dto.Response{Code: 400, Message: validator.FormatValidationError(err)})
+		return
+	}
+
+	device, err := h.deviceService.Bind(c.Request.Context(), &service.BindDeviceRequest{
+		ID:               id,
+		OperatorRole:     role,
+		OperatorTenantID: tenantID,
+		TargetTenantID:   req.TenantID,
+		ParkingLotID:     req.ParkingLotID,
+		GateID:           req.GateID,
+	})
+	if err != nil {
+		h.handleError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, dto.Response{
+		Code:    0,
+		Message: "设备绑定成功",
+		Data:    h.toDeviceDetailDTO(device),
+	})
+}
+
+func (h *DeviceHandler) Unbind(c *gin.Context) {
+	id := c.Param("id")
+	role := c.GetString("role")
+	tenantID := c.GetString("tenant_id")
+
+	device, err := h.deviceService.Unbind(c.Request.Context(), &service.UnbindDeviceRequest{
+		ID:               id,
+		OperatorRole:     role,
+		OperatorTenantID: tenantID,
+	})
+	if err != nil {
+		h.handleError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, dto.Response{
+		Code:    0,
+		Message: "设备解绑成功",
+		Data:    h.toDeviceDetailDTO(device),
+	})
+}
+
 // GetStats 获取设备统计
 func (h *DeviceHandler) GetStats(c *gin.Context) {
 	tenantID := c.GetString("tenant_id")
@@ -200,6 +253,10 @@ func (h *DeviceHandler) handleError(c *gin.Context, err error) {
 			c.JSON(http.StatusConflict, dto.Response{Code: 40901, Message: de.Message})
 		case "FORBIDDEN":
 			c.JSON(http.StatusForbidden, dto.Response{Code: 40301, Message: de.Message})
+		case "DEVICE_INVALID_STATUS", "DEVICE_GATE_CAPACITY_EXCEEDED", "DEVICE_NOT_BOUND":
+			c.JSON(http.StatusBadRequest, dto.Response{Code: 40003, Message: de.Message})
+		case "TENANT_NOT_FOUND", "PARKING_LOT_NOT_FOUND", "GATE_NOT_FOUND":
+			c.JSON(http.StatusNotFound, dto.Response{Code: 40402, Message: de.Message})
 		default:
 			c.JSON(http.StatusInternalServerError, dto.Response{Code: 500, Message: de.Message})
 		}

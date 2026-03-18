@@ -101,6 +101,31 @@ func (r *deviceRepo) FindAll(ctx context.Context, tenantID string, filter reposi
 	return results, total, nil
 }
 
+func (r *deviceRepo) CountByGateID(ctx context.Context, gateID string) (int64, error) {
+	var count int64
+	err := r.db.WithContext(ctx).
+		Model(&dao.DeviceDAO{}).
+		Where("gate_id = ? AND deleted_at IS NULL", gateID).
+		Count(&count).Error
+	return count, err
+}
+
+func (r *deviceRepo) FindByGateID(ctx context.Context, gateID string) ([]*domain.Device, error) {
+	var rows []dao.DeviceDAO
+	if err := r.db.WithContext(ctx).
+		Where("gate_id = ? AND deleted_at IS NULL", gateID).
+		Order("created_at ASC").
+		Find(&rows).Error; err != nil {
+		return nil, err
+	}
+
+	devices := make([]*domain.Device, len(rows))
+	for i := range rows {
+		devices[i] = rows[i].ToDomain()
+	}
+	return devices, nil
+}
+
 func (r *deviceRepo) CountByStatus(ctx context.Context, tenantID string) (*repository.DeviceStats, error) {
 	type statusCount struct {
 		Status string `gorm:"column:status"`
@@ -155,8 +180,12 @@ func (r *deviceRepo) FindByIDGlobal(ctx context.Context, id string) (*domain.Dev
 func (r *deviceRepo) Update(ctx context.Context, device *domain.Device) error {
 	d := dao.ToDeviceDAO(device)
 	result := r.db.WithContext(ctx).Model(d).Where("deleted_at IS NULL").Updates(map[string]any{
-		"name":       d.Name,
-		"updated_at": d.UpdatedAt,
+		"tenant_id":      d.TenantID,
+		"name":           d.Name,
+		"status":         d.Status,
+		"parking_lot_id": d.ParkingLotID,
+		"gate_id":        d.GateID,
+		"updated_at":     d.UpdatedAt,
 	})
 	if result.Error != nil {
 		return result.Error
@@ -175,6 +204,19 @@ func (r *deviceRepo) UpdateHeartbeat(ctx context.Context, device *domain.Device)
 		"last_heartbeat":   d.LastHeartbeat,
 		"updated_at":       d.UpdatedAt,
 	}).Error
+}
+
+func (r *deviceRepo) UnbindByGateID(ctx context.Context, gateID string) error {
+	return r.db.WithContext(ctx).
+		Model(&dao.DeviceDAO{}).
+		Where("gate_id = ? AND deleted_at IS NULL", gateID).
+		Updates(map[string]any{
+			"tenant_id":      domain.PlatformTenantID,
+			"status":         string(domain.DeviceStatusPending),
+			"parking_lot_id": nil,
+			"gate_id":        nil,
+			"updated_at":     r.db.NowFunc(),
+		}).Error
 }
 
 func (r *deviceRepo) FindTimedOutDevices(ctx context.Context, threshold time.Time) ([]*domain.Device, error) {

@@ -45,7 +45,7 @@ func (m *mockParkingLotRepo) FindByID(ctx context.Context, id string) (*domain.P
 func (m *mockParkingLotRepo) FindByTenantID(ctx context.Context, tenantID string, filter repository.ParkingLotFilter) ([]*dao.ParkingLotWithStats, int64, error) {
 	var results []*dao.ParkingLotWithStats
 	for _, lot := range m.lots {
-		if lot.TenantID != tenantID {
+		if tenantID != "" && lot.TenantID != tenantID {
 			continue
 		}
 		if filter.Status != nil && lot.Status != *filter.Status {
@@ -245,9 +245,10 @@ func TestParkingLotService_List_Success(t *testing.T) {
 	createTestParkingLot(repo, "lot-3", "tenant-2", "月光停车场")
 
 	resp, err := svc.List(context.Background(), &service.ListParkingLotsRequest{
-		TenantID: "tenant-1",
-		Page:     1,
-		PageSize: 10,
+		OperatorRole:     "tenant_admin",
+		OperatorTenantID: "tenant-1",
+		Page:             1,
+		PageSize:         10,
 	})
 
 	if err != nil {
@@ -258,6 +259,29 @@ func TestParkingLotService_List_Success(t *testing.T) {
 	}
 	if len(resp.Items) != 2 {
 		t.Errorf("len(Items) = %v, want 2", len(resp.Items))
+	}
+}
+
+func TestParkingLotService_List_PlatformAdminTenantFilter(t *testing.T) {
+	svc, repo := setupTestParkingLotService()
+	createTestParkingLot(repo, "lot-1", "tenant-1", "阳光停车场")
+	createTestParkingLot(repo, "lot-2", "tenant-2", "月光停车场")
+
+	resp, err := svc.List(context.Background(), &service.ListParkingLotsRequest{
+		OperatorRole: "platform_admin",
+		TenantID:     "tenant-2",
+		Page:         1,
+		PageSize:     10,
+	})
+
+	if err != nil {
+		t.Fatalf("List() error = %v", err)
+	}
+	if resp.Total != 1 {
+		t.Fatalf("Total = %v, want 1", resp.Total)
+	}
+	if len(resp.Items) != 1 || resp.Items[0].ID != "lot-2" {
+		t.Fatalf("Items = %+v, want only lot-2", resp.Items)
 	}
 }
 

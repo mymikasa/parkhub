@@ -11,7 +11,7 @@ import type {
   UpdateTenantRequest,
 } from './types';
 
-export function useTenants(filter: TenantFilter = {}) {
+export function useTenants(filter: TenantFilter = {}, enabled = true) {
   const [data, setData] = useState<TenantListResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
@@ -21,6 +21,13 @@ export function useTenants(filter: TenantFilter = {}) {
   const filterKey = JSON.stringify(filter);
 
   useEffect(() => {
+    if (!enabled) {
+      setData(null);
+      setError(null);
+      setIsLoading(false);
+      return;
+    }
+
     let cancelled = false;
 
     async function fetchTenants() {
@@ -44,7 +51,7 @@ export function useTenants(filter: TenantFilter = {}) {
     fetchTenants();
 
     return () => { cancelled = true; };
-  }, [filterKey, refetchCount]);
+  }, [enabled, filterKey, refetchCount]);
 
   const refetch = useCallback(() => {
     setRefetchCount(c => c + 1);

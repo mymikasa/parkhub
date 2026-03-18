@@ -7,13 +7,13 @@ import (
 
 // Gate 出入口实体
 type Gate struct {
-	ID            string
-	ParkingLotID  string
-	Name          string
-	Type          GateType
-	DeviceID      *string
-	CreatedAt     time.Time
-	UpdatedAt     time.Time
+	ID           string
+	ParkingLotID string
+	Name         string
+	Type         GateType
+	DeviceID     *string
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
 }
 
 // GateType 出入口类型
@@ -26,12 +26,12 @@ const (
 
 // 出入口相关错误
 var (
-	ErrGateNotFound              = errors.New("出入口不存在")
-	ErrGateNameDuplicate         = errors.New("该出入口名称已存在")
-	ErrGateHasUnfinishedRecords  = errors.New("该出入口存在未完成的通行记录，无法删除")
-	ErrLastEntryGate             = errors.New("每个车场至少保留一个入口")
-	ErrLastExitGate              = errors.New("每个车场至少保留一个出口")
-	ErrDeviceAlreadyBound        = errors.New("该设备已被其他出入口绑定")
+	ErrGateNotFound             = errors.New("出入口不存在")
+	ErrGateNameDuplicate        = errors.New("该出入口名称已存在")
+	ErrGateHasUnfinishedRecords = errors.New("该出入口存在未完成的通行记录，无法删除")
+	ErrLastEntryGate            = errors.New("每个车场至少保留一个入口")
+	ErrLastExitGate             = errors.New("每个车场至少保留一个出口")
+	ErrDeviceAlreadyBound       = errors.New("该设备已被其他出入口绑定")
 )
 
 // NewGate 创建新出入口
@@ -100,13 +100,15 @@ func ValidateGateType(gateType GateType) bool {
 // GateWithDevice 带设备信息的出入口（用于 API 响应）
 type GateWithDevice struct {
 	Gate
-	Device *GateDeviceInfo
+	Device             *GateDeviceInfo
+	BoundDeviceCount   int
+	OfflineDeviceCount int
 }
 
 // GateDeviceInfo 设备信息
 type GateDeviceInfo struct {
-	ID           string
-	SerialNumber string
-	Status       string
+	ID            string
+	SerialNumber  string
+	Status        string
 	LastHeartbeat *time.Time
 }

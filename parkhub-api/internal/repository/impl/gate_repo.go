@@ -56,11 +56,28 @@ func (r *gateRepo) FindByID(ctx context.Context, id string) (*domain.Gate, error
 func (r *gateRepo) FindByParkingLotID(ctx context.Context, parkingLotID string) ([]*domain.GateWithDevice, error) {
 	var rows []dao.GateWithDeviceDAO
 
-	// 左连接查询设备和设备状态
-	// 注意：devices 表可能在 Phase 2 实现，这里先返回基本信息
 	err := r.db.WithContext(ctx).
 		Table("gates").
-		Select("gates.*, NULL as device_serial_number, NULL as device_status, NULL as device_last_heartbeat").
+		Select(`
+			gates.*,
+			NULL as summary_device_id,
+			NULL as device_serial_number,
+			NULL as device_status,
+			NULL as device_last_heartbeat,
+			COALESCE(device_counts.bound_device_count, 0) as bound_device_count,
+			COALESCE(device_counts.offline_device_count, 0) as offline_device_count
+		`).
+		Joins(`
+			LEFT JOIN (
+				SELECT
+					gate_id,
+					COUNT(*) as bound_device_count,
+					SUM(CASE WHEN status = 'offline' THEN 1 ELSE 0 END) as offline_device_count
+				FROM devices
+				WHERE deleted_at IS NULL AND gate_id IS NOT NULL
+				GROUP BY gate_id
+			) device_counts ON device_counts.gate_id = gates.id
+		`).
 		Where("gates.parking_lot_id = ?", parkingLotID).
 		Order("gates.created_at ASC").
 		Find(&rows).Error

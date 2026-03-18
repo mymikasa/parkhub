@@ -8,13 +8,13 @@ import (
 
 // GateDAO is the GORM database model for the gates table.
 type GateDAO struct {
-	ID           string     `gorm:"column:id;primaryKey"`
-	ParkingLotID string     `gorm:"column:parking_lot_id"`
-	Name         string     `gorm:"column:name"`
-	Type         string     `gorm:"column:type"`
-	DeviceID     *string    `gorm:"column:device_id"`
-	CreatedAt    time.Time  `gorm:"column:created_at"`
-	UpdatedAt    time.Time  `gorm:"column:updated_at"`
+	ID           string    `gorm:"column:id;primaryKey"`
+	ParkingLotID string    `gorm:"column:parking_lot_id"`
+	Name         string    `gorm:"column:name"`
+	Type         string    `gorm:"column:type"`
+	DeviceID     *string   `gorm:"column:device_id"`
+	CreatedAt    time.Time `gorm:"column:created_at"`
+	UpdatedAt    time.Time `gorm:"column:updated_at"`
 }
 
 func (GateDAO) TableName() string { return "gates" }
@@ -48,19 +48,21 @@ func (d *GateDAO) ToDomain() *domain.Gate {
 // GateWithDeviceDAO 出入口带设备信息
 type GateWithDeviceDAO struct {
 	GateDAO
-	DeviceID           *string    `gorm:"column:device_id"`
-	DeviceSerialNumber *string    `gorm:"column:device_serial_number"`
-	DeviceStatus       *string    `gorm:"column:device_status"`
+	SummaryDeviceID     *string    `gorm:"column:summary_device_id"`
+	DeviceSerialNumber  *string    `gorm:"column:device_serial_number"`
+	DeviceStatus        *string    `gorm:"column:device_status"`
 	DeviceLastHeartbeat *time.Time `gorm:"column:device_last_heartbeat"`
+	BoundDeviceCount    int        `gorm:"column:bound_device_count"`
+	OfflineDeviceCount  int        `gorm:"column:offline_device_count"`
 }
 
 // ToDomainWithDevice converts to domain with device info.
 func (d *GateWithDeviceDAO) ToDomainWithDevice() *domain.GateWithDevice {
 	gate := d.ToDomain()
 	var device *domain.GateDeviceInfo
-	if d.DeviceID != nil {
+	if d.SummaryDeviceID != nil {
 		info := domain.GateDeviceInfo{
-			ID:            *d.DeviceID,
+			ID:            *d.SummaryDeviceID,
 			LastHeartbeat: d.DeviceLastHeartbeat,
 		}
 		if d.DeviceSerialNumber != nil {
@@ -72,7 +74,9 @@ func (d *GateWithDeviceDAO) ToDomainWithDevice() *domain.GateWithDevice {
 		device = &info
 	}
 	return &domain.GateWithDevice{
-		Gate:  *gate,
-		Device: device,
+		Gate:               *gate,
+		Device:             device,
+		BoundDeviceCount:   d.BoundDeviceCount,
+		OfflineDeviceCount: d.OfflineDeviceCount,
 	}
 }

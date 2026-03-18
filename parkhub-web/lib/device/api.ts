@@ -6,6 +6,7 @@ import type {
   DeviceStats,
   CreateDeviceRequest,
   UpdateDeviceNameRequest,
+  BindDeviceRequest,
 } from './types';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080';
@@ -108,6 +109,21 @@ function mapDevice(raw: DeviceRaw): Device {
   };
 }
 
+function mapDeviceDetail(raw: DeviceRaw): DeviceDetail {
+  return {
+    id: raw.id ?? raw.ID ?? '',
+    tenant_id: raw.tenant_id ?? raw.TenantID ?? '',
+    name: raw.name ?? raw.Name ?? '',
+    status: (raw.status ?? raw.Status ?? 'pending') as DeviceDetail['status'],
+    firmware_version: raw.firmware_version ?? raw.FirmwareVersion ?? '',
+    last_heartbeat: raw.last_heartbeat ?? raw.LastHeartbeat ?? null,
+    parking_lot_id: raw.parking_lot_id ?? raw.ParkingLotID ?? null,
+    gate_id: raw.gate_id ?? raw.GateID ?? null,
+    created_at: raw.created_at ?? raw.CreatedAt ?? '',
+    updated_at: raw.updated_at ?? raw.UpdatedAt ?? '',
+  };
+}
+
 function mapDeviceList(raw: DeviceListRaw): DeviceListResponse {
   return {
     items: (raw.items ?? raw.Items ?? []).map(mapDevice),
@@ -179,19 +195,7 @@ export async function createDevice(
     },
     accessToken
   );
-  const raw = unwrapResponse(response);
-  return {
-    id: raw.id ?? raw.ID ?? '',
-    tenant_id: raw.tenant_id ?? raw.TenantID ?? '',
-    name: raw.name ?? raw.Name ?? '',
-    status: (raw.status ?? raw.Status ?? 'pending') as DeviceDetail['status'],
-    firmware_version: raw.firmware_version ?? raw.FirmwareVersion ?? '',
-    last_heartbeat: raw.last_heartbeat ?? raw.LastHeartbeat ?? null,
-    parking_lot_id: raw.parking_lot_id ?? raw.ParkingLotID ?? null,
-    gate_id: raw.gate_id ?? raw.GateID ?? null,
-    created_at: raw.created_at ?? raw.CreatedAt ?? '',
-    updated_at: raw.updated_at ?? raw.UpdatedAt ?? '',
-  };
+  return mapDeviceDetail(unwrapResponse(response));
 }
 
 export async function getDevices(
@@ -216,19 +220,7 @@ export async function getDevice(
     {},
     accessToken
   );
-  const raw = unwrapResponse(response);
-  return {
-    id: raw.id ?? raw.ID ?? '',
-    tenant_id: raw.tenant_id ?? raw.TenantID ?? '',
-    name: raw.name ?? raw.Name ?? '',
-    status: (raw.status ?? raw.Status ?? 'pending') as DeviceDetail['status'],
-    firmware_version: raw.firmware_version ?? raw.FirmwareVersion ?? '',
-    last_heartbeat: raw.last_heartbeat ?? raw.LastHeartbeat ?? null,
-    parking_lot_id: raw.parking_lot_id ?? raw.ParkingLotID ?? null,
-    gate_id: raw.gate_id ?? raw.GateID ?? null,
-    created_at: raw.created_at ?? raw.CreatedAt ?? '',
-    updated_at: raw.updated_at ?? raw.UpdatedAt ?? '',
-  };
+  return mapDeviceDetail(unwrapResponse(response));
 }
 
 export async function updateDeviceName(
@@ -244,17 +236,35 @@ export async function updateDeviceName(
     },
     accessToken
   );
-  const raw = unwrapResponse(response);
-  return {
-    id: raw.id ?? raw.ID ?? '',
-    tenant_id: raw.tenant_id ?? raw.TenantID ?? '',
-    name: raw.name ?? raw.Name ?? '',
-    status: (raw.status ?? raw.Status ?? 'pending') as DeviceDetail['status'],
-    firmware_version: raw.firmware_version ?? raw.FirmwareVersion ?? '',
-    last_heartbeat: raw.last_heartbeat ?? raw.LastHeartbeat ?? null,
-    parking_lot_id: raw.parking_lot_id ?? raw.ParkingLotID ?? null,
-    gate_id: raw.gate_id ?? raw.GateID ?? null,
-    created_at: raw.created_at ?? raw.CreatedAt ?? '',
-    updated_at: raw.updated_at ?? raw.UpdatedAt ?? '',
-  };
+  return mapDeviceDetail(unwrapResponse(response));
+}
+
+export async function bindDevice(
+  id: string,
+  req: BindDeviceRequest,
+  accessToken: string
+): Promise<DeviceDetail> {
+  const response = await request<DeviceRaw | ApiEnvelope<DeviceRaw>>(
+    `/api/v1/devices/${id}/bind`,
+    {
+      method: 'POST',
+      body: JSON.stringify(req),
+    },
+    accessToken
+  );
+  return mapDeviceDetail(unwrapResponse(response));
+}
+
+export async function unbindDevice(
+  id: string,
+  accessToken: string
+): Promise<DeviceDetail> {
+  const response = await request<DeviceRaw | ApiEnvelope<DeviceRaw>>(
+    `/api/v1/devices/${id}/unbind`,
+    {
+      method: 'POST',
+    },
+    accessToken
+  );
+  return mapDeviceDetail(unwrapResponse(response));
 }

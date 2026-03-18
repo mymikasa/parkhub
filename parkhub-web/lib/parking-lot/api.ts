@@ -77,6 +77,8 @@ type GateRaw = Partial<GateWithDevice> & {
   created_at?: string;
   updated_at?: string;
   device?: GateDeviceInfoRaw | null;
+  bound_device_count?: number;
+  offline_device_count?: number;
   ID?: string;
   ParkingLotID?: string;
   Name?: string;
@@ -85,6 +87,8 @@ type GateRaw = Partial<GateWithDevice> & {
   CreatedAt?: string;
   UpdatedAt?: string;
   Device?: GateDeviceInfoRaw | null;
+  BoundDeviceCount?: number;
+  OfflineDeviceCount?: number;
 };
 
 async function request<T>(
@@ -178,6 +182,8 @@ function mapGate(raw: GateRaw): GateWithDevice {
     device_id: raw.device_id ?? raw.DeviceID ?? null,
     created_at: raw.created_at ?? raw.CreatedAt ?? '',
     updated_at: raw.updated_at ?? raw.UpdatedAt ?? '',
+    bound_device_count: raw.bound_device_count ?? raw.BoundDeviceCount ?? 0,
+    offline_device_count: raw.offline_device_count ?? raw.OfflineDeviceCount ?? 0,
     device: device
       ? {
           id: device.id ?? device.ID ?? '',
@@ -197,6 +203,9 @@ function buildQueryString(filter: ParkingLotFilter): string {
   }
   if (filter.search) {
     params.append('search', filter.search);
+  }
+  if (filter.tenant_id) {
+    params.append('tenant_id', filter.tenant_id);
   }
   if (filter.page) {
     params.append('page', filter.page.toString());

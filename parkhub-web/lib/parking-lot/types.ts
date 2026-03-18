@@ -42,6 +42,7 @@ export interface ParkingLotListResponse {
 export interface ParkingLotFilter {
   status?: ParkingLotStatus | 'all';
   search?: string;
+  tenant_id?: string;
   page?: number;
   page_size?: number;
 }
@@ -75,15 +76,15 @@ export interface GateDeviceInfo {
 
 export interface GateWithDevice extends Gate {
   device: GateDeviceInfo | null;
+  bound_device_count?: number;
+  offline_device_count?: number;
 }
 
 export interface CreateGateRequest {
   name: string;
   type: GateType;
-  device_id?: string | null;
 }
 
 export interface UpdateGateRequest {
   name: string;
-  device_id?: string | null;
 }
