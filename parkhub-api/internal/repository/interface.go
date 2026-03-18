@@ -128,9 +128,14 @@ type ParkingLotStats struct {
 
 // DeviceRepo 设备数据访问接口
 type DeviceRepo interface {
+	Create(ctx context.Context, device *domain.Device) error
 	FindByID(ctx context.Context, id string) (*domain.Device, error)
+	FindByIDGlobal(ctx context.Context, id string) (*domain.Device, error)
 	FindAll(ctx context.Context, tenantID string, filter DeviceFilter) ([]*domain.DeviceListItem, int64, error)
 	Update(ctx context.Context, device *domain.Device) error
+	UpdateHeartbeat(ctx context.Context, device *domain.Device) error
+	FindTimedOutDevices(ctx context.Context, timeout int) ([]*domain.Device, error)
+	BatchUpdateStatus(ctx context.Context, ids []string, status domain.DeviceStatus) error
 	CountByStatus(ctx context.Context, tenantID string) (*DeviceStats, error)
 }
 

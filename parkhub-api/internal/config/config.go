@@ -26,6 +26,17 @@ type Config struct {
 	JWTRefreshTTL time.Duration
 	JWTIssuer     string
 
+	// MQTT
+	MQTTBrokerURL string
+	MQTTUsername  string
+	MQTTPassword  string
+
+	// Redis
+	RedisURL string
+
+	// Heartbeat
+	HeartbeatTimeoutSeconds int
+
 	LogLevel string
 }
 
@@ -44,6 +55,11 @@ func Load() (*Config, error) {
 		DBMaxIdleConns: getEnvInt("DB_MAX_IDLE_CONNS", 5),
 		JWTSecret:      getEnv("JWT_SECRET", ""),
 		JWTIssuer:      getEnv("JWT_ISSUER", "parkhub"),
+		MQTTBrokerURL:  getEnv("MQTT_BROKER_URL", "tcp://localhost:1883"),
+		MQTTUsername:    getEnv("MQTT_BACKEND_USERNAME", ""),
+		MQTTPassword:    getEnv("MQTT_BACKEND_PASSWORD", ""),
+		RedisURL:        getEnv("REDIS_URL", "redis://localhost:6379"),
+		HeartbeatTimeoutSeconds: getEnvInt("HEARTBEAT_TIMEOUT_SECONDS", 300),
 		LogLevel:       getEnv("LOG_LEVEL", "info"),
 	}
 

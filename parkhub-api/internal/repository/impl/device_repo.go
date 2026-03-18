@@ -22,6 +22,11 @@ func NewDeviceRepo(db *gorm.DB) repository.DeviceRepo {
 	return &deviceRepo{db: db}
 }
 
+func (r *deviceRepo) Create(ctx context.Context, device *domain.Device) error {
+	d := dao.ToDeviceDAO(device)
+	return r.db.WithContext(ctx).Create(d).Error
+}
+
 func (r *deviceRepo) FindByID(ctx context.Context, id string) (*domain.Device, error) {
 	var d dao.DeviceDAO
 	if err := r.db.WithContext(ctx).Where("id = ? AND deleted_at IS NULL", id).First(&d).Error; err != nil {
@@ -123,6 +128,17 @@ func (r *deviceRepo) CountByStatus(ctx context.Context, tenantID string) (*repos
 	return stats, nil
 }
 
+func (r *deviceRepo) FindByIDGlobal(ctx context.Context, id string) (*domain.Device, error) {
+	var d dao.DeviceDAO
+	if err := r.db.WithContext(ctx).Where("id = ? AND deleted_at IS NULL", id).First(&d).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil // 返回 nil 表示不存在，不是错误
+		}
+		return nil, err
+	}
+	return d.ToDomain(), nil
+}
+
 func (r *deviceRepo) Update(ctx context.Context, device *domain.Device) error {
 	d := dao.ToDeviceDAO(device)
 	result := r.db.WithContext(ctx).Model(d).Where("deleted_at IS NULL").Updates(map[string]any{
@@ -136,4 +152,45 @@ func (r *deviceRepo) Update(ctx context.Context, device *domain.Device) error {
 		return domain.ErrDeviceNotFound
 	}
 	return nil
+}
+
+func (r *deviceRepo) UpdateHeartbeat(ctx context.Context, device *domain.Device) error {
+	d := dao.ToDeviceDAO(device)
+	return r.db.WithContext(ctx).Model(d).Where("deleted_at IS NULL").Updates(map[string]any{
+		"status":           d.Status,
+		"firmware_version": d.FirmwareVersion,
+		"last_heartbeat":   d.LastHeartbeat,
+		"updated_at":       d.UpdatedAt,
+	}).Error
+}
+
+func (r *deviceRepo) FindTimedOutDevices(ctx context.Context, timeoutSeconds int) ([]*domain.Device, error) {
+	var rows []dao.DeviceDAO
+	err := r.db.WithContext(ctx).
+		Where("deleted_at IS NULL").
+		Where("status IN ?", []string{string(domain.DeviceStatusActive), string(domain.DeviceStatusPending)}).
+		Where("last_heartbeat IS NOT NULL").
+		Where("last_heartbeat < DATE_SUB(NOW(), INTERVAL ? SECOND)", timeoutSeconds).
+		Find(&rows).Error
+	if err != nil {
+		return nil, err
+	}
+	devices := make([]*domain.Device, len(rows))
+	for i := range rows {
+		devices[i] = rows[i].ToDomain()
+	}
+	return devices, nil
+}
+
+func (r *deviceRepo) BatchUpdateStatus(ctx context.Context, ids []string, status domain.DeviceStatus) error {
+	if len(ids) == 0 {
+		return nil
+	}
+	return r.db.WithContext(ctx).
+		Table("devices").
+		Where("id IN ? AND deleted_at IS NULL", ids).
+		Updates(map[string]any{
+			"status":     string(status),
+			"updated_at": r.db.NowFunc(),
+		}).Error
 }
