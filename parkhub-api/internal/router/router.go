@@ -20,6 +20,7 @@ type Router struct {
 	userHandler       *handler.UserHandler
 	parkingLotHandler *handler.ParkingLotHandler
 	gateHandler       *handler.GateHandler
+	deviceHandler     *handler.DeviceHandler
 }
 
 // NewRouter 创建路由器
@@ -31,6 +32,7 @@ func NewRouter(
 	userHandler *handler.UserHandler,
 	parkingLotHandler *handler.ParkingLotHandler,
 	gateHandler *handler.GateHandler,
+	deviceHandler *handler.DeviceHandler,
 ) *Router {
 	return &Router{
 		engine:            engine,
@@ -40,6 +42,7 @@ func NewRouter(
 		userHandler:       userHandler,
 		parkingLotHandler: parkingLotHandler,
 		gateHandler:       gateHandler,
+		deviceHandler:     deviceHandler,
 	}
 }
 
@@ -65,6 +68,7 @@ func (r *Router) Setup() {
 		r.setupTenantRoutes(v1)
 		r.setupUserRoutes(v1)
 		r.setupParkingLotRoutes(v1)
+		r.setupDeviceRoutes(v1)
 	}
 }
 
@@ -202,5 +206,22 @@ func (r *Router) setupParkingLotRoutes(rg *gin.RouterGroup) {
 
 		// DELETE /api/v1/gates/:id - 删除出入口
 		gates.DELETE("/:id", r.gateHandler.Delete)
+	}
+}
+
+// setupDeviceRoutes 设置设备管理路由
+func (r *Router) setupDeviceRoutes(rg *gin.RouterGroup) {
+	devices := rg.Group("/devices")
+	devices.Use(middleware.AuthMiddleware(r.jwtManager))
+	devices.Use(middleware.RequireRoles("platform_admin", "tenant_admin", "operator"))
+	{
+		// GET /api/v1/devices - 获取设备列表
+		devices.GET("", r.deviceHandler.List)
+
+		// GET /api/v1/devices/:id - 获取设备详情
+		devices.GET("/:id", r.deviceHandler.Get)
+
+		// PUT /api/v1/devices/:id - 更新设备名称（仅admin）
+		devices.PUT("/:id", middleware.RequireRoles("platform_admin", "tenant_admin"), r.deviceHandler.UpdateName)
 	}
 }
