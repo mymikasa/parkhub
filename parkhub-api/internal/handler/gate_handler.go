@@ -94,6 +94,21 @@ func (h *GateHandler) Create(c *gin.Context) {
 // Update 更新出入口
 func (h *GateHandler) Update(c *gin.Context) {
 	id := c.Param("id")
+	tenantID := c.GetString("tenant_id")
+
+	// 先获取出入口以验证租户归属
+	existingGate, err := h.gateService.GetByID(c.Request.Context(), id)
+	if err != nil {
+		h.handleError(c, err)
+		return
+	}
+
+	// 验证停车场归属
+	_, err = h.parkingLotService.GetByID(c.Request.Context(), existingGate.ParkingLotID, tenantID)
+	if err != nil {
+		h.handleError(c, err)
+		return
+	}
 
 	var req dto.UpdateGateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -123,6 +138,21 @@ func (h *GateHandler) Update(c *gin.Context) {
 // Delete 删除出入口
 func (h *GateHandler) Delete(c *gin.Context) {
 	id := c.Param("id")
+	tenantID := c.GetString("tenant_id")
+
+	// 先获取出入口以验证租户归属
+	existingGate, err := h.gateService.GetByID(c.Request.Context(), id)
+	if err != nil {
+		h.handleError(c, err)
+		return
+	}
+
+	// 验证停车场归属
+	_, err = h.parkingLotService.GetByID(c.Request.Context(), existingGate.ParkingLotID, tenantID)
+	if err != nil {
+		h.handleError(c, err)
+		return
+	}
 
 	if err := h.gateService.Delete(c.Request.Context(), id); err != nil {
 		h.handleError(c, err)

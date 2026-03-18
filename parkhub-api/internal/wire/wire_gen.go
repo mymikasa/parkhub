@@ -35,6 +35,12 @@ func InitializeApp(cfg *config.Config, db *gorm.DB) (*router.Router, error) {
 	auditLogService := impl2.NewAuditLogService(auditLogRepo)
 	userService := impl2.NewUserService(userRepo, tenantRepo, loginLogRepo, auditLogService)
 	userHandler := handler.NewUserHandler(userService, auditLogService)
-	routerRouter := router.NewRouter(engine, jwtManager, authHandler, tenantHandler, userHandler)
+	parkingLotRepo := impl.NewParkingLotRepo(db)
+	parkingLotService := impl2.NewParkingLotService(parkingLotRepo)
+	parkingLotHandler := handler.NewParkingLotHandler(parkingLotService)
+	gateRepo := impl.NewGateRepo(db)
+	gateService := impl2.NewGateService(gateRepo, parkingLotRepo)
+	gateHandler := handler.NewGateHandler(gateService, parkingLotService)
+	routerRouter := router.NewRouter(engine, jwtManager, authHandler, tenantHandler, userHandler, parkingLotHandler, gateHandler)
 	return routerRouter, nil
 }

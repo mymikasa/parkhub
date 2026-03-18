@@ -290,3 +290,109 @@ type TenantListResponse struct {
 	Page     int
 	PageSize int
 }
+
+// ParkingLotService 停车场服务接口
+type ParkingLotService interface {
+	// Create 创建停车场
+	Create(ctx context.Context, req *CreateParkingLotRequest) (*domain.ParkingLot, error)
+	// GetByID 获取停车场详情
+	GetByID(ctx context.Context, id string, tenantID string) (*domain.ParkingLot, error)
+	// List 获取停车场列表
+	List(ctx context.Context, req *ListParkingLotsRequest) (*ParkingLotListResponse, error)
+	// Update 更新停车场
+	Update(ctx context.Context, req *UpdateParkingLotRequest) (*domain.ParkingLot, error)
+	// Delete 删除停车场
+	Delete(ctx context.Context, id string, tenantID string) error
+	// GetStats 获取统计数据
+	GetStats(ctx context.Context, tenantID string) (*ParkingLotStatsResponse, error)
+}
+
+// CreateParkingLotRequest 创建停车场请求
+type CreateParkingLotRequest struct {
+	TenantID    string
+	Name        string
+	Address     string
+	TotalSpaces int
+	LotType     domain.LotType
+}
+
+// ListParkingLotsRequest 停车场列表请求
+type ListParkingLotsRequest struct {
+	TenantID string
+	Status   *domain.ParkingLotStatus
+	Keyword  string
+	Page     int
+	PageSize int
+}
+
+// UpdateParkingLotRequest 更新停车场请求
+type UpdateParkingLotRequest struct {
+	ID          string
+	TenantID    string
+	Name        string
+	Address     string
+	TotalSpaces int
+	LotType     domain.LotType
+	Status      domain.ParkingLotStatus
+}
+
+// ParkingLotListResponse 停车场列表响应
+type ParkingLotListResponse struct {
+	Items    []*ParkingLotListItem
+	Total    int64
+	Page     int
+	PageSize int
+}
+
+// ParkingLotListItem 停车场列表项
+type ParkingLotListItem struct {
+	ID              string
+	Name            string
+	Address         string
+	TotalSpaces     int
+	AvailableSpaces int
+	LotType         domain.LotType
+	Status          domain.ParkingLotStatus
+	EntryCount      int
+	ExitCount       int
+	UsageRate       float64
+	CreatedAt       string
+	UpdatedAt       string
+}
+
+// ParkingLotStatsResponse 停车场统计响应
+type ParkingLotStatsResponse struct {
+	TotalSpaces      int64
+	AvailableSpaces  int64
+	OccupiedVehicles int64
+	TotalGates       int64
+}
+
+// GateService 出入口服务接口
+type GateService interface {
+	// Create 创建出入口
+	Create(ctx context.Context, req *CreateGateRequest) (*domain.Gate, error)
+	// GetByID 获取出入口详情
+	GetByID(ctx context.Context, id string) (*domain.Gate, error)
+	// ListByParkingLotID 获取停车场的出入口列表
+	ListByParkingLotID(ctx context.Context, parkingLotID string) ([]*domain.GateWithDevice, error)
+	// Update 更新出入口
+	Update(ctx context.Context, req *UpdateGateRequest) (*domain.Gate, error)
+	// Delete 删除出入口
+	Delete(ctx context.Context, id string) error
+}
+
+// CreateGateRequest 创建出入口请求
+type CreateGateRequest struct {
+	ParkingLotID string
+	Name         string
+	Type         domain.GateType
+	DeviceID     *string
+}
+
+// UpdateGateRequest 更新出入口请求
+type UpdateGateRequest struct {
+	ID       string
+	Name     string
+	DeviceID *string
+}

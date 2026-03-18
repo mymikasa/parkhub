@@ -1,0 +1,265 @@
+ParkingLot:
+  type: object
+  required:
+    - id
+    - name
+    - address
+    - total_spaces
+    - available_spaces
+    - lot_type
+    - status
+  properties:
+    id:
+      type: string
+      format: uuid
+      description: 停车场ID
+    name:
+      type: string
+      description: 车场名称
+      maxLength: 50
+    address:
+      type: string
+      description: 车场地址
+      maxLength: 100
+    total_spaces:
+      type: integer
+      description: 总车位数
+      minimum: 1
+    available_spaces:
+      type: integer
+      description: 剩余车位
+    lot_type:
+      type: string
+      enum: [underground, ground, stereo]
+      description: 车场类型
+      default: underground
+    status:
+      type: string
+      enum: [active, inactive]
+      description: 运营状态
+      default: active
+    entry_count:
+      type: integer
+      description: 入口数量
+    exit_count:
+      type: integer
+      description: 出口数量
+    usage_rate:
+      type: number
+      format: float
+      description: 使用率百分比
+      minimum: 0
+      maximum: 100
+    created_at:
+      type: string
+      format: date-time
+      description: 创建时间
+    updated_at:
+      type: string
+      format: date-time
+      description: 更新时间
+
+ParkingLotListResponse:
+  type: object
+  required:
+    - items
+    - total
+  properties:
+    items:
+      type: array
+      items:
+        $ref: '#/ParkingLot'
+    total:
+      type: integer
+      description: 总数
+    page:
+      type: integer
+      description: 当前页
+    page_size:
+      type: integer
+      description: 每页数量
+
+ParkingLotStatsResponse:
+  type: object
+  required:
+    - total_spaces
+    - available_spaces
+    - occupied_vehicles
+    - total_gates
+  properties:
+    total_spaces:
+      type: integer
+      description: 总车位数汇总
+    available_spaces:
+      type: integer
+      description: 剩余车位汇总
+    occupied_vehicles:
+      type: integer
+      description: 在场车辆汇总
+    total_gates:
+      type: integer
+      description: 出入口总数
+
+CreateParkingLotRequest:
+  type: object
+  required:
+    - name
+    - address
+    - total_spaces
+  properties:
+    name:
+      type: string
+      description: 车场名称
+      minLength: 2
+      maxLength: 50
+    address:
+      type: string
+      description: 车场地址
+      minLength: 5
+      maxLength: 100
+    total_spaces:
+      type: integer
+      description: 总车位数
+      minimum: 1
+      maximum: 99999
+    lot_type:
+      type: string
+      enum: [underground, ground, stereo]
+      description: 车场类型
+      default: underground
+
+UpdateParkingLotRequest:
+  type: object
+  required:
+    - name
+    - address
+    - total_spaces
+  properties:
+    name:
+      type: string
+      description: 车场名称
+      minLength: 2
+      maxLength: 50
+    address:
+      type: string
+      description: 车场地址
+      minLength: 5
+      maxLength: 100
+    total_spaces:
+      type: integer
+      description: 总车位数
+      minimum: 1
+      maximum: 99999
+    lot_type:
+      type: string
+      enum: [underground, ground, stereo]
+      description: 车场类型
+    status:
+      type: string
+      enum: [active, inactive]
+      description: 运营状态
+
+Gate:
+  type: object
+  required:
+    - id
+    - parking_lot_id
+    - name
+    - type
+  properties:
+    id:
+      type: string
+      format: uuid
+      description: 出入口ID
+    parking_lot_id:
+      type: string
+      format: uuid
+      description: 所属停车场ID
+    name:
+      type: string
+      description: 出入口名称
+      minLength: 2
+      maxLength: 20
+    type:
+      type: string
+      enum: [entry, exit]
+      description: 类型
+    device_id:
+      type: string
+      format: uuid
+      nullable: true
+      description: 绑定设备ID
+    created_at:
+      type: string
+      format: date-time
+      description: 创建时间
+    updated_at:
+      type: string
+      format: date-time
+      description: 更新时间
+
+GateWithDevice:
+  allOf:
+    - $ref: '#/Gate'
+  properties:
+    device:
+      $ref: '#/DeviceInfo'
+      nullable: true
+      description: 设备信息
+
+DeviceInfo:
+  type: object
+  properties:
+    id:
+      type: string
+      format: uuid
+      description: 设备ID
+    serial_number:
+      type: string
+      description: 设备序列号
+    status:
+      type: string
+      enum: [online, offline]
+      description: 设备状态
+    last_heartbeat:
+      type: string
+      format: date-time
+      nullable: true
+      description: 最后心跳时间
+
+CreateGateRequest:
+  type: object
+  required:
+    - name
+    - type
+  properties:
+    name:
+      type: string
+      description: 出入口名称
+      minLength: 2
+      maxLength: 20
+    type:
+      type: string
+      enum: [entry, exit]
+      description: 类型
+    device_id:
+      type: string
+      format: uuid
+      nullable: true
+      description: 绑定设备ID
+
+UpdateGateRequest:
+  type: object
+  required:
+    - name
+  properties:
+    name:
+      type: string
+      description: 出入口名称
+      minLength: 2
+      maxLength: 20
+    device_id:
+      type: string
+      format: uuid
+      nullable: true
+      description: 绑定设备ID

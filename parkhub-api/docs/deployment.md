@@ -68,8 +68,10 @@ FLUSH PRIVILEGES;
 ### 2. 运行迁移
 
 ```bash
-# 使用迁移工具或直接执行 SQL
-mysql -u parkhub -p parkhub < migrations/001_init_schema.sql
+# 按顺序执行所有迁移文件
+mysql -u parkhub -p parkhub < migrations/001_init_auth_tables.up.sql
+mysql -u parkhub -p parkhub < migrations/002_user_management_tables.up.sql
+mysql -u parkhub -p parkhub < migrations/003_parking_lot_tables.up.sql
 ```
 
 ### 3. 初始化种子数据
@@ -256,6 +258,8 @@ curl http://localhost:8080/health
 | 平台管理员 | platform_admin | Admin@123456 | 管理所有租户 |
 | 租户管理员 | tenant_admin | Tenant@123456 | 演示租户管理员 |
 | 操作员 | operator | Operator@123456 | 演示租户操作员 |
+
+种子数据还包含 3 个演示停车场（阳光广场地下停车场、星光购物中心停车场、翠湖花园地面停车场）及其出入口配置。
 
 **⚠️ 生产环境请务必修改默认密码！**
 
