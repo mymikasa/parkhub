@@ -25,10 +25,12 @@ func NewParkingLotHandler(parkingLotService service.ParkingLotService) *ParkingL
 // List 获取停车场列表
 func (h *ParkingLotHandler) List(c *gin.Context) {
 	tenantID := c.GetString("tenant_id")
+	role := c.GetString("role")
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "20"))
 	statusStr := c.Query("status")
 	keyword := c.Query("search")
+	filterTenantID := c.Query("tenant_id")
 
 	var status *domain.ParkingLotStatus
 	if statusStr != "" {
@@ -37,11 +39,13 @@ func (h *ParkingLotHandler) List(c *gin.Context) {
 	}
 
 	req := &service.ListParkingLotsRequest{
-		TenantID: tenantID,
-		Status:   status,
-		Keyword:  keyword,
-		Page:     page,
-		PageSize: pageSize,
+		OperatorRole:     role,
+		OperatorTenantID: tenantID,
+		TenantID:         filterTenantID,
+		Status:           status,
+		Keyword:          keyword,
+		Page:             page,
+		PageSize:         pageSize,
 	}
 
 	resp, err := h.parkingLotService.List(c.Request.Context(), req)

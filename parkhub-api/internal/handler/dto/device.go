@@ -13,6 +13,12 @@ type UpdateDeviceNameRequest struct {
 	Name string `json:"name" binding:"required,min=1,max=50"`
 }
 
+type BindDeviceRequest struct {
+	TenantID     string `json:"tenant_id" binding:"required,min=1,max=36"`
+	ParkingLotID string `json:"parking_lot_id" binding:"required,min=1,max=36"`
+	GateID       string `json:"gate_id" binding:"required,min=1,max=36"`
+}
+
 // DeviceDetail 设备详情
 type DeviceDetail struct {
 	ID              string  `json:"id"`

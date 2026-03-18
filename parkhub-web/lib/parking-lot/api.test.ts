@@ -122,11 +122,12 @@ describe('getParkingLots', () => {
   it('builds query string from filter', async () => {
     mockJsonResponse({ code: 0, message: 'success', data: { items: [], total: 0, page: 1, page_size: 20 } })
 
-    await getParkingLots({ status: 'active', search: '阳光', page: 2, page_size: 10 }, 'token')
+    await getParkingLots({ status: 'active', search: '阳光', tenant_id: 'tenant-1', page: 2, page_size: 10 }, 'token')
 
     const url = mockFetch.mock.calls[0][0] as string
     expect(url).toContain('status=active')
     expect(url).toContain('search=')
+    expect(url).toContain('tenant_id=tenant-1')
     expect(url).toContain('page=2')
     expect(url).toContain('page_size=10')
   })
@@ -259,6 +260,8 @@ describe('Gate APIs', () => {
           name: '东入口',
           type: 'entry',
           device_id: 'dev-1',
+          bound_device_count: 2,
+          offline_device_count: 1,
           device: {
             id: 'dev-1',
             serial_number: 'SN001',
@@ -289,6 +292,8 @@ describe('Gate APIs', () => {
     expect(result[0].device).not.toBeNull()
     expect(result[0].device!.serial_number).toBe('SN001')
     expect(result[0].device!.status).toBe('online')
+    expect(result[0].bound_device_count).toBe(2)
+    expect(result[0].offline_device_count).toBe(1)
     expect(result[1].device).toBeNull()
   })
 

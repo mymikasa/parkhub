@@ -3,7 +3,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getValidAccessToken } from '@/lib/auth/store';
 import * as api from './api';
-import type { DeviceFilter, CreateDeviceRequest, UpdateDeviceNameRequest } from './types';
+import type { DeviceFilter, CreateDeviceRequest, UpdateDeviceNameRequest, BindDeviceRequest } from './types';
 
 export const deviceKeys = {
   all: ['devices'] as const,
@@ -76,6 +76,40 @@ export function useUpdateDeviceName() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: deviceKeys.lists() });
       queryClient.invalidateQueries({ queryKey: deviceKeys.stats() });
+    },
+  });
+}
+
+export function useBindDevice() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: BindDeviceRequest }) => {
+      const accessToken = await getValidAccessToken();
+      if (!accessToken) throw new Error('未登录');
+      return api.bindDevice(id, data, accessToken);
+    },
+    onSuccess: (_, { id }) => {
+      queryClient.invalidateQueries({ queryKey: deviceKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: deviceKeys.stats() });
+      queryClient.invalidateQueries({ queryKey: deviceKeys.detail(id) });
+    },
+  });
+}
+
+export function useUnbindDevice() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const accessToken = await getValidAccessToken();
+      if (!accessToken) throw new Error('未登录');
+      return api.unbindDevice(id, accessToken);
+    },
+    onSuccess: (_, id) => {
+      queryClient.invalidateQueries({ queryKey: deviceKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: deviceKeys.stats() });
+      queryClient.invalidateQueries({ queryKey: deviceKeys.detail(id) });
     },
   });
 }

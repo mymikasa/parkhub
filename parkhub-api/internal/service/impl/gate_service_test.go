@@ -89,11 +89,12 @@ func (m *mockGateRepo) CountByParkingLotIDAndType(ctx context.Context, parkingLo
 
 // Test helpers
 
-func setupTestGateService() (service.GateService, *mockGateRepo, *mockParkingLotRepo) {
+func setupTestGateService() (service.GateService, *mockGateRepo, *mockParkingLotRepo, *mockDeviceRepo) {
 	gateRepo := newMockGateRepo()
 	lotRepo := newMockParkingLotRepo()
-	svc := NewGateService(gateRepo, lotRepo)
-	return svc, gateRepo, lotRepo
+	deviceRepo := newMockDeviceRepo()
+	svc := NewGateService(gateRepo, lotRepo, deviceRepo)
+	return svc, gateRepo, lotRepo, deviceRepo
 }
 
 func createTestGate(repo *mockGateRepo, id, parkingLotID, name string, gateType domain.GateType) *domain.Gate {
@@ -112,7 +113,7 @@ func createTestGate(repo *mockGateRepo, id, parkingLotID, name string, gateType 
 // Tests
 
 func TestGateService_Create_Success(t *testing.T) {
-	svc, _, _ := setupTestGateService()
+	svc, _, _, _ := setupTestGateService()
 
 	gate, err := svc.Create(context.Background(), &service.CreateGateRequest{
 		ParkingLotID: "lot-1",
@@ -134,27 +135,8 @@ func TestGateService_Create_Success(t *testing.T) {
 	}
 }
 
-func TestGateService_Create_WithDevice(t *testing.T) {
-	svc, _, _ := setupTestGateService()
-	deviceID := "device-1"
-
-	gate, err := svc.Create(context.Background(), &service.CreateGateRequest{
-		ParkingLotID: "lot-1",
-		Name:         "东入口",
-		Type:         domain.GateTypeEntry,
-		DeviceID:     &deviceID,
-	})
-
-	if err != nil {
-		t.Fatalf("Create() error = %v", err)
-	}
-	if gate.DeviceID == nil || *gate.DeviceID != "device-1" {
-		t.Errorf("DeviceID = %v, want device-1", gate.DeviceID)
-	}
-}
-
 func TestGateService_Create_DuplicateName(t *testing.T) {
-	svc, gateRepo, _ := setupTestGateService()
+	svc, gateRepo, _, _ := setupTestGateService()
 	createTestGate(gateRepo, "gate-1", "lot-1", "东入口", domain.GateTypeEntry)
 
 	_, err := svc.Create(context.Background(), &service.CreateGateRequest{
@@ -173,7 +155,7 @@ func TestGateService_Create_DuplicateName(t *testing.T) {
 }
 
 func TestGateService_Create_SameNameDifferentLot(t *testing.T) {
-	svc, gateRepo, _ := setupTestGateService()
+	svc, gateRepo, _, _ := setupTestGateService()
 	createTestGate(gateRepo, "gate-1", "lot-1", "东入口", domain.GateTypeEntry)
 
 	gate, err := svc.Create(context.Background(), &service.CreateGateRequest{
@@ -191,7 +173,7 @@ func TestGateService_Create_SameNameDifferentLot(t *testing.T) {
 }
 
 func TestGateService_GetByID_Success(t *testing.T) {
-	svc, gateRepo, _ := setupTestGateService()
+	svc, gateRepo, _, _ := setupTestGateService()
 	createTestGate(gateRepo, "gate-1", "lot-1", "东入口", domain.GateTypeEntry)
 
 	gate, err := svc.GetByID(context.Background(), "gate-1")
@@ -205,7 +187,7 @@ func TestGateService_GetByID_Success(t *testing.T) {
 }
 
 func TestGateService_GetByID_NotFound(t *testing.T) {
-	svc, _, _ := setupTestGateService()
+	svc, _, _, _ := setupTestGateService()
 
 	_, err := svc.GetByID(context.Background(), "nonexistent")
 
@@ -215,7 +197,7 @@ func TestGateService_GetByID_NotFound(t *testing.T) {
 }
 
 func TestGateService_ListByParkingLotID_Success(t *testing.T) {
-	svc, gateRepo, _ := setupTestGateService()
+	svc, gateRepo, _, _ := setupTestGateService()
 	createTestGate(gateRepo, "gate-1", "lot-1", "东入口", domain.GateTypeEntry)
 	createTestGate(gateRepo, "gate-2", "lot-1", "西出口", domain.GateTypeExit)
 	createTestGate(gateRepo, "gate-3", "lot-2", "南入口", domain.GateTypeEntry)
@@ -231,7 +213,7 @@ func TestGateService_ListByParkingLotID_Success(t *testing.T) {
 }
 
 func TestGateService_Update_Success(t *testing.T) {
-	svc, gateRepo, _ := setupTestGateService()
+	svc, gateRepo, _, _ := setupTestGateService()
 	createTestGate(gateRepo, "gate-1", "lot-1", "东入口", domain.GateTypeEntry)
 
 	gate, err := svc.Update(context.Background(), &service.UpdateGateRequest{
@@ -248,7 +230,7 @@ func TestGateService_Update_Success(t *testing.T) {
 }
 
 func TestGateService_Update_DuplicateName(t *testing.T) {
-	svc, gateRepo, _ := setupTestGateService()
+	svc, gateRepo, _, _ := setupTestGateService()
 	createTestGate(gateRepo, "gate-1", "lot-1", "东入口", domain.GateTypeEntry)
 	createTestGate(gateRepo, "gate-2", "lot-1", "西出口", domain.GateTypeExit)
 
@@ -263,7 +245,7 @@ func TestGateService_Update_DuplicateName(t *testing.T) {
 }
 
 func TestGateService_Update_SameName_NoError(t *testing.T) {
-	svc, gateRepo, _ := setupTestGateService()
+	svc, gateRepo, _, _ := setupTestGateService()
 	createTestGate(gateRepo, "gate-1", "lot-1", "东入口", domain.GateTypeEntry)
 
 	gate, err := svc.Update(context.Background(), &service.UpdateGateRequest{
@@ -280,10 +262,15 @@ func TestGateService_Update_SameName_NoError(t *testing.T) {
 }
 
 func TestGateService_Delete_Success(t *testing.T) {
-	svc, gateRepo, _ := setupTestGateService()
+	svc, gateRepo, _, deviceRepo := setupTestGateService()
 	createTestGate(gateRepo, "gate-1", "lot-1", "东入口", domain.GateTypeEntry)
 	createTestGate(gateRepo, "gate-2", "lot-1", "南入口", domain.GateTypeEntry)
 	createTestGate(gateRepo, "gate-3", "lot-1", "西出口", domain.GateTypeExit)
+	device := createTestDevice(deviceRepo, "device-1", "tenant-1", domain.DeviceStatusActive)
+	lotID := "lot-1"
+	gateID := "gate-1"
+	device.ParkingLotID = &lotID
+	device.GateID = &gateID
 
 	err := svc.Delete(context.Background(), "gate-1")
 
@@ -293,10 +280,13 @@ func TestGateService_Delete_Success(t *testing.T) {
 	if _, ok := gateRepo.gates["gate-1"]; ok {
 		t.Error("gate should be deleted")
 	}
+	if updated := deviceRepo.devices["device-1"]; updated.GateID != nil || updated.ParkingLotID != nil || updated.Status != domain.DeviceStatusPending {
+		t.Error("bound device should be unbound when gate deleted")
+	}
 }
 
 func TestGateService_Delete_LastEntryGate(t *testing.T) {
-	svc, gateRepo, _ := setupTestGateService()
+	svc, gateRepo, _, _ := setupTestGateService()
 	createTestGate(gateRepo, "gate-1", "lot-1", "东入口", domain.GateTypeEntry)
 	createTestGate(gateRepo, "gate-2", "lot-1", "西出口", domain.GateTypeExit)
 
@@ -312,7 +302,7 @@ func TestGateService_Delete_LastEntryGate(t *testing.T) {
 }
 
 func TestGateService_Delete_LastExitGate(t *testing.T) {
-	svc, gateRepo, _ := setupTestGateService()
+	svc, gateRepo, _, _ := setupTestGateService()
 	createTestGate(gateRepo, "gate-1", "lot-1", "东入口", domain.GateTypeEntry)
 	createTestGate(gateRepo, "gate-2", "lot-1", "西出口", domain.GateTypeExit)
 
@@ -328,7 +318,7 @@ func TestGateService_Delete_LastExitGate(t *testing.T) {
 }
 
 func TestGateService_Delete_NotFound(t *testing.T) {
-	svc, _, _ := setupTestGateService()
+	svc, _, _, _ := setupTestGateService()
 
 	err := svc.Delete(context.Background(), "nonexistent")
 

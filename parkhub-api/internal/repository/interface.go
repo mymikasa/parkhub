@@ -45,10 +45,10 @@ type UserRepo interface {
 
 // UserStats 用户统计信息
 type UserStats struct {
-	Total        int64
-	ActiveCount  int64
-	FrozenCount  int64
-	AdminCount   int64
+	Total         int64
+	ActiveCount   int64
+	FrozenCount   int64
+	AdminCount    int64
 	OperatorCount int64
 }
 
@@ -114,9 +114,9 @@ type ParkingLotRepo interface {
 
 // ParkingLotFilter 停车场查询过滤器
 type ParkingLotFilter struct {
-	Status  *domain.ParkingLotStatus
-	Keyword string
-	Page    int
+	Status   *domain.ParkingLotStatus
+	Keyword  string
+	Page     int
 	PageSize int
 }
 
@@ -135,8 +135,11 @@ type DeviceRepo interface {
 	FindByID(ctx context.Context, id string) (*domain.Device, error)
 	FindByIDGlobal(ctx context.Context, id string) (*domain.Device, error)
 	FindAll(ctx context.Context, tenantID string, filter DeviceFilter) ([]*domain.DeviceListItem, int64, error)
+	CountByGateID(ctx context.Context, gateID string) (int64, error)
+	FindByGateID(ctx context.Context, gateID string) ([]*domain.Device, error)
 	Update(ctx context.Context, device *domain.Device) error
 	UpdateHeartbeat(ctx context.Context, device *domain.Device) error
+	UnbindByGateID(ctx context.Context, gateID string) error
 	FindTimedOutDevices(ctx context.Context, threshold time.Time) ([]*domain.Device, error)
 	BatchUpdateStatus(ctx context.Context, ids []string, status domain.DeviceStatus) error
 	CountByStatus(ctx context.Context, tenantID string) (*DeviceStats, error)

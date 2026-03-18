@@ -318,11 +318,13 @@ type CreateParkingLotRequest struct {
 
 // ListParkingLotsRequest 停车场列表请求
 type ListParkingLotsRequest struct {
-	TenantID string
-	Status   *domain.ParkingLotStatus
-	Keyword  string
-	Page     int
-	PageSize int
+	OperatorRole     string
+	OperatorTenantID string
+	TenantID         string
+	Status           *domain.ParkingLotStatus
+	Keyword          string
+	Page             int
+	PageSize         int
 }
 
 // UpdateParkingLotRequest 更新停车场请求
@@ -378,6 +380,10 @@ type DeviceService interface {
 	List(ctx context.Context, req *ListDevicesRequest) (*DeviceListResponse, error)
 	// UpdateName 更新设备名称
 	UpdateName(ctx context.Context, req *UpdateDeviceNameRequest) (*domain.Device, error)
+	// Bind 绑定设备到租户、车场和出入口
+	Bind(ctx context.Context, req *BindDeviceRequest) (*domain.Device, error)
+	// Unbind 解绑设备
+	Unbind(ctx context.Context, req *UnbindDeviceRequest) (*domain.Device, error)
 	// GetStats 获取设备统计
 	GetStats(ctx context.Context, tenantID string) (*DeviceStatsResponse, error)
 }
@@ -411,6 +417,21 @@ type UpdateDeviceNameRequest struct {
 	ID       string
 	TenantID string
 	Name     string
+}
+
+type BindDeviceRequest struct {
+	ID               string
+	OperatorRole     string
+	OperatorTenantID string
+	TargetTenantID   string
+	ParkingLotID     string
+	GateID           string
+}
+
+type UnbindDeviceRequest struct {
+	ID               string
+	OperatorRole     string
+	OperatorTenantID string
 }
 
 // DeviceStatsResponse 设备统计响应
@@ -465,12 +486,10 @@ type CreateGateRequest struct {
 	ParkingLotID string
 	Name         string
 	Type         domain.GateType
-	DeviceID     *string
 }
 
 // UpdateGateRequest 更新出入口请求
 type UpdateGateRequest struct {
-	ID       string
-	Name     string
-	DeviceID *string
+	ID   string
+	Name string
 }

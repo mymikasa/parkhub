@@ -15,12 +15,18 @@ var GateServiceSet = wire.NewSet(NewGateService)
 type gateServiceImpl struct {
 	gateRepo       repository.GateRepo
 	parkingLotRepo repository.ParkingLotRepo
+	deviceRepo     repository.DeviceRepo
 }
 
-func NewGateService(gateRepo repository.GateRepo, parkingLotRepo repository.ParkingLotRepo) service.GateService {
+func NewGateService(
+	gateRepo repository.GateRepo,
+	parkingLotRepo repository.ParkingLotRepo,
+	deviceRepo repository.DeviceRepo,
+) service.GateService {
 	return &gateServiceImpl{
 		gateRepo:       gateRepo,
 		parkingLotRepo: parkingLotRepo,
+		deviceRepo:     deviceRepo,
 	}
 }
 
@@ -33,7 +39,7 @@ func (s *gateServiceImpl) Create(ctx context.Context, req *service.CreateGateReq
 		return nil, &domain.DomainError{Code: "GATE_NAME_EXISTS", Message: "该出入口名称已存在"}
 	}
 
-	gate := domain.NewGate(uuid.New().String(), req.ParkingLotID, req.Name, req.Type, req.DeviceID)
+	gate := domain.NewGate(uuid.New().String(), req.ParkingLotID, req.Name, req.Type, nil)
 	if err := s.gateRepo.Create(ctx, gate); err != nil {
 		return nil, err
 	}
@@ -71,7 +77,7 @@ func (s *gateServiceImpl) Update(ctx context.Context, req *service.UpdateGateReq
 		}
 	}
 
-	gate.Update(req.Name, req.DeviceID)
+	gate.Update(req.Name, nil)
 	if err := s.gateRepo.Update(ctx, gate); err != nil {
 		return nil, err
 	}
@@ -95,5 +101,8 @@ func (s *gateServiceImpl) Delete(ctx context.Context, id string) error {
 		return &domain.DomainError{Code: "LAST_EXIT_GATE", Message: "每个车场至少保留一个出口"}
 	}
 
+	if err := s.deviceRepo.UnbindByGateID(ctx, id); err != nil {
+		return err
+	}
 	return s.gateRepo.Delete(ctx, id)
 }

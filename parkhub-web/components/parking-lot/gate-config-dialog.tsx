@@ -11,13 +11,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -60,13 +53,10 @@ export function GateConfigDialog({
   const [isAdding, setIsAdding] = useState(false);
   const [editingGate, setEditingGate] = useState<string | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
-
-  // Form states
   const [newGateName, setNewGateName] = useState('');
   const [newGateType, setNewGateType] = useState<GateType>('entry');
-  const [newGateDeviceId, setNewGateDeviceId] = useState<string | null>(null);
   const [editGateName, setEditGateName] = useState('');
-  const [editGateDeviceId, setEditGateDeviceId] = useState<string | null>(null);
+
   const { data: gatesData = [], isLoading, isError, error } = useGates(open ? parkingLotId : '');
   const createGateMutation = useCreateGate();
   const updateGateMutation = useUpdateGate();
@@ -81,9 +71,7 @@ export function GateConfigDialog({
     setDeleteConfirm(null);
     setNewGateName('');
     setNewGateType('entry');
-    setNewGateDeviceId(null);
     setEditGateName('');
-    setEditGateDeviceId(null);
   }, [open]);
 
   const handleAddGate = async () => {
@@ -98,13 +86,11 @@ export function GateConfigDialog({
         data: {
           name: newGateName.trim(),
           type: newGateType,
-          device_id: newGateDeviceId,
         },
       });
       setIsAdding(false);
       setNewGateName('');
       setNewGateType('entry');
-      setNewGateDeviceId(null);
       toast.success('出入口添加成功');
     } catch (err) {
       const message = err instanceof Error ? err.message : '添加失败，请重试';
@@ -123,12 +109,10 @@ export function GateConfigDialog({
         id: gateId,
         data: {
           name: editGateName.trim(),
-          device_id: editGateDeviceId,
         },
       });
       setEditingGate(null);
       setEditGateName('');
-      setEditGateDeviceId(null);
       toast.success('修改已保存');
     } catch (err) {
       const message = err instanceof Error ? err.message : '保存失败，请重试';
@@ -150,30 +134,18 @@ export function GateConfigDialog({
   const startEdit = (gate: GateWithDevice) => {
     setEditingGate(gate.id);
     setEditGateName(gate.name);
-    setEditGateDeviceId(gate.device_id);
   };
 
   const cancelEdit = () => {
     setEditingGate(null);
     setEditGateName('');
-    setEditGateDeviceId(null);
-  };
-
-  const formatLastHeartbeat = (lastHeartbeat?: string) => {
-    if (!lastHeartbeat) return '';
-    const diff = Date.now() - new Date(lastHeartbeat).getTime();
-    const minutes = Math.floor(diff / 60000);
-    if (minutes < 1) return '刚刚';
-    if (minutes < 60) return `${minutes}分钟前`;
-    const hours = Math.floor(minutes / 60);
-    return `${hours}小时前`;
   };
 
   const entryCount = gates.filter(g => g.type === 'entry').length;
   const exitCount = gates.filter(g => g.type === 'exit').length;
-  const onlineCount = gates.filter(g => g.device?.status === 'online').length;
-  const offlineCount = gates.filter(g => g.device?.status === 'offline').length;
-  const unboundCount = gates.filter(g => !g.device_id).length;
+  const onlineCount = gates.reduce((sum, gate) => sum + Math.max((gate.bound_device_count || 0) - (gate.offline_device_count || 0), 0), 0);
+  const offlineCount = gates.reduce((sum, gate) => sum + (gate.offline_device_count || 0), 0);
+  const unboundCount = gates.filter(g => (g.bound_device_count || 0) === 0).length;
   const deletingGate = deleteConfirm ? gates.find((gate) => gate.id === deleteConfirm) ?? null : null;
 
   return (
@@ -230,7 +202,7 @@ export function GateConfigDialog({
             <div className="mb-4 flex items-center justify-between gap-3">
               <div>
                 <h3 className="text-sm font-semibold text-gray-900">出入口列表</h3>
-                <p className="mt-1 text-xs text-gray-500">查看绑定设备、在线状态与最后心跳，并支持原地编辑。</p>
+                <p className="mt-1 text-xs text-gray-500">查看当前绑定摘要和风险状态，设备归属请前往设备管理页处理。</p>
               </div>
               <Button
                 type="button"
@@ -264,38 +236,41 @@ export function GateConfigDialog({
                     <Plus className="h-5 w-5 text-gray-400" />
                   </div>
                   <p className="mt-4 text-sm font-medium text-gray-900">暂无出入口数据</p>
-                  <p className="mt-1 text-xs text-gray-500">先添加入口或出口，再为其绑定设备。</p>
+                  <p className="mt-1 text-xs text-gray-500">先添加入口或出口，再到设备管理页完成绑定。</p>
                 </div>
               ) : (
-                gates.map((gate) => (
-                  <div
-                    key={gate.id}
-                    className={`rounded-2xl border p-4 transition-all ${
-                      gate.device?.status === 'offline'
-                        ? 'border-red-200 bg-red-50/40'
-                        : editingGate === gate.id
-                        ? 'border-brand-200 bg-brand-50/40'
-                        : 'border-surface-border bg-slate-50/80 hover:bg-white'
-                    }`}
-                  >
-                    {editingGate === gate.id ? (
-                      <div className="space-y-4">
-                        <div className="flex items-center gap-3">
-                          <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${
-                            gate.type === 'entry' ? 'bg-emerald-100' : 'bg-blue-100'
-                          }`}>
-                            {gate.type === 'entry' ? (
-                              <ArrowDownToLine className="h-5 w-5 text-emerald-600" />
-                            ) : (
-                              <ArrowUpFromLine className="h-5 w-5 text-blue-600" />
-                            )}
+                gates.map((gate) => {
+                  const isOffline = (gate.offline_device_count || 0) > 0;
+                  const boundCount = gate.bound_device_count || 0;
+
+                  return (
+                    <div
+                      key={gate.id}
+                      className={`rounded-2xl border p-4 transition-all ${
+                        isOffline
+                          ? 'border-red-200 bg-red-50/40'
+                          : editingGate === gate.id
+                          ? 'border-brand-200 bg-brand-50/40'
+                          : 'border-surface-border bg-slate-50/80 hover:bg-white'
+                      }`}
+                    >
+                      {editingGate === gate.id ? (
+                        <div className="space-y-4">
+                          <div className="flex items-center gap-3">
+                            <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${
+                              gate.type === 'entry' ? 'bg-emerald-100' : 'bg-blue-100'
+                            }`}>
+                              {gate.type === 'entry' ? (
+                                <ArrowDownToLine className="h-5 w-5 text-emerald-600" />
+                              ) : (
+                                <ArrowUpFromLine className="h-5 w-5 text-blue-600" />
+                              )}
+                            </div>
+                            <div>
+                              <div className="text-sm font-medium text-gray-900">编辑{gate.type === 'entry' ? '入口' : '出口'}</div>
+                              <div className="text-xs text-gray-500">这里只维护出入口名称，设备归属请在设备管理页调整。</div>
+                            </div>
                           </div>
-                          <div>
-                            <div className="text-sm font-medium text-gray-900">编辑{gate.type === 'entry' ? '入口' : '出口'}</div>
-                            <div className="text-xs text-gray-500">调整名称和设备绑定，变更会立即影响现场操作端。</div>
-                          </div>
-                        </div>
-                        <div className="grid gap-3 sm:grid-cols-2">
                           <div className="space-y-1.5">
                             <Label className="text-xs text-gray-600">名称</Label>
                             <Input
@@ -304,128 +279,111 @@ export function GateConfigDialog({
                               className="h-10 rounded-xl border-gray-200 bg-white"
                             />
                           </div>
-                          <div className="space-y-1.5">
-                            <Label className="text-xs text-gray-600">绑定设备</Label>
-                            <Select value={editGateDeviceId || 'none'} onValueChange={(v) => setEditGateDeviceId(v === 'none' ? null : v)}>
-                              <SelectTrigger className="h-10 rounded-xl border-gray-200 bg-white">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="none">不绑定设备</SelectItem>
-                                {gate.device_id && (
-                                  <SelectItem value={gate.device_id}>
-                                    {gate.device?.serial_number || `当前绑定设备 (${gate.device_id})`}
-                                  </SelectItem>
-                                )}
-                              </SelectContent>
-                            </Select>
-                            <p className="text-[11px] text-gray-400">当前仓库未接入可选设备列表接口，此处支持保留现有绑定或解绑。</p>
-                          </div>
-                        </div>
-                        <div className="flex flex-wrap justify-end gap-2">
-                          <Button size="sm" variant="outline" onClick={cancelEdit} className="bg-white">
-                            取消
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="destructive"
-                            onClick={() => {
-                              cancelEdit();
-                              setDeleteConfirm(gate.id);
-                            }}
-                            className="bg-red-50 text-red-600 hover:bg-red-100"
-                          >
-                            <Trash2 className="h-4 w-4 mr-1" />
-                            删除
-                          </Button>
-                          <Button
-                            size="sm"
-                            onClick={() => handleUpdateGate(gate.id)}
-                            disabled={isSubmitting}
-                            className="btn-primary border-0 text-white"
-                          >
-                            {isSubmitting ? (
-                              <><Loader2 className="h-4 w-4 mr-1 animate-spin" />保存中...</>
-                            ) : (
-                              '保存'
-                            )}
-                          </Button>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="flex items-center gap-3">
-                          <div className={`flex h-11 w-11 items-center justify-center rounded-xl ${
-                            gate.type === 'entry' ? 'bg-emerald-100' : 'bg-blue-100'
-                          }`}>
-                            {gate.type === 'entry' ? (
-                              <ArrowDownToLine className="h-5 w-5 text-emerald-600" />
-                            ) : (
-                              <ArrowUpFromLine className="h-5 w-5 text-blue-600" />
-                            )}
-                          </div>
-                          <div>
-                            <div className="flex flex-wrap items-center gap-2">
-                              <p className="font-medium text-gray-900">{gate.name}</p>
-                              <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${
-                                gate.type === 'entry' ? 'bg-emerald-50 text-emerald-700' : 'bg-blue-50 text-blue-700'
-                              }`}>
-                                {gate.type === 'entry' ? '入口' : '出口'}
-                              </span>
-                            </div>
-                            <div className="mt-1 flex flex-wrap items-center gap-2 text-sm">
-                              {gate.device ? (
-                                <>
-                                  <span className="text-gray-500">
-                                    绑定设备: <span className="font-medium text-gray-700">{gate.device.serial_number}</span>
-                                  </span>
-                                  {gate.device.status === 'online' ? (
-                                    <span className="inline-flex items-center gap-1 text-emerald-600">
-                                      <Wifi className="h-3 w-3" />
-                                      在线
-                                    </span>
-                                  ) : (
-                                    <span className="inline-flex items-center gap-1 text-red-500">
-                                      <WifiOff className="h-3 w-3" />
-                                      离线
-                                    </span>
-                                  )}
-                                </>
+                          <div className="flex flex-wrap justify-end gap-2">
+                            <Button size="sm" variant="outline" onClick={cancelEdit} className="bg-white">
+                              取消
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={() => {
+                                cancelEdit();
+                                setDeleteConfirm(gate.id);
+                              }}
+                              className="bg-red-50 text-red-600 hover:bg-red-100"
+                            >
+                              <Trash2 className="h-4 w-4 mr-1" />
+                              删除
+                            </Button>
+                            <Button
+                              size="sm"
+                              onClick={() => handleUpdateGate(gate.id)}
+                              disabled={isSubmitting}
+                              className="btn-primary border-0 text-white"
+                            >
+                              {isSubmitting ? (
+                                <><Loader2 className="h-4 w-4 mr-1 animate-spin" />保存中...</>
                               ) : (
-                                <span className="text-gray-400">未绑定设备</span>
+                                '保存'
+                              )}
+                            </Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex items-center gap-3">
+                            <div className={`flex h-11 w-11 items-center justify-center rounded-xl ${
+                              gate.type === 'entry' ? 'bg-emerald-100' : 'bg-blue-100'
+                            }`}>
+                              {gate.type === 'entry' ? (
+                                <ArrowDownToLine className="h-5 w-5 text-emerald-600" />
+                              ) : (
+                                <ArrowUpFromLine className="h-5 w-5 text-blue-600" />
                               )}
                             </div>
-                            {gate.device?.status === 'offline' && gate.device.last_heartbeat && (
-                              <p className="mt-1 inline-flex items-center gap-1 rounded-full bg-red-50 px-2 py-1 text-xs text-red-600">
-                                <AlertCircle className="h-3 w-3" />
-                                设备离线 · 最后心跳 {formatLastHeartbeat(gate.device.last_heartbeat)}
-                              </p>
-                            )}
+                            <div>
+                              <div className="flex flex-wrap items-center gap-2">
+                                <p className="font-medium text-gray-900">{gate.name}</p>
+                                <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${
+                                  gate.type === 'entry' ? 'bg-emerald-50 text-emerald-700' : 'bg-blue-50 text-blue-700'
+                                }`}>
+                                  {gate.type === 'entry' ? '入口' : '出口'}
+                                </span>
+                              </div>
+                              <div className="mt-1 flex flex-wrap items-center gap-2 text-sm">
+                                {boundCount > 0 ? (
+                                  <>
+                                    <span className="text-gray-500">
+                                      已绑定设备: <span className="font-medium text-gray-700">{boundCount} 台</span>
+                                    </span>
+                                    {isOffline ? (
+                                      <span className="inline-flex items-center gap-1 text-red-500">
+                                        <WifiOff className="h-3 w-3" />
+                                        存在离线设备
+                                      </span>
+                                    ) : (
+                                      <span className="inline-flex items-center gap-1 text-emerald-600">
+                                        <Wifi className="h-3 w-3" />
+                                        绑定设备在线
+                                      </span>
+                                    )}
+                                  </>
+                                ) : (
+                                  <span className="text-gray-400">未绑定设备</span>
+                                )}
+                              </div>
+                              {isOffline && (
+                                <p className="mt-1 inline-flex items-center gap-1 rounded-full bg-red-50 px-2 py-1 text-xs text-red-600">
+                                  <AlertCircle className="h-3 w-3" />
+                                  当前出入口存在 {gate.offline_device_count} 台离线设备
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${
+                              boundCount === 0
+                                ? 'bg-gray-100 text-gray-500'
+                                : isOffline
+                                ? 'bg-red-50 text-red-600'
+                                : 'bg-emerald-50 text-emerald-600'
+                            }`}>
+                              {boundCount === 0 ? '未绑定' : isOffline ? '存在离线' : '已绑定'}
+                            </span>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-gray-400 hover:bg-white hover:text-gray-600"
+                              onClick={() => startEdit(gate)}
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
                           </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${
-                            gate.device?.status === 'online'
-                              ? 'bg-emerald-50 text-emerald-600'
-                              : gate.device?.status === 'offline'
-                              ? 'bg-red-50 text-red-600'
-                              : 'bg-gray-100 text-gray-500'
-                          }`}>
-                            {gate.device?.status === 'online' ? '在线' : gate.device?.status === 'offline' ? '离线' : '未绑定'}
-                          </span>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-gray-400 hover:bg-white hover:text-gray-600"
-                            onClick={() => startEdit(gate)}
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ))
+                      )}
+                    </div>
+                  );
+                })
               )}
             </div>
           </div>
@@ -435,7 +393,7 @@ export function GateConfigDialog({
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <h3 className="text-sm font-semibold text-gray-900">新增出入口</h3>
-                  <p className="mt-1 text-xs text-gray-500">为当前车场追加入口或出口，可先创建后再绑定设备。</p>
+                  <p className="mt-1 text-xs text-gray-500">创建完成后，可在设备管理页为该出入口分配设备。</p>
                 </div>
                 {isAdding && (
                   <span className="rounded-full bg-brand-50 px-2.5 py-1 text-[11px] font-medium text-brand-700">
@@ -481,17 +439,8 @@ export function GateConfigDialog({
                       </Button>
                     </div>
                   </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="new-device" className="text-xs text-gray-600">绑定设备</Label>
-                    <Select value={newGateDeviceId || 'none'} onValueChange={(v) => setNewGateDeviceId(v === 'none' ? null : v)}>
-                      <SelectTrigger className="h-10 rounded-xl border-gray-200 bg-gray-50/70 focus:bg-white">
-                        <SelectValue placeholder="选择未绑定设备" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">不绑定设备</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <p className="text-[11px] text-gray-400">设备列表接口尚未接入，当前创建后可在设备管理打通后再补充绑定。</p>
+                  <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-500">
+                    设备绑定入口已迁移到设备管理页，这里只创建基础出入口节点。
                   </div>
                   <div className="flex justify-end gap-2 pt-2">
                     <Button
@@ -502,7 +451,6 @@ export function GateConfigDialog({
                         setIsAdding(false);
                         setNewGateName('');
                         setNewGateType('entry');
-                        setNewGateDeviceId(null);
                       }}
                     >
                       取消
@@ -529,7 +477,7 @@ export function GateConfigDialog({
                 >
                   <div>
                     <div className="text-sm font-medium text-gray-900">创建新的出入口节点</div>
-                    <div className="mt-1 text-xs text-gray-500">支持入口 / 出口类型切换，并可选择暂不绑定设备。</div>
+                    <div className="mt-1 text-xs text-gray-500">支持入口 / 出口类型切换，设备后续从设备管理页绑定。</div>
                   </div>
                   <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-white text-brand-600 ring-1 ring-slate-200">
                     <Plus className="h-4 w-4" />
@@ -593,14 +541,14 @@ export function GateConfigDialog({
                         </span>
                       </div>
                       <p className="mt-1 text-xs text-gray-500">
-                        {deletingGate.device
-                          ? `当前绑定设备：${deletingGate.device.serial_number}`
+                        {(deletingGate.bound_device_count || 0) > 0
+                          ? `当前绑定设备：${deletingGate.bound_device_count} 台`
                           : '当前未绑定设备'}
                       </p>
-                      {deletingGate.device?.status === 'offline' && deletingGate.device.last_heartbeat && (
+                      {(deletingGate.offline_device_count || 0) > 0 && (
                         <p className="mt-2 inline-flex items-center gap-1 rounded-full bg-red-50 px-2 py-1 text-xs text-red-600">
                           <AlertCircle className="h-3 w-3" />
-                          设备离线 · 最后心跳 {formatLastHeartbeat(deletingGate.device.last_heartbeat)}
+                          当前出入口存在 {deletingGate.offline_device_count} 台离线设备
                         </p>
                       )}
                     </div>

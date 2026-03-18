@@ -84,7 +84,12 @@ func (s *parkingLotServiceImpl) List(ctx context.Context, req *service.ListParki
 		PageSize: req.PageSize,
 	}
 
-	items, total, err := s.parkingLotRepo.FindByTenantID(ctx, req.TenantID, filter)
+	tenantID := req.OperatorTenantID
+	if req.OperatorRole == "platform_admin" {
+		tenantID = req.TenantID
+	}
+
+	items, total, err := s.parkingLotRepo.FindByTenantID(ctx, tenantID, filter)
 	if err != nil {
 		return nil, err
 	}

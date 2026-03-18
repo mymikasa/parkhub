@@ -37,6 +37,12 @@ export interface UpdateDeviceNameRequest {
   name: string;
 }
 
+export interface BindDeviceRequest {
+  tenant_id: string;
+  parking_lot_id: string;
+  gate_id: string;
+}
+
 export interface DeviceListResponse {
   items: Device[];
   total: number;
@@ -59,4 +65,12 @@ export interface DeviceFilter {
   keyword?: string;
   page?: number;
   page_size?: number;
+}
+
+export interface ControlDeviceRequest {
+  command: 'open_gate';
+}
+
+export interface ControlDeviceResponse {
+  success: boolean;
 }
