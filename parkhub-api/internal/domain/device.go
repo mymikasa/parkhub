@@ -29,12 +29,52 @@ const (
 	DeviceStatusDisabled DeviceStatus = "disabled" // 已禁用
 )
 
-// 设备相关错误
 var (
 	ErrDeviceNotFound    = errors.New("设备不存在")
 	ErrDeviceIDDuplicate = errors.New("设备序列号已存在")
 	ErrDeviceNotBound    = errors.New("设备当前未绑定")
+	ErrDeviceOffline     = errors.New("设备离线请检查心跳")
+	ErrInvalidCommand    = errors.New("无效的控制指令")
 )
+
+type DeviceControlLog struct {
+	ID           string
+	TenantID     string
+	DeviceID     string
+	OperatorID   string
+	OperatorName string
+	Command      string
+	CreatedAt    time.Time
+}
+
+func NewDeviceControlLog(id, tenantID, deviceID, operatorID, operatorName, command string) *DeviceControlLog {
+	return &DeviceControlLog{
+		ID:           id,
+		TenantID:     tenantID,
+		DeviceID:     deviceID,
+		OperatorID:   operatorID,
+		OperatorName: operatorName,
+		Command:      command,
+		CreatedAt:    time.Now(),
+	}
+}
+
+type ControlCommand string
+
+const (
+	ControlCommandOpenGate ControlCommand = "open_gate"
+)
+
+func IsValidControlCommand(cmd string) bool {
+	return ControlCommand(cmd) == ControlCommandOpenGate
+}
+
+type ControlMessage struct {
+	Command      string `json:"command"`
+	OperatorID   string `json:"operator_id"`
+	OperatorName string `json:"operator_name"`
+	Timestamp    int64  `json:"timestamp"`
+}
 
 // NewDevice 创建新设备（首次心跳上报时创建）
 func NewDevice(id, tenantID string) *Device {

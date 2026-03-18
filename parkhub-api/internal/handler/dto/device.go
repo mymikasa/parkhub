@@ -2,13 +2,11 @@ package dto
 
 import "github.com/parkhub/api/internal/service"
 
-// CreateDeviceRequest 手动创建设备请求
 type CreateDeviceRequest struct {
 	ID   string `json:"id" binding:"required,min=1,max=100"`
 	Name string `json:"name" binding:"omitempty,max=50"`
 }
 
-// UpdateDeviceNameRequest 更新设备名称请求
 type UpdateDeviceNameRequest struct {
 	Name string `json:"name" binding:"required,min=1,max=50"`
 }
@@ -17,6 +15,10 @@ type BindDeviceRequest struct {
 	TenantID     string `json:"tenant_id" binding:"required,min=1,max=36"`
 	ParkingLotID string `json:"parking_lot_id" binding:"required,min=1,max=36"`
 	GateID       string `json:"gate_id" binding:"required,min=1,max=36"`
+}
+
+type ControlDeviceRequest struct {
+	Command string `json:"command" binding:"required,oneof=open_gate"`
 }
 
 // DeviceDetail 设备详情

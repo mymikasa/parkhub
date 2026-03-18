@@ -15,11 +15,15 @@ import (
 var DeviceHandlerSet = wire.NewSet(NewDeviceHandler)
 
 type DeviceHandler struct {
-	deviceService service.DeviceService
+	deviceService        service.DeviceService
+	deviceControlService service.DeviceControlService
 }
 
-func NewDeviceHandler(deviceService service.DeviceService) *DeviceHandler {
-	return &DeviceHandler{deviceService: deviceService}
+func NewDeviceHandler(deviceService service.DeviceService, deviceControlService service.DeviceControlService) *DeviceHandler {
+	return &DeviceHandler{
+		deviceService:        deviceService,
+		deviceControlService: deviceControlService,
+	}
 }
 
 // Create 手动创建设备
@@ -223,6 +227,36 @@ func (h *DeviceHandler) GetStats(c *gin.Context) {
 	})
 }
 
+func (h *DeviceHandler) Control(c *gin.Context) {
+	deviceID := c.Param("id")
+	tenantID := c.GetString("tenant_id")
+	userID := c.GetString("user_id")
+	realName := c.GetString("real_name")
+
+	var req dto.ControlDeviceRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, dto.Response{Code: 400, Message: validator.FormatValidationError(err)})
+		return
+	}
+
+	_, err := h.deviceControlService.Control(c.Request.Context(), &service.ControlDeviceRequest{
+		DeviceID:     deviceID,
+		TenantID:     tenantID,
+		Command:      req.Command,
+		OperatorID:   userID,
+		OperatorName: realName,
+	})
+	if err != nil {
+		h.handleError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, dto.Response{
+		Code:    0,
+		Message: "控制指令已发送",
+	})
+}
+
 func (h *DeviceHandler) toDeviceDetailDTO(device *domain.Device) dto.DeviceDetail {
 	var lastHeartbeat *string
 	if device.LastHeartbeat != nil {
@@ -257,6 +291,10 @@ func (h *DeviceHandler) handleError(c *gin.Context, err error) {
 			c.JSON(http.StatusBadRequest, dto.Response{Code: 40003, Message: de.Message})
 		case "TENANT_NOT_FOUND", "PARKING_LOT_NOT_FOUND", "GATE_NOT_FOUND":
 			c.JSON(http.StatusNotFound, dto.Response{Code: 40402, Message: de.Message})
+		case domain.CodeDeviceOffline:
+			c.JSON(http.StatusBadRequest, dto.Response{Code: 40001, Message: de.Message})
+		case domain.CodeInvalidCommand:
+			c.JSON(http.StatusBadRequest, dto.Response{Code: 40002, Message: de.Message})
 		default:
 			c.JSON(http.StatusInternalServerError, dto.Response{Code: 500, Message: de.Message})
 		}

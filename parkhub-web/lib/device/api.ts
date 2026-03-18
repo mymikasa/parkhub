@@ -7,6 +7,8 @@ import type {
   CreateDeviceRequest,
   UpdateDeviceNameRequest,
   BindDeviceRequest,
+  ControlDeviceRequest,
+  ControlDeviceResponse,
 } from './types';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080';
@@ -267,4 +269,20 @@ export async function unbindDevice(
     accessToken
   );
   return mapDeviceDetail(unwrapResponse(response));
+}
+
+export async function controlDevice(
+  id: string,
+  req: ControlDeviceRequest,
+  accessToken: string
+): Promise<ControlDeviceResponse> {
+  const response = await request<ControlDeviceResponse | ApiEnvelope<ControlDeviceResponse>>(
+    `/api/v1/devices/${id}/control`,
+    {
+      method: 'POST',
+      body: JSON.stringify(req),
+    },
+    accessToken
+  );
+  return unwrapResponse(response);
 }

@@ -493,3 +493,19 @@ type UpdateGateRequest struct {
 	ID   string
 	Name string
 }
+
+type DeviceControlService interface {
+	Control(ctx context.Context, req *ControlDeviceRequest) (*ControlDeviceResponse, error)
+}
+
+type ControlDeviceRequest struct {
+	DeviceID     string
+	TenantID     string
+	Command      string
+	OperatorID   string
+	OperatorName string
+}
+
+type ControlDeviceResponse struct {
+	Success bool
+}
