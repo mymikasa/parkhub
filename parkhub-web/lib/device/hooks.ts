@@ -11,6 +11,7 @@ export const deviceKeys = {
   list: (filter: DeviceFilter) => [...deviceKeys.lists(), filter] as const,
   details: () => [...deviceKeys.all, 'detail'] as const,
   detail: (id: string) => [...deviceKeys.details(), id] as const,
+  stats: () => [...deviceKeys.all, 'stats'] as const,
 };
 
 export function useDevices(filter: DeviceFilter) {
@@ -20,6 +21,17 @@ export function useDevices(filter: DeviceFilter) {
       const accessToken = await getValidAccessToken();
       if (!accessToken) throw new Error('未登录');
       return api.getDevices(filter, accessToken);
+    },
+  });
+}
+
+export function useDeviceStats() {
+  return useQuery({
+    queryKey: deviceKeys.stats(),
+    queryFn: async () => {
+      const accessToken = await getValidAccessToken();
+      if (!accessToken) throw new Error('未登录');
+      return api.getDeviceStats(accessToken);
     },
   });
 }
@@ -47,6 +59,7 @@ export function useUpdateDeviceName() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: deviceKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: deviceKeys.stats() });
     },
   });
 }

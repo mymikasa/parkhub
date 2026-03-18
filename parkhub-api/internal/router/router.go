@@ -218,6 +218,9 @@ func (r *Router) setupDeviceRoutes(rg *gin.RouterGroup) {
 		// GET /api/v1/devices - 获取设备列表
 		devices.GET("", r.deviceHandler.List)
 
+		// GET /api/v1/devices/stats - 获取设备统计
+		devices.GET("/stats", r.deviceHandler.GetStats)
+
 		// GET /api/v1/devices/:id - 获取设备详情
 		devices.GET("/:id", r.deviceHandler.Get)
 

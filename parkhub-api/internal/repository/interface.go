@@ -131,6 +131,16 @@ type DeviceRepo interface {
 	FindByID(ctx context.Context, id string) (*domain.Device, error)
 	FindAll(ctx context.Context, tenantID string, filter DeviceFilter) ([]*domain.DeviceListItem, int64, error)
 	Update(ctx context.Context, device *domain.Device) error
+	CountByStatus(ctx context.Context, tenantID string) (*DeviceStats, error)
+}
+
+// DeviceStats 设备统计信息
+type DeviceStats struct {
+	Total    int64
+	Active   int64
+	Offline  int64
+	Pending  int64
+	Disabled int64
 }
 
 // DeviceFilter 设备查询过滤器

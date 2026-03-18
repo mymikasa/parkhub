@@ -3,6 +3,7 @@ import type {
   DeviceDetail,
   DeviceListResponse,
   DeviceFilter,
+  DeviceStats,
   UpdateDeviceNameRequest,
 } from './types';
 
@@ -139,6 +140,30 @@ function buildQueryString(filter: DeviceFilter): string {
 
   const queryString = params.toString();
   return queryString ? `?${queryString}` : '';
+}
+
+type DeviceStatsRaw = Partial<DeviceStats> & {
+  Total?: number;
+  Active?: number;
+  Offline?: number;
+  Pending?: number;
+  Disabled?: number;
+};
+
+export async function getDeviceStats(accessToken: string): Promise<DeviceStats> {
+  const response = await request<DeviceStatsRaw | ApiEnvelope<DeviceStatsRaw>>(
+    '/api/v1/devices/stats',
+    {},
+    accessToken
+  );
+  const raw = unwrapResponse(response);
+  return {
+    total: raw.total ?? raw.Total ?? 0,
+    active: raw.active ?? raw.Active ?? 0,
+    offline: raw.offline ?? raw.Offline ?? 0,
+    pending: raw.pending ?? raw.Pending ?? 0,
+    disabled: raw.disabled ?? raw.Disabled ?? 0,
+  };
 }
 
 export async function getDevices(

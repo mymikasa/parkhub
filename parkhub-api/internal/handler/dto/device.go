@@ -45,6 +45,15 @@ type DeviceListData struct {
 	PageSize int               `json:"page_size"`
 }
 
+// DeviceStatsData 设备统计数据
+type DeviceStatsData struct {
+	Total    int64 `json:"total"`
+	Active   int64 `json:"active"`
+	Offline  int64 `json:"offline"`
+	Pending  int64 `json:"pending"`
+	Disabled int64 `json:"disabled"`
+}
+
 // ToDeviceListItemDTO converts service layer item to DTO.
 func ToDeviceListItemDTO(item *service.DeviceListItem) *DeviceListItem {
 	return &DeviceListItem{

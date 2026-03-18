@@ -39,6 +39,14 @@ export interface DeviceListResponse {
   page_size: number;
 }
 
+export interface DeviceStats {
+  total: number;
+  active: number;
+  offline: number;
+  pending: number;
+  disabled: number;
+}
+
 export interface DeviceFilter {
   parking_lot_id?: string;
   gate_id?: string;

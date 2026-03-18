@@ -120,6 +120,29 @@ func (h *DeviceHandler) UpdateName(c *gin.Context) {
 	})
 }
 
+// GetStats 获取设备统计
+func (h *DeviceHandler) GetStats(c *gin.Context) {
+	tenantID := c.GetString("tenant_id")
+
+	stats, err := h.deviceService.GetStats(c.Request.Context(), tenantID)
+	if err != nil {
+		h.handleError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, dto.Response{
+		Code:    0,
+		Message: "success",
+		Data: dto.DeviceStatsData{
+			Total:    stats.Total,
+			Active:   stats.Active,
+			Offline:  stats.Offline,
+			Pending:  stats.Pending,
+			Disabled: stats.Disabled,
+		},
+	})
+}
+
 func (h *DeviceHandler) toDeviceDetailDTO(device *domain.Device) dto.DeviceDetail {
 	var lastHeartbeat *string
 	if device.LastHeartbeat != nil {

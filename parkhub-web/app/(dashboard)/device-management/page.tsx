@@ -38,7 +38,8 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
-import { useDevices, useUpdateDeviceName } from "@/lib/device/hooks";
+import { useDevices, useDeviceStats, useUpdateDeviceName } from "@/lib/device/hooks";
+import { usePermissions } from "@/lib/auth/hooks";
 import type { Device, DeviceStatus, DeviceFilter } from "@/lib/device/types";
 
 // Status configuration
@@ -116,21 +117,14 @@ export default function DeviceManagementPage() {
   };
 
   const { data, isLoading, refetch } = useDevices(filter);
+  const { data: stats, isLoading: isLoadingStats } = useDeviceStats();
+  const { isOperator } = usePermissions();
   const devices = data?.items || [];
   const total = data?.total || 0;
   const totalPages = Math.ceil(total / pageSize);
 
   // Edit dialog state
   const [editDevice, setEditDevice] = useState<Device | null>(null);
-
-  // Count by status
-  const statusCounts = {
-    all: total,
-    active: devices.filter((d) => d.status === "active").length,
-    offline: devices.filter((d) => d.status === "offline").length,
-    pending: devices.filter((d) => d.status === "pending").length,
-    disabled: devices.filter((d) => d.status === "disabled").length,
-  };
 
   return (
     <>
@@ -183,43 +177,43 @@ export default function DeviceManagementPage() {
         <div className="grid grid-cols-5 gap-4">
           <StatsCard
             title="设备总数"
-            value={total}
+            value={stats?.total || 0}
             icon={Cpu}
             iconBg="bg-blue-50"
             iconColor="text-blue-600"
-            isLoading={isLoading}
+            isLoading={isLoadingStats}
           />
           <StatsCard
             title="在线"
-            value={statusCounts.active}
+            value={stats?.active || 0}
             icon={Wifi}
             iconBg="bg-emerald-50"
             iconColor="text-emerald-600"
-            isLoading={isLoading}
+            isLoading={isLoadingStats}
           />
           <StatsCard
             title="离线"
-            value={statusCounts.offline}
+            value={stats?.offline || 0}
             icon={WifiOff}
             iconBg="bg-gray-100"
             iconColor="text-gray-500"
-            isLoading={isLoading}
+            isLoading={isLoadingStats}
           />
           <StatsCard
             title="待分配"
-            value={statusCounts.pending}
+            value={stats?.pending || 0}
             icon={Clock}
             iconBg="bg-amber-50"
             iconColor="text-amber-600"
-            isLoading={isLoading}
+            isLoading={isLoadingStats}
           />
           <StatsCard
             title="已禁用"
-            value={statusCounts.disabled}
+            value={stats?.disabled || 0}
             icon={WifiOff}
             iconBg="bg-red-50"
             iconColor="text-red-500"
-            isLoading={isLoading}
+            isLoading={isLoadingStats}
           />
         </div>
       </div>
@@ -260,6 +254,7 @@ export default function DeviceManagementPage() {
                     <DeviceRow
                       key={device.id}
                       device={device}
+                      canEdit={!isOperator}
                       onEdit={() => setEditDevice(device)}
                     />
                   ))}
@@ -353,9 +348,11 @@ function StatsCard({
 // Device Table Row
 function DeviceRow({
   device,
+  canEdit,
   onEdit,
 }: {
   device: Device;
+  canEdit: boolean;
   onEdit: () => void;
 }) {
   const statusConfig = STATUS_CONFIG[device.status];
@@ -401,13 +398,15 @@ function DeviceRow({
         </span>
       </TableCell>
       <TableCell className="pr-6 text-right">
-        <button
-          onClick={onEdit}
-          className="inline-flex items-center gap-1.5 text-xs text-brand-600 hover:text-brand-700 font-medium transition-colors"
-        >
-          <Pencil className="h-3 w-3" />
-          编辑
-        </button>
+        {canEdit && (
+          <button
+            onClick={onEdit}
+            className="inline-flex items-center gap-1.5 text-xs text-brand-600 hover:text-brand-700 font-medium transition-colors"
+          >
+            <Pencil className="h-3 w-3" />
+            编辑
+          </button>
+        )}
       </TableCell>
     </TableRow>
   );

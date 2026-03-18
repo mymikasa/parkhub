@@ -96,6 +96,21 @@ func (s *deviceServiceImpl) UpdateName(ctx context.Context, req *service.UpdateD
 	return device, nil
 }
 
+func (s *deviceServiceImpl) GetStats(ctx context.Context, tenantID string) (*service.DeviceStatsResponse, error) {
+	stats, err := s.deviceRepo.CountByStatus(ctx, tenantID)
+	if err != nil {
+		return nil, err
+	}
+
+	return &service.DeviceStatsResponse{
+		Total:    stats.Total,
+		Active:   stats.Active,
+		Offline:  stats.Offline,
+		Pending:  stats.Pending,
+		Disabled: stats.Disabled,
+	}, nil
+}
+
 func toDeviceListItem(item *domain.DeviceListItem) *service.DeviceListItem {
 	var lastHeartbeat *string
 	if item.LastHeartbeat != nil {

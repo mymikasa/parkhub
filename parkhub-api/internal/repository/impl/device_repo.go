@@ -83,6 +83,46 @@ func (r *deviceRepo) FindAll(ctx context.Context, tenantID string, filter reposi
 	return results, total, nil
 }
 
+func (r *deviceRepo) CountByStatus(ctx context.Context, tenantID string) (*repository.DeviceStats, error) {
+	type statusCount struct {
+		Status string `gorm:"column:status"`
+		Count  int64  `gorm:"column:count"`
+	}
+
+	q := r.db.WithContext(ctx).
+		Table("devices").
+		Select("status, COUNT(*) as count").
+		Where("deleted_at IS NULL")
+
+	if tenantID != "" {
+		q = q.Where("tenant_id = ?", tenantID)
+	}
+
+	q = q.Group("status")
+
+	var rows []statusCount
+	if err := q.Find(&rows).Error; err != nil {
+		return nil, err
+	}
+
+	stats := &repository.DeviceStats{}
+	for _, row := range rows {
+		switch domain.DeviceStatus(row.Status) {
+		case domain.DeviceStatusActive:
+			stats.Active = row.Count
+		case domain.DeviceStatusOffline:
+			stats.Offline = row.Count
+		case domain.DeviceStatusPending:
+			stats.Pending = row.Count
+		case domain.DeviceStatusDisabled:
+			stats.Disabled = row.Count
+		}
+		stats.Total += row.Count
+	}
+
+	return stats, nil
+}
+
 func (r *deviceRepo) Update(ctx context.Context, device *domain.Device) error {
 	d := dao.ToDeviceDAO(device)
 	result := r.db.WithContext(ctx).Model(d).Where("deleted_at IS NULL").Updates(map[string]any{
