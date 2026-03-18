@@ -59,12 +59,17 @@ func (d *GateWithDeviceDAO) ToDomainWithDevice() *domain.GateWithDevice {
 	gate := d.ToDomain()
 	var device *domain.GateDeviceInfo
 	if d.DeviceID != nil {
-		device = &domain.GateDeviceInfo{
+		info := domain.GateDeviceInfo{
 			ID:            *d.DeviceID,
-			SerialNumber:  *d.DeviceSerialNumber,
-			Status:        *d.DeviceStatus,
 			LastHeartbeat: d.DeviceLastHeartbeat,
 		}
+		if d.DeviceSerialNumber != nil {
+			info.SerialNumber = *d.DeviceSerialNumber
+		}
+		if d.DeviceStatus != nil {
+			info.Status = *d.DeviceStatus
+		}
+		device = &info
 	}
 	return &domain.GateWithDevice{
 		Gate:  *gate,

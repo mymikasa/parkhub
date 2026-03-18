@@ -65,8 +65,8 @@ func (s *parkingLotServiceImpl) GetByID(ctx context.Context, id string, tenantID
 		return nil, err
 	}
 
-	// 多租户隔离校验
-	if lot.TenantID != tenantID {
+	// 多租户隔离校验（平台管理员tenantID为空，可查看所有）
+	if tenantID != "" && lot.TenantID != tenantID {
 		return nil, &domain.DomainError{
 			Code:    "FORBIDDEN",
 			Message: "无权访问该停车场",

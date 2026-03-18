@@ -69,8 +69,12 @@ func (r *parkingLotRepo) FindByTenantID(ctx context.Context, tenantID string, fi
 
 	q := r.db.WithContext(ctx).
 		Table("parking_lots").
-		Select("parking_lots.*, (?) as entry_count, (?) as exit_count", entryCountSubq, exitCountSubq).
-		Where("tenant_id = ?", tenantID)
+		Select("parking_lots.*, (?) as entry_count, (?) as exit_count", entryCountSubq, exitCountSubq)
+
+	// 平台管理员(tenantID为空)可查看所有租户数据
+	if tenantID != "" {
+		q = q.Where("tenant_id = ?", tenantID)
+	}
 
 	if filter.Status != nil {
 		q = q.Where("status = ?", string(*filter.Status))
@@ -126,26 +130,31 @@ func (r *parkingLotRepo) Delete(ctx context.Context, id string) error {
 func (r *parkingLotRepo) GetStats(ctx context.Context, tenantID string) (*repository.ParkingLotStats, error) {
 	var stats repository.ParkingLotStats
 
-	// 获取总车位和剩余车位
-	err := r.db.WithContext(ctx).
+	// 获取总车位和剩余车位（仅统计活跃车场）
+	spaceQuery := r.db.WithContext(ctx).
 		Table("parking_lots").
 		Select("COALESCE(SUM(total_spaces), 0) as total_spaces, COALESCE(SUM(available_spaces), 0) as available_spaces").
-		Where("tenant_id = ? AND status = ?", tenantID, domain.ParkingLotStatusActive).
-		Scan(&stats).Error
-	if err != nil {
+		Where("status = ?", domain.ParkingLotStatusActive)
+	if tenantID != "" {
+		spaceQuery = spaceQuery.Where("tenant_id = ?", tenantID)
+	}
+	if err := spaceQuery.Scan(&stats).Error; err != nil {
 		return nil, err
 	}
 
 	// 计算在场车辆
 	stats.OccupiedVehicles = stats.TotalSpaces - stats.AvailableSpaces
 
-	// 获取出入口总数
-	err = r.db.WithContext(ctx).
+	// 获取出入口总数（仅统计活跃车场的出入口）
+	gateQuery := r.db.WithContext(ctx).
 		Table("gates").
 		Select("COUNT(*)").
 		Joins("JOIN parking_lots ON parking_lots.id = gates.parking_lot_id").
-		Where("parking_lots.tenant_id = ?", tenantID).
-		Scan(&stats.TotalGates).Error
+		Where("parking_lots.status = ?", domain.ParkingLotStatusActive)
+	if tenantID != "" {
+		gateQuery = gateQuery.Where("parking_lots.tenant_id = ?", tenantID)
+	}
+	err := gateQuery.Scan(&stats.TotalGates).Error
 	if err != nil {
 		return nil, err
 	}

@@ -41,7 +41,14 @@ func (s *gateServiceImpl) Create(ctx context.Context, req *service.CreateGateReq
 }
 
 func (s *gateServiceImpl) GetByID(ctx context.Context, id string) (*domain.Gate, error) {
-	return s.gateRepo.FindByID(ctx, id)
+	gate, err := s.gateRepo.FindByID(ctx, id)
+	if err != nil {
+		if err == domain.ErrGateNotFound {
+			return nil, &domain.DomainError{Code: "GATE_NOT_FOUND", Message: err.Error()}
+		}
+		return nil, err
+	}
+	return gate, nil
 }
 
 func (s *gateServiceImpl) ListByParkingLotID(ctx context.Context, parkingLotID string) ([]*domain.GateWithDevice, error) {
