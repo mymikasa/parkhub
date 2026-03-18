@@ -62,3 +62,4 @@ go.work.sum
 
 # Go compiled binary (dev)
 parkhub-api/server
+tmp/
