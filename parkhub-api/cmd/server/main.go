@@ -69,12 +69,17 @@ func main() {
 	}
 	defer redisCleanup()
 
-	// Initialize MQTT
+	// Create heartbeat service (before MQTT connect so we can pass Subscribe as OnConnect callback)
+	deviceRepo := repoimpl.NewDeviceRepo(gormDB)
+	heartbeatSvc := svcimpl.NewHeartbeatService(nil, redisClient, deviceRepo, cfg.HeartbeatTimeoutSeconds)
+
+	// Initialize MQTT with re-subscribe on reconnect
 	mqttClient, mqttCleanup, err := appmqtt.New(appmqtt.Config{
 		BrokerURL: cfg.MQTTBrokerURL,
 		Username:  cfg.MQTTUsername,
 		Password:  cfg.MQTTPassword,
 		ClientID:  "parkhub-api-" + cfg.AppPort,
+		OnConnect: heartbeatSvc.Subscribe,
 	})
 	if err != nil {
 		slog.Error("failed to connect to mqtt broker", "error", err)
@@ -82,13 +87,9 @@ func main() {
 	}
 	defer mqttCleanup()
 
-	// Start heartbeat service
-	deviceRepo := repoimpl.NewDeviceRepo(gormDB)
-	heartbeatSvc := svcimpl.NewHeartbeatService(mqttClient, redisClient, deviceRepo, cfg.HeartbeatTimeoutSeconds)
-	if err := heartbeatSvc.Start(); err != nil {
-		slog.Error("failed to start heartbeat service", "error", err)
-		os.Exit(1)
-	}
+	// Start heartbeat service with the connected MQTT client
+	heartbeatSvc.SetMQTTClient(mqttClient)
+	heartbeatSvc.Start()
 
 	srv := &http.Server{
 		Addr:    ":" + cfg.AppPort,

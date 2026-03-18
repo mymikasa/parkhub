@@ -3,6 +3,7 @@ package impl
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/google/wire"
 	"github.com/parkhub/api/internal/domain"
@@ -164,13 +165,13 @@ func (r *deviceRepo) UpdateHeartbeat(ctx context.Context, device *domain.Device)
 	}).Error
 }
 
-func (r *deviceRepo) FindTimedOutDevices(ctx context.Context, timeoutSeconds int) ([]*domain.Device, error) {
+func (r *deviceRepo) FindTimedOutDevices(ctx context.Context, threshold time.Time) ([]*domain.Device, error) {
 	var rows []dao.DeviceDAO
 	err := r.db.WithContext(ctx).
 		Where("deleted_at IS NULL").
 		Where("status IN ?", []string{string(domain.DeviceStatusActive), string(domain.DeviceStatusPending)}).
 		Where("last_heartbeat IS NOT NULL").
-		Where("last_heartbeat < DATE_SUB(NOW(), INTERVAL ? SECOND)", timeoutSeconds).
+		Where("last_heartbeat < ?", threshold).
 		Find(&rows).Error
 	if err != nil {
 		return nil, err

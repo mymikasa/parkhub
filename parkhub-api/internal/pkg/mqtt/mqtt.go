@@ -10,10 +10,11 @@ import (
 
 // Config holds MQTT connection parameters.
 type Config struct {
-	BrokerURL string
-	Username  string
-	Password  string
-	ClientID  string
+	BrokerURL    string
+	Username     string
+	Password     string
+	ClientID     string
+	OnConnect    func(pahomqtt.Client) // 连接/重连时回调（用于重新订阅）
 }
 
 // New creates an MQTT client, connects to the broker, and returns it.
@@ -29,8 +30,11 @@ func New(cfg Config) (pahomqtt.Client, func(), error) {
 		SetConnectionLostHandler(func(_ pahomqtt.Client, err error) {
 			slog.Warn("mqtt connection lost", "error", err)
 		}).
-		SetOnConnectHandler(func(_ pahomqtt.Client) {
+		SetOnConnectHandler(func(c pahomqtt.Client) {
 			slog.Info("mqtt connected", "broker", cfg.BrokerURL)
+			if cfg.OnConnect != nil {
+				cfg.OnConnect(c)
+			}
 		})
 
 	if cfg.Username != "" {

@@ -3,26 +3,22 @@ package impl
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"log/slog"
 	"strings"
 	"sync"
 	"time"
 
 	pahomqtt "github.com/eclipse/paho.mqtt.golang"
-	"github.com/google/wire"
 	"github.com/parkhub/api/internal/domain"
 	"github.com/parkhub/api/internal/repository"
 	"github.com/redis/go-redis/v9"
 )
 
-var HeartbeatServiceSet = wire.NewSet(NewHeartbeatService)
-
 const (
-	heartbeatTopic   = "device/+/heartbeat"
-	redisKeyPrefix   = "device:heartbeat:"
-	redisTTL         = 10 * time.Minute
-	syncInterval     = 1 * time.Minute
+	heartbeatTopic      = "device/+/heartbeat"
+	redisKeyPrefix      = "device:"
+	redisTTL            = 10 * time.Minute
+	syncInterval        = 1 * time.Minute
 	offlineScanInterval = 1 * time.Minute
 )
 
@@ -31,7 +27,7 @@ type HeartbeatService struct {
 	mqttClient  pahomqtt.Client
 	redisClient *redis.Client
 	deviceRepo  repository.DeviceRepo
-	timeout     int // 超时秒数
+	timeout     time.Duration
 
 	stopCh chan struct{}
 	wg     sync.WaitGroup
@@ -48,20 +44,31 @@ func NewHeartbeatService(
 		mqttClient:  mqttClient,
 		redisClient: redisClient,
 		deviceRepo:  deviceRepo,
-		timeout:     timeoutSeconds,
+		timeout:     time.Duration(timeoutSeconds) * time.Second,
 		stopCh:      make(chan struct{}),
 	}
 }
 
-// Start 启动心跳服务：订阅 MQTT、启动同步和离线扫描定时器
-func (s *HeartbeatService) Start() error {
-	// 订阅心跳主题
-	token := s.mqttClient.Subscribe(heartbeatTopic, 1, s.handleHeartbeat)
+// SetMQTTClient 设置 MQTT 客户端（用于解决初始化顺序依赖）
+func (s *HeartbeatService) SetMQTTClient(client pahomqtt.Client) {
+	s.mqttClient = client
+}
+
+// Subscribe 订阅心跳主题（也用于 MQTT 重连后重新订阅）
+func (s *HeartbeatService) Subscribe(c pahomqtt.Client) {
+	token := c.Subscribe(heartbeatTopic, 1, s.handleHeartbeat)
 	token.Wait()
 	if err := token.Error(); err != nil {
-		return fmt.Errorf("subscribe %s failed: %w", heartbeatTopic, err)
+		slog.Error("mqtt subscribe failed", "topic", heartbeatTopic, "error", err)
+		return
 	}
 	slog.Info("mqtt subscribed", "topic", heartbeatTopic)
+}
+
+// Start 启动心跳服务：订阅 MQTT、启动同步和离线扫描定时器
+func (s *HeartbeatService) Start() {
+	// 首次订阅
+	s.Subscribe(s.mqttClient)
 
 	// 启动定时同步 Redis → DB
 	s.wg.Add(1)
@@ -71,8 +78,7 @@ func (s *HeartbeatService) Start() error {
 	s.wg.Add(1)
 	go s.offlineScanLoop()
 
-	slog.Info("heartbeat service started", "timeout_seconds", s.timeout)
-	return nil
+	slog.Info("heartbeat service started", "timeout", s.timeout)
 }
 
 // Stop 停止心跳服务
@@ -106,14 +112,16 @@ func (s *HeartbeatService) handleHeartbeat(_ pahomqtt.Client, msg pahomqtt.Messa
 	data := map[string]any{
 		"status":           "online",
 		"firmware_version": hb.FirmwareVersion,
-		"last_heartbeat":   now.Format(time.RFC3339),
+		"last_heartbeat":   now.Format(time.RFC3339Nano),
 	}
 	key := redisKeyPrefix + deviceID
 	if err := s.redisClient.HSet(ctx, key, data).Err(); err != nil {
 		slog.Error("redis hset failed", "device_id", deviceID, "error", err)
 		return
 	}
-	s.redisClient.Expire(ctx, key, redisTTL)
+	if err := s.redisClient.Expire(ctx, key, redisTTL).Err(); err != nil {
+		slog.Error("redis expire failed", "device_id", deviceID, "error", err)
+	}
 
 	slog.Debug("heartbeat received", "device_id", deviceID, "firmware", hb.FirmwareVersion)
 }
@@ -138,7 +146,6 @@ func (s *HeartbeatService) syncLoop() {
 func (s *HeartbeatService) syncRedisToDatabase() {
 	ctx := context.Background()
 
-	// 扫描所有心跳 key
 	var cursor uint64
 	pattern := redisKeyPrefix + "*"
 
@@ -160,18 +167,35 @@ func (s *HeartbeatService) syncRedisToDatabase() {
 	}
 }
 
-// syncOneDevice 同步单个设备的心跳数据
+// syncOneDevice 原子读取并删除 Redis 数据，然后同步到数据库
 func (s *HeartbeatService) syncOneDevice(ctx context.Context, key string) {
 	deviceID := strings.TrimPrefix(key, redisKeyPrefix)
 
-	vals, err := s.redisClient.HGetAll(ctx, key).Result()
-	if err != nil || len(vals) == 0 {
+	// 使用 Lua 脚本原子读取并删除，避免与 handleHeartbeat 的竞态
+	script := redis.NewScript(`
+		local vals = redis.call('HGETALL', KEYS[1])
+		if #vals == 0 then return nil end
+		redis.call('DEL', KEYS[1])
+		return vals
+	`)
+	result, err := script.Run(ctx, s.redisClient, []string{key}).StringSlice()
+	if err != nil {
+		if err == redis.Nil {
+			return
+		}
+		slog.Error("redis atomic read-delete failed", "device_id", deviceID, "error", err)
 		return
+	}
+
+	// 将 string slice 转为 map
+	vals := make(map[string]string, len(result)/2)
+	for i := 0; i < len(result)-1; i += 2 {
+		vals[result[i]] = result[i+1]
 	}
 
 	firmwareVersion := vals["firmware_version"]
 	lastHeartbeatStr := vals["last_heartbeat"]
-	lastHeartbeat, err := time.Parse(time.RFC3339, lastHeartbeatStr)
+	lastHeartbeat, err := time.Parse(time.RFC3339Nano, lastHeartbeatStr)
 	if err != nil {
 		slog.Warn("invalid last_heartbeat in redis", "device_id", deviceID, "value", lastHeartbeatStr)
 		return
@@ -193,24 +217,19 @@ func (s *HeartbeatService) syncOneDevice(ctx context.Context, key string) {
 			return
 		}
 		slog.Info("device auto-registered", "device_id", deviceID)
-		// 创建完成后删除 Redis key
-		s.redisClient.Del(ctx, key)
 		return
 	}
 
 	// 已有设备：更新心跳数据
 	device.UpdateHeartbeat(firmwareVersion, lastHeartbeat)
 
-	// 恢复在线（offline → active，仅限已分配设备）
+	// 恢复在线：已分配设备 offline → active，未分配设备 offline → pending
 	device.MarkOnline(lastHeartbeat)
 
 	if err := s.deviceRepo.UpdateHeartbeat(ctx, device); err != nil {
 		slog.Error("update heartbeat failed", "device_id", deviceID, "error", err)
 		return
 	}
-
-	// 同步完成后删除 Redis key
-	s.redisClient.Del(ctx, key)
 }
 
 // offlineScanLoop 定期扫描超时设备并标记为离线
@@ -233,7 +252,8 @@ func (s *HeartbeatService) offlineScanLoop() {
 func (s *HeartbeatService) detectOfflineDevices() {
 	ctx := context.Background()
 
-	devices, err := s.deviceRepo.FindTimedOutDevices(ctx, s.timeout)
+	threshold := time.Now().Add(-s.timeout)
+	devices, err := s.deviceRepo.FindTimedOutDevices(ctx, threshold)
 	if err != nil {
 		slog.Error("find timed-out devices failed", "error", err)
 		return

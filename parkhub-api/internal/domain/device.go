@@ -74,10 +74,16 @@ func (d *Device) UpdateHeartbeat(firmwareVersion string, now time.Time) {
 	d.UpdatedAt = now
 }
 
-// MarkOnline 恢复在线（仅已分配设备变为 active）
+// MarkOnline 恢复在线
+// 已分配设备（非平台租户）：offline → active
+// 未分配设备（平台租户）：offline → pending
 func (d *Device) MarkOnline(now time.Time) {
 	if d.Status == DeviceStatusOffline {
-		d.Status = DeviceStatusActive
+		if d.TenantID == PlatformTenantID {
+			d.Status = DeviceStatusPending
+		} else {
+			d.Status = DeviceStatusActive
+		}
 		d.UpdatedAt = now
 	}
 }
