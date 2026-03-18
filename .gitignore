@@ -56,3 +56,9 @@ go.work.sum
 !.vscode/README.md
 
 *.log
+
+# macOS
+.DS_Store
+
+# Go compiled binary (dev)
+parkhub-api/server

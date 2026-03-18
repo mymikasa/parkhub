@@ -26,6 +26,8 @@ docker compose logs -f
 - **前端**: http://localhost:3000
 - **后端 API**: http://localhost:8080
 - **MySQL**: localhost:3306
+- **Redis**: localhost:6379
+- **EMQX 管理控制台**: http://localhost:18083 (admin/public)
 
 ### 常用命令
 
@@ -70,7 +72,9 @@ parkhub/
 │   ├── components/       # 组件
 │   └── Dockerfile.dev    # 开发环境镜像
 ├── docker/
-│   └── mysql/          # 数据库初始化脚本
+│   ├── mysql/           # 数据库初始化脚本
+│   └── emqx/            # EMQX 配置文件
+│       └── acl.conf     # MQTT ACL 规则
 ├── docker-compose.yml    # 服务编排
 ├── .env.example          # 环境变量模板
 └── README.md
@@ -112,7 +116,7 @@ pnpm dev
 
 ## 技术栈
 
-- **后端**: Go 1.26, Gin, GORM, MySQL 8.0, JWT
+- **后端**: Go 1.26, Gin, GORM, MySQL 8.0, Redis 7, EMQX 5.4, JWT
 - **前端**: Next.js 15, React 19, Tailwind CSS, shadcn/ui
 
 
