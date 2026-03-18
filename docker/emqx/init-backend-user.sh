@@ -23,6 +23,33 @@ wait_for_emqx() {
     echo "EMQX is ready!"
 }
 
+create_authenticator() {
+    echo "Creating built-in database authenticator..."
+    
+    response=$(curl -s -w "%{http_code}" -o /tmp/response.json \
+        -X POST "http://${EMQX_HOST}:${EMQX_API_PORT}/api/v5/authentication" \
+        -u "${DASHBOARD_USER}:${DASHBOARD_PASS}" \
+        -H "Content-Type: application/json" \
+        -d '{
+            "backend": "built_in_database",
+            "mechanism": "password_based",
+            "password_hash_algorithm": {
+                "name": "sha256",
+                "salt_position": "suffix"
+            },
+            "user_id_type": "clientid"
+        }')
+    
+    if [ "$response" = "201" ] || [ "$response" = "200" ]; then
+        echo "Authenticator created successfully!"
+    elif [ "$response" = "400" ]; then
+        echo "Authenticator already exists, continuing..."
+    else
+        echo "Warning: Failed to create authenticator (HTTP $response)"
+        cat /tmp/response.json 2>/dev/null || true
+    fi
+}
+
 create_backend_user() {
     echo "Creating backend superuser: ${BACKEND_USER}"
     
@@ -42,12 +69,59 @@ create_backend_user() {
         echo "Backend user already exists, continuing..."
     else
         echo "Warning: Failed to create backend user (HTTP $response)"
+        cat /tmp/response.json 2>/dev/null || true
+    fi
+}
+
+configure_acl() {
+    echo "Configuring ACL authorization rules..."
+    
+    response=$(curl -s -w "%{http_code}" -o /tmp/response.json \
+        -X POST "http://${EMQX_HOST}:${EMQX_API_PORT}/api/v5/authorization/sources" \
+        -u "${DASHBOARD_USER}:${DASHBOARD_PASS}" \
+        -H "Content-Type: application/json" \
+        -d '{
+            "type": "file",
+            "enable": true,
+            "rules": [
+                {
+                    "permission": "allow",
+                    "action": "publish",
+                    "topic": "device/${clientid}/heartbeat"
+                },
+                {
+                    "permission": "allow",
+                    "action": "subscribe",
+                    "topic": "device/${clientid}/command"
+                },
+                {
+                    "permission": "deny",
+                    "action": "subscribe",
+                    "topic": "device/+"
+                },
+                {
+                    "permission": "deny",
+                    "action": "publish",
+                    "topic": "device/+/command"
+                }
+            ]
+        }')
+    
+    if [ "$response" = "201" ] || [ "$response" = "200" ]; then
+        echo "ACL rules configured successfully!"
+    elif [ "$response" = "400" ]; then
+        echo "ACL rules may already exist, continuing..."
+    else
+        echo "Warning: Failed to configure ACL (HTTP $response)"
+        cat /tmp/response.json 2>/dev/null || true
     fi
 }
 
 main() {
     wait_for_emqx
+    create_authenticator
     create_backend_user
+    configure_acl
     echo "EMQX initialization complete!"
 }
 
