@@ -1,6 +1,11 @@
 {
   "version": 1,
   "skills": {
+    "product-manager": {
+      "source": "aj-geddes/claude-code-bmad-skills",
+      "sourceType": "github",
+      "computedHash": "b764a970e75e086ad7602bcbbf573701847d068745311ca4e4316cdccf77dc03"
+    },
     "shadcn": {
       "source": "shadcn/ui",
       "sourceType": "github",

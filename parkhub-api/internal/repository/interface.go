@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/parkhub/api/internal/domain"
+	"github.com/parkhub/api/internal/repository/dao"
 )
 
 // TenantRepo 租户数据访问接口
@@ -96,4 +97,43 @@ type AuditLogFilter struct {
 	Action   string
 	Page     int
 	PageSize int
+}
+
+// ParkingLotRepo 停车场数据访问接口
+type ParkingLotRepo interface {
+	Create(ctx context.Context, lot *domain.ParkingLot) error
+	Update(ctx context.Context, lot *domain.ParkingLot) error
+	FindByID(ctx context.Context, id string) (*domain.ParkingLot, error)
+	FindByTenantID(ctx context.Context, tenantID string, filter ParkingLotFilter) ([]*dao.ParkingLotWithStats, int64, error)
+	ExistsByName(ctx context.Context, tenantID, name string) (bool, error)
+	Delete(ctx context.Context, id string) error
+	GetStats(ctx context.Context, tenantID string) (*ParkingLotStats, error)
+}
+
+// ParkingLotFilter 停车场查询过滤器
+type ParkingLotFilter struct {
+	Status  *domain.ParkingLotStatus
+	Keyword string
+	Page    int
+	PageSize int
+}
+
+// ParkingLotStats 停车场统计信息
+type ParkingLotStats struct {
+	TotalSpaces      int64
+	AvailableSpaces  int64
+	OccupiedVehicles int64
+	TotalGates       int64
+}
+
+// GateRepo 出入口数据访问接口
+type GateRepo interface {
+	Create(ctx context.Context, gate *domain.Gate) error
+	Update(ctx context.Context, gate *domain.Gate) error
+	FindByID(ctx context.Context, id string) (*domain.Gate, error)
+	FindByParkingLotID(ctx context.Context, parkingLotID string) ([]*domain.GateWithDevice, error)
+	ExistsByName(ctx context.Context, parkingLotID, name string) (bool, error)
+	Delete(ctx context.Context, id string) error
+	CountByParkingLotID(ctx context.Context, parkingLotID string) (entryCount, exitCount int64, err error)
+	CountByParkingLotIDAndType(ctx context.Context, parkingLotID string, gateType domain.GateType) (int64, error)
 }

@@ -1,0 +1,135 @@
+LoginRequest:
+  type: object
+  required:
+    - account
+    - password
+  properties:
+    account:
+      type: string
+      description: 用户名或邮箱
+      example: admin
+    password:
+      type: string
+      format: password
+      description: 密码
+      example: Password123
+    remember:
+      type: boolean
+      description: 记住登录状态，延长 Token 有效期
+      default: false
+
+SendSmsCodeRequest:
+  type: object
+  required:
+    - phone
+    - purpose
+  properties:
+    phone:
+      type: string
+      pattern: '^1[3-9]\d{9}$'
+      description: 手机号
+      example: "13800138000"
+    purpose:
+      type: string
+      enum: [login, reset_password]
+      description: 验证码用途
+      example: login
+
+SmsLoginRequest:
+  type: object
+  required:
+    - phone
+    - code
+  properties:
+    phone:
+      type: string
+      pattern: '^1[3-9]\d{9}$'
+      description: 手机号
+      example: "13800138000"
+    code:
+      type: string
+      pattern: '^\d{6}$'
+      description: 验证码
+      example: "123456"
+
+RefreshTokenRequest:
+  type: object
+  required:
+    - refresh_token
+  properties:
+    refresh_token:
+      type: string
+      description: Refresh Token
+
+LoginResponse:
+  type: object
+  properties:
+    access_token:
+      type: string
+      description: 访问令牌（2小时有效）
+    refresh_token:
+      type: string
+      description: 刷新令牌（7天有效）
+    expires_in:
+      type: integer
+      description: 过期时间（秒）
+      example: 7200
+    user:
+      $ref: '#/UserInfo'
+
+UserInfo:
+  type: object
+  properties:
+    id:
+      type: string
+      format: uuid
+      description: 用户ID
+    username:
+      type: string
+      description: 用户名
+    email:
+      type: string
+      format: email
+      description: 邮箱
+    phone:
+      type: string
+      description: 手机号
+    real_name:
+      type: string
+      description: 真实姓名
+    role:
+      type: string
+      enum: [platform_admin, tenant_admin, operator]
+      description: 角色
+    tenant_id:
+      type: string
+      format: uuid
+      description: 租户ID（平台管理员为空）
+
+CurrentUserResponse:
+  type: object
+  properties:
+    id:
+      type: string
+      format: uuid
+    username:
+      type: string
+    email:
+      type: string
+      format: email
+    phone:
+      type: string
+    real_name:
+      type: string
+    role:
+      type: string
+      enum: [platform_admin, tenant_admin, operator]
+    tenant_id:
+      type: string
+      format: uuid
+    status:
+      type: string
+      enum: [active, frozen]
+    created_at:
+      type: string
+      format: date-time
