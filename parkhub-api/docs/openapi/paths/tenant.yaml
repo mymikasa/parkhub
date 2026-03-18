@@ -1,0 +1,149 @@
+/tenants:
+  get:
+    tags:
+      - Tenant
+    summary: 获取租户列表
+    description: 获取所有租户列表（仅平台管理员可用）
+    operationId: listTenants
+    security:
+      - BearerAuth: []
+    parameters:
+      - name: page
+        in: query
+        schema:
+          type: integer
+          default: 1
+      - name: page_size
+        in: query
+        schema:
+          type: integer
+          default: 20
+      - name: status
+        in: query
+        schema:
+          type: string
+          enum: [active, frozen]
+    responses:
+      '200':
+        description: 成功获取租户列表
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/tenant.yaml#/TenantListResponse'
+      '401':
+        $ref: '#/components/responses/Unauthorized'
+      '403':
+        $ref: '#/components/responses/Forbidden'
+
+  post:
+    tags:
+      - Tenant
+    summary: 创建租户
+    description: 创建新租户（仅平台管理员可用）
+    operationId: createTenant
+    security:
+      - BearerAuth: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/tenant.yaml#/CreateTenantRequest'
+    responses:
+      '201':
+        description: 创建成功
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/tenant.yaml#/Tenant'
+      '400':
+        $ref: '#/components/responses/BadRequest'
+      '401':
+        $ref: '#/components/responses/Unauthorized'
+      '403':
+        $ref: '#/components/responses/Forbidden'
+
+  /tenants/{id}:
+    get:
+      tags:
+        - Tenant
+      summary: 获取租户详情
+      operationId: getTenant
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantId'
+      responses:
+        '200':
+          description: 成功获取租户信息
+          content:
+            application/json:
+              schema:
+                $ref: '../schemas/tenant.yaml#/Tenant'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      tags:
+        - Tenant
+      summary: 更新租户信息
+      operationId: updateTenant
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/tenant.yaml#/UpdateTenantRequest'
+      responses:
+        '200':
+          description: 更新成功
+          content:
+            application/json:
+              schema:
+                $ref: '../schemas/tenant.yaml#/Tenant'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /tenants/{id}/freeze:
+    post:
+      tags:
+        - Tenant
+      summary: 冻结租户
+      description: 冻结指定租户，暂停其所有服务
+      operationId: freezeTenant
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantId'
+      responses:
+        '200':
+          description: 冻结成功
+          content:
+            application/json:
+              schema:
+                $ref: '../schemas/common.yaml#/MessageResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /tenants/{id}/unfreeze:
+    post:
+      tags:
+        - Tenant
+      summary: 解冻租户
+      operationId: unfreezeTenant
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantId'
+      responses:
+        '200':
+          description: 解冻成功
+          content:
+            application/json:
+              schema:
+                $ref: '../schemas/common.yaml#/MessageResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'

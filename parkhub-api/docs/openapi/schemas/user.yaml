@@ -1,0 +1,110 @@
+User:
+  type: object
+  properties:
+    id:
+      type: string
+      format: uuid
+      description: 用户ID
+    tenant_id:
+      type: string
+      format: uuid
+      description: 租户ID
+    username:
+      type: string
+      description: 用户名
+    email:
+      type: string
+      format: email
+      description: 邮箱
+    phone:
+      type: string
+      description: 手机号
+    real_name:
+      type: string
+      description: 真实姓名
+    role:
+      type: string
+      enum: [platform_admin, tenant_admin, operator]
+      description: 角色
+    status:
+      type: string
+      enum: [active, frozen]
+      description: 用户状态
+    created_at:
+      type: string
+      format: date-time
+    updated_at:
+      type: string
+      format: date-time
+
+UserListResponse:
+  type: object
+  properties:
+    data:
+      type: array
+      items:
+        $ref: '#/User'
+    total:
+      type: integer
+      description: 总数
+    page:
+      type: integer
+      description: 当前页
+    page_size:
+      type: integer
+      description: 每页数量
+
+CreateUserRequest:
+  type: object
+  required:
+    - username
+    - password
+    - real_name
+    - role
+  properties:
+    username:
+      type: string
+      description: 用户名
+      minLength: 3
+      maxLength: 50
+    password:
+      type: string
+      format: password
+      description: 密码
+      minLength: 6
+    email:
+      type: string
+      format: email
+      description: 邮箱
+    phone:
+      type: string
+      pattern: '^1[3-9]\d{9}$'
+      description: 手机号
+    real_name:
+      type: string
+      description: 真实姓名
+      maxLength: 50
+    role:
+      type: string
+      enum: [platform_admin, tenant_admin, operator]
+      description: 角色
+
+UpdateUserRequest:
+  type: object
+  properties:
+    email:
+      type: string
+      format: email
+      description: 邮箱
+    phone:
+      type: string
+      pattern: '^1[3-9]\d{9}$'
+      description: 手机号
+    real_name:
+      type: string
+      description: 真实姓名
+      maxLength: 50
+    role:
+      type: string
+      enum: [platform_admin, tenant_admin, operator]
+      description: 角色

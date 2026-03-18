@@ -8,6 +8,7 @@ import (
 	"github.com/google/wire"
 	"github.com/parkhub/api/internal/domain"
 	"github.com/parkhub/api/internal/handler/dto"
+	"github.com/parkhub/api/internal/pkg/validator"
 	"github.com/parkhub/api/internal/service"
 )
 
@@ -42,7 +43,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, dto.ErrorResponse{
 			Code:    "INVALID_REQUEST",
-			Message: "请求参数错误: " + err.Error(),
+			Message: validator.FormatValidationError(err),
 		})
 		return
 	}
@@ -77,7 +78,7 @@ func (h *AuthHandler) SendSmsCode(c *gin.Context) {
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, dto.ErrorResponse{
 			Code:    "INVALID_REQUEST",
-			Message: "请求参数错误: " + err.Error(),
+			Message: validator.FormatValidationError(err),
 		})
 		return
 	}
@@ -112,7 +113,7 @@ func (h *AuthHandler) SmsLogin(c *gin.Context) {
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, dto.ErrorResponse{
 			Code:    "INVALID_REQUEST",
-			Message: "请求参数错误: " + err.Error(),
+			Message: validator.FormatValidationError(err),
 		})
 		return
 	}
@@ -145,7 +146,7 @@ func (h *AuthHandler) RefreshToken(c *gin.Context) {
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, dto.ErrorResponse{
 			Code:    "INVALID_REQUEST",
-			Message: "请求参数错误: " + err.Error(),
+			Message: validator.FormatValidationError(err),
 		})
 		return
 	}

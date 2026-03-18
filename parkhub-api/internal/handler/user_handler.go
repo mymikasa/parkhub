@@ -10,6 +10,7 @@ import (
 	"github.com/parkhub/api/internal/domain"
 	"github.com/parkhub/api/internal/handler/dto"
 	"github.com/parkhub/api/internal/middleware"
+	"github.com/parkhub/api/internal/pkg/validator"
 	"github.com/parkhub/api/internal/service"
 )
 
@@ -18,14 +19,14 @@ var UserHandlerSet = wire.NewSet(NewUserHandler)
 
 // UserHandler 用户管理处理器
 type UserHandler struct {
-	userService    service.UserService
+	userService     service.UserService
 	auditLogService service.AuditLogService
 }
 
 // NewUserHandler 创建用户管理处理器
 func NewUserHandler(userService service.UserService, auditLogService service.AuditLogService) *UserHandler {
 	return &UserHandler{
-		userService:    userService,
+		userService:     userService,
 		auditLogService: auditLogService,
 	}
 }
@@ -88,7 +89,7 @@ func (h *UserHandler) Create(c *gin.Context) {
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, dto.ErrorResponse{
 			Code:    "INVALID_REQUEST",
-			Message: "请求参数错误: " + err.Error(),
+			Message: validator.FormatValidationError(err),
 		})
 		return
 	}
@@ -120,7 +121,7 @@ func (h *UserHandler) Update(c *gin.Context) {
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, dto.ErrorResponse{
 			Code:    "INVALID_REQUEST",
-			Message: "请求参数错误: " + err.Error(),
+			Message: validator.FormatValidationError(err),
 		})
 		return
 	}
@@ -184,7 +185,7 @@ func (h *UserHandler) ResetPassword(c *gin.Context) {
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, dto.ErrorResponse{
 			Code:    "INVALID_REQUEST",
-			Message: "请求参数错误: " + err.Error(),
+			Message: validator.FormatValidationError(err),
 		})
 		return
 	}
@@ -211,7 +212,7 @@ func (h *UserHandler) ImportUsers(c *gin.Context) {
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, dto.ErrorResponse{
 			Code:    "INVALID_REQUEST",
-			Message: "请求参数错误: " + err.Error(),
+			Message: validator.FormatValidationError(err),
 		})
 		return
 	}
@@ -260,7 +261,7 @@ func (h *UserHandler) UpdateProfile(c *gin.Context) {
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, dto.ErrorResponse{
 			Code:    "INVALID_REQUEST",
-			Message: "请求参数错误: " + err.Error(),
+			Message: validator.FormatValidationError(err),
 		})
 		return
 	}
@@ -284,7 +285,7 @@ func (h *UserHandler) ChangePassword(c *gin.Context) {
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, dto.ErrorResponse{
 			Code:    "INVALID_REQUEST",
-			Message: "请求参数错误: " + err.Error(),
+			Message: validator.FormatValidationError(err),
 		})
 		return
 	}

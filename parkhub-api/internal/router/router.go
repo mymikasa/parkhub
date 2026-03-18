@@ -13,11 +13,13 @@ var RouterSet = wire.NewSet(NewRouter)
 
 // Router 路由器
 type Router struct {
-	engine        *gin.Engine
-	jwtManager    *jwt.JWTManager
-	authHandler   *handler.AuthHandler
-	tenantHandler *handler.TenantHandler
-	userHandler   *handler.UserHandler
+	engine            *gin.Engine
+	jwtManager        *jwt.JWTManager
+	authHandler       *handler.AuthHandler
+	tenantHandler     *handler.TenantHandler
+	userHandler       *handler.UserHandler
+	parkingLotHandler *handler.ParkingLotHandler
+	gateHandler       *handler.GateHandler
 }
 
 // NewRouter 创建路由器
@@ -27,13 +29,17 @@ func NewRouter(
 	authHandler *handler.AuthHandler,
 	tenantHandler *handler.TenantHandler,
 	userHandler *handler.UserHandler,
+	parkingLotHandler *handler.ParkingLotHandler,
+	gateHandler *handler.GateHandler,
 ) *Router {
 	return &Router{
-		engine:        engine,
-		jwtManager:    jwtManager,
-		authHandler:   authHandler,
-		tenantHandler: tenantHandler,
-		userHandler:   userHandler,
+		engine:            engine,
+		jwtManager:        jwtManager,
+		authHandler:       authHandler,
+		tenantHandler:     tenantHandler,
+		userHandler:       userHandler,
+		parkingLotHandler: parkingLotHandler,
+		gateHandler:       gateHandler,
 	}
 }
 
@@ -58,6 +64,7 @@ func (r *Router) Setup() {
 		r.setupAuthRoutes(v1)
 		r.setupTenantRoutes(v1)
 		r.setupUserRoutes(v1)
+		r.setupParkingLotRoutes(v1)
 	}
 }
 
@@ -151,5 +158,49 @@ func (r *Router) setupUserRoutes(rg *gin.RouterGroup) {
 	auditLogs.Use(middleware.RequireRoles("platform_admin", "tenant_admin"))
 	{
 		auditLogs.GET("", r.userHandler.ListAuditLogs)
+	}
+}
+
+// setupParkingLotRoutes 设置停车场管理路由
+func (r *Router) setupParkingLotRoutes(rg *gin.RouterGroup) {
+	parkingLots := rg.Group("/parking-lots")
+	parkingLots.Use(middleware.AuthMiddleware(r.jwtManager))
+	parkingLots.Use(middleware.RequireRoles("platform_admin", "tenant_admin"))
+	{
+		// GET /api/v1/parking-lots - 获取停车场列表
+		parkingLots.GET("", r.parkingLotHandler.List)
+
+		// GET /api/v1/parking-lots/stats - 获取统计数据
+		parkingLots.GET("/stats", r.parkingLotHandler.GetStats)
+
+		// GET /api/v1/parking-lots/:id - 获取停车场详情
+		parkingLots.GET("/:id", r.parkingLotHandler.Get)
+
+		// POST /api/v1/parking-lots - 创建停车场（仅租户管理员）
+		parkingLots.POST("", middleware.RequireRoles("tenant_admin"), r.parkingLotHandler.Create)
+
+		// PUT /api/v1/parking-lots/:id - 更新停车场（仅租户管理员）
+		parkingLots.PUT("/:id", middleware.RequireRoles("tenant_admin"), r.parkingLotHandler.Update)
+
+		// DELETE /api/v1/parking-lots/:id - 删除停车场（仅租户管理员）
+		parkingLots.DELETE("/:id", middleware.RequireRoles("tenant_admin"), r.parkingLotHandler.Delete)
+
+		// GET /api/v1/parking-lots/:id/gates - 获取出入口列表
+		parkingLots.GET("/:id/gates", r.gateHandler.List)
+
+		// POST /api/v1/parking-lots/:id/gates - 添加出入口（仅租户管理员）
+		parkingLots.POST("/:id/gates", middleware.RequireRoles("tenant_admin"), r.gateHandler.Create)
+	}
+
+	// 出入口独立路由
+	gates := rg.Group("/gates")
+	gates.Use(middleware.AuthMiddleware(r.jwtManager))
+	gates.Use(middleware.RequireRoles("tenant_admin"))
+	{
+		// PUT /api/v1/gates/:id - 编辑出入口
+		gates.PUT("/:id", r.gateHandler.Update)
+
+		// DELETE /api/v1/gates/:id - 删除出入口
+		gates.DELETE("/:id", r.gateHandler.Delete)
 	}
 }

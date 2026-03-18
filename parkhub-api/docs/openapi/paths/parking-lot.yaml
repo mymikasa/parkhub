@@ -1,0 +1,369 @@
+/parking-lots:
+  get:
+    tags:
+      - ParkingLot
+    summary: 获取停车场列表
+    description: 获取当前租户下的所有停车场列表
+    operationId: listParkingLots
+    security:
+      - BearerAuth: []
+    parameters:
+      - name: status
+        in: query
+        schema:
+          type: string
+          enum: [active, inactive]
+      - name: search
+        in: query
+        schema:
+          type: string
+      - name: page
+        in: query
+        schema:
+          type: integer
+          default: 1
+      - name: page_size
+        in: query
+        schema:
+          type: integer
+          default: 20
+    responses:
+      '200':
+        description: 成功获取停车场列表
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/parking-lot.yaml#/ParkingLotListResponse'
+      '401':
+        $ref: '#/components/responses/Unauthorized'
+      '403':
+        $ref: '#/components/responses/Forbidden'
+  post:
+    tags:
+      - ParkingLot
+    summary: 创建停车场
+    description: 创建新的停车场（仅租户管理员可调用）
+    operationId: createParkingLot
+    security:
+      - BearerAuth: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/parking-lot.yaml#/CreateParkingLotRequest'
+    responses:
+      '201':
+        description: 停车场创建成功
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/parking-lot.yaml#/ParkingLot'
+      '400':
+        $ref: '#/components/responses/BadRequest'
+      '401':
+        $ref: '#/components/responses/Unauthorized'
+      '403':
+        $ref: '#/components/responses/Forbidden'
+      '409':
+        description: 车场名称已存在
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/ErrorResponse'
+            example:
+              code: 40901
+              message: 该车场名称已存在
+
+/parking-lots/stats:
+  get:
+    tags:
+      - ParkingLot
+    summary: 获取停车场统计数据
+    description: 获取当前租户下所有停车场的汇总统计数据
+    operationId: getParkingLotStats
+    security:
+      - BearerAuth: []
+    responses:
+      '200':
+        description: 成功获取统计数据
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/parking-lot.yaml#/ParkingLotStatsResponse'
+      '401':
+        $ref: '#/components/responses/Unauthorized'
+
+/parking-lots/{id}:
+  get:
+    tags:
+      - ParkingLot
+    summary: 获取停车场详情
+    description: 根据ID获取单个停车场的详细信息
+    operationId: getParkingLot
+    security:
+      - BearerAuth: []
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    responses:
+      '200':
+        description: 成功获取停车场详情
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/parking-lot.yaml#/ParkingLot'
+      '401':
+        $ref: '#/components/responses/Unauthorized'
+      '403':
+        $ref: '#/components/responses/Forbidden'
+      '404':
+        $ref: '#/components/responses/NotFound'
+  put:
+    tags:
+      - ParkingLot
+    summary: 更新停车场
+    description: 更新停车场信息（仅租户管理员可调用）
+    operationId: updateParkingLot
+    security:
+      - BearerAuth: []
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/parking-lot.yaml#/UpdateParkingLotRequest'
+    responses:
+      '200':
+        description: 更新成功
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/parking-lot.yaml#/ParkingLot'
+      '400':
+        $ref: '#/components/responses/BadRequest'
+      '401':
+        $ref: '#/components/responses/Unauthorized'
+      '403':
+        $ref: '#/components/responses/Forbidden'
+      '404':
+        $ref: '#/components/responses/NotFound'
+      '409':
+        description: 车场名称已存在
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/ErrorResponse'
+            example:
+              code: 40901
+              message: 该车场名称已存在
+  delete:
+    tags:
+      - ParkingLot
+    summary: 删除停车场
+    description: 删除停车场（仅租户管理员可调用，软删除）
+    operationId: deleteParkingLot
+    security:
+      - BearerAuth: []
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    responses:
+      '200':
+        description: 删除成功
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/MessageResponse'
+      '401':
+        $ref: '#/components/responses/Unauthorized'
+      '403':
+        description: 存在场内车辆或有未处理异常记录
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/ErrorResponse'
+            examples:
+              vehicles:
+                value:
+                  code: 40302
+                  message: 该车场存在在场车辆，无法删除
+              records:
+                value:
+                  code: 40303
+                  message: 该车场存在未处理的异常记录，无法删除
+      '404':
+        $ref: '#/components/responses/NotFound'
+
+/parking-lots/{id}/gates:
+  get:
+    tags:
+      - ParkingLot
+    summary: 获取出入口列表
+    description: 获取指定停车场的所有出入口列表
+    operationId: listGates
+    security:
+      - BearerAuth: []
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    responses:
+      '200':
+        description: 成功获取出入口列表
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: '../schemas/parking-lot.yaml#/GateWithDevice'
+      '401':
+        $ref: '#/components/responses/Unauthorized'
+      '403':
+        $ref: '#/components/responses/Forbidden'
+      '404':
+        $ref: '#/components/responses/NotFound'
+  post:
+    tags:
+      - ParkingLot
+    summary: 添加出入口
+    description: 为停车场添加出入口（仅租户管理员可调用）
+    operationId: createGate
+    security:
+      - BearerAuth: []
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/parking-lot.yaml#/CreateGateRequest'
+    responses:
+      '201':
+        description: 出入口创建成功
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/parking-lot.yaml#/Gate'
+      '400':
+        $ref: '#/components/responses/BadRequest'
+      '401':
+        $ref: '#/components/responses/Unauthorized'
+      '403':
+        $ref: '#/components/responses/Forbidden'
+      '409':
+        description: 出入口名称已存在
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/ErrorResponse'
+            example:
+              code: 40902
+              message: 该出入口名称已存在
+
+/gates/{id}:
+  put:
+    tags:
+      - ParkingLot
+    summary: 更新出入口
+    description: 更新出入口信息（仅租户管理员可调用）
+    operationId: updateGate
+    security:
+      - BearerAuth: []
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/parking-lot.yaml#/UpdateGateRequest'
+    responses:
+      '200':
+        description: 更新成功
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/parking-lot.yaml#/Gate'
+      '400':
+        $ref: '#/components/responses/BadRequest'
+      '401':
+        $ref: '#/components/responses/Unauthorized'
+      '403':
+        $ref: '#/components/responses/Forbidden'
+      '404':
+        $ref: '#/components/responses/NotFound'
+  delete:
+    tags:
+      - ParkingLot
+    summary: 删除出入口
+    description: 删除出入口（仅租户管理员可调用）
+    operationId: deleteGate
+    security:
+      - BearerAuth: []
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    responses:
+      '200':
+        description: 删除成功
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/MessageResponse'
+      '401':
+        $ref: '#/components/responses/Unauthorized'
+      '403':
+        description: 最后一个入口/出口或存在未完成通行记录
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/ErrorResponse'
+            examples:
+              last_entry:
+                value:
+                  code: 40303
+                  message: 每个车场至少保留一个入口
+              last_exit:
+                value:
+                  code: 40303
+                  message: 每个车场至少保留一个出口
+              unfinished_records:
+                value:
+                  code: 40304
+                  message: 该出入口存在未完成的通行记录，无法删除
+      '404':
+        $ref: '#/components/responses/NotFound'

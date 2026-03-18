@@ -1,0 +1,16 @@
+ErrorResponse:
+  type: object
+  properties:
+    code:
+      type: string
+      description: 错误码
+    message:
+      type: string
+      description: 错误消息
+
+MessageResponse:
+  type: object
+  properties:
+    message:
+      type: string
+      description: 消息内容

@@ -205,6 +205,18 @@
   box-shadow: 0 0 8px rgba(239, 68, 68, 0.3);
 }
 
+.glow-normal {
+  box-shadow: 0 0 8px rgba(34, 197, 94, 0.3);
+}
+
+.glow-warning {
+  box-shadow: 0 0 8px rgba(245, 158, 11, 0.3);
+}
+
+.glow-danger {
+  box-shadow: 0 0 8px rgba(239, 68, 68, 0.3);
+}
+
 /* Animations */
 @keyframes pulse {
   0%, 100% { opacity: 1; }
