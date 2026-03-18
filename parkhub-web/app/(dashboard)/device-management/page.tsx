@@ -54,6 +54,7 @@ import { usePermissions, useUser } from "@/lib/auth/hooks";
 import { useTenants } from "@/lib/tenant/hooks";
 import { useGates, useParkingLots } from "@/lib/parking-lot/hooks";
 import type { Device, DeviceFilter, DeviceStatus } from "@/lib/device/types";
+import { DeviceControlButton } from "@/components/device";
 
 const STATUS_CONFIG: Record<
   DeviceStatus,
@@ -495,6 +496,7 @@ export default function DeviceManagementPage() {
                           key={device.id}
                           device={device}
                           canEdit={!isOperator}
+                          canControl={true}
                           onEdit={() => setEditDevice(device)}
                           onBind={() => setBindDevice(device)}
                           onUnbind={() => handleUnbind(device)}
@@ -610,6 +612,7 @@ function StatsCard({
 function DeviceRow({
   device,
   canEdit,
+  canControl,
   onEdit,
   onBind,
   onUnbind,
@@ -617,6 +620,7 @@ function DeviceRow({
 }: {
   device: Device;
   canEdit: boolean;
+  canControl: boolean;
   onEdit: () => void;
   onBind: () => void;
   onUnbind: () => void;
@@ -736,6 +740,13 @@ function DeviceRow({
       <TableCell className="pr-6 py-4 text-right">
         {canEdit ? (
           <div className="flex justify-end gap-2">
+            {canControl && (
+              <DeviceControlButton
+                deviceId={device.id}
+                deviceName={device.name || device.id}
+                status={device.status}
+              />
+            )}
             <button
               onClick={onBind}
               disabled={!canBind}
@@ -766,7 +777,16 @@ function DeviceRow({
             </button>
           </div>
         ) : (
-          <span className="text-xs text-slate-300">无可用操作</span>
+          <div className="flex justify-end gap-2">
+            {canControl && (
+              <DeviceControlButton
+                deviceId={device.id}
+                deviceName={device.name || device.id}
+                status={device.status}
+              />
+            )}
+            {!canControl && <span className="text-xs text-slate-300">无可用操作</span>}
+          </div>
         )}
       </TableCell>
     </TableRow>

@@ -46,6 +46,13 @@ func (s *stubDeviceService) GetStats(ctx context.Context, tenantID string) (*ser
 	return nil, nil
 }
 
+// stubDeviceControlService is a stub implementation for the tests
+type stubDeviceControlService struct{}
+
+func (s *stubDeviceControlService) Control(ctx context.Context, req *service.ControlDeviceRequest) (*service.ControlDeviceResponse, error) {
+	return &service.ControlDeviceResponse{Success: true}, nil
+}
+
 func TestDeviceHandler_Bind_Success(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
@@ -59,7 +66,8 @@ func TestDeviceHandler_Bind_Success(t *testing.T) {
 			return device, nil
 		},
 	}
-	handler := NewDeviceHandler(svc)
+	controlSvc := &stubDeviceControlService{}
+	handler := NewDeviceHandler(svc, controlSvc)
 
 	router := gin.New()
 	router.Use(func(c *gin.Context) {
@@ -95,7 +103,8 @@ func TestDeviceHandler_Unbind_MapsDomainError(t *testing.T) {
 			return nil, &domain.DomainError{Code: "DEVICE_NOT_BOUND", Message: "设备当前未绑定"}
 		},
 	}
-	handler := NewDeviceHandler(svc)
+	controlSvc := &stubDeviceControlService{}
+	handler := NewDeviceHandler(svc, controlSvc)
 
 	router := gin.New()
 	router.Use(func(c *gin.Context) {

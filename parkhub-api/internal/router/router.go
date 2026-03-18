@@ -209,25 +209,19 @@ func (r *Router) setupParkingLotRoutes(rg *gin.RouterGroup) {
 	}
 }
 
-// setupDeviceRoutes 设置设备管理路由
 func (r *Router) setupDeviceRoutes(rg *gin.RouterGroup) {
 	devices := rg.Group("/devices")
 	devices.Use(middleware.AuthMiddleware(r.jwtManager))
 	devices.Use(middleware.RequireRoles("platform_admin", "tenant_admin", "operator"))
 	{
-		// POST /api/v1/devices - 手动创建设备（仅admin）
 		devices.POST("", middleware.RequireRoles("platform_admin", "tenant_admin"), r.deviceHandler.Create)
 
-		// GET /api/v1/devices - 获取设备列表
 		devices.GET("", r.deviceHandler.List)
 
-		// GET /api/v1/devices/stats - 获取设备统计
 		devices.GET("/stats", r.deviceHandler.GetStats)
 
-		// GET /api/v1/devices/:id - 获取设备详情
 		devices.GET("/:id", r.deviceHandler.Get)
 
-		// PUT /api/v1/devices/:id - 更新设备名称（仅admin）
 		devices.PUT("/:id", middleware.RequireRoles("platform_admin", "tenant_admin"), r.deviceHandler.UpdateName)
 
 		// POST /api/v1/devices/:id/bind - 绑定设备（仅admin）
@@ -235,5 +229,8 @@ func (r *Router) setupDeviceRoutes(rg *gin.RouterGroup) {
 
 		// POST /api/v1/devices/:id/unbind - 解绑设备（仅admin）
 		devices.POST("/:id/unbind", middleware.RequireRoles("platform_admin", "tenant_admin"), r.deviceHandler.Unbind)
+
+		// POST /api/v1/devices/:id/control - 远程控制设备
+		devices.POST("/:id/control", r.deviceHandler.Control)
 	}
 }

@@ -175,3 +175,8 @@ type GateRepo interface {
 	CountByParkingLotID(ctx context.Context, parkingLotID string) (entryCount, exitCount int64, err error)
 	CountByParkingLotIDAndType(ctx context.Context, parkingLotID string, gateType domain.GateType) (int64, error)
 }
+
+type DeviceControlLogRepo interface {
+	Create(ctx context.Context, log *domain.DeviceControlLog) error
+	FindByDeviceID(ctx context.Context, deviceID string, page, pageSize int) ([]*domain.DeviceControlLog, int64, error)
+}
