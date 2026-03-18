@@ -31,7 +31,8 @@ const (
 
 // 设备相关错误
 var (
-	ErrDeviceNotFound = errors.New("设备不存在")
+	ErrDeviceNotFound    = errors.New("设备不存在")
+	ErrDeviceIDDuplicate = errors.New("设备序列号已存在")
 )
 
 // NewDevice 创建新设备（首次心跳上报时创建）

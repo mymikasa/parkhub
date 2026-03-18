@@ -2,6 +2,12 @@ package dto
 
 import "github.com/parkhub/api/internal/service"
 
+// CreateDeviceRequest 手动创建设备请求
+type CreateDeviceRequest struct {
+	ID   string `json:"id" binding:"required,min=1,max=100"`
+	Name string `json:"name" binding:"omitempty,max=50"`
+}
+
 // UpdateDeviceNameRequest 更新设备名称请求
 type UpdateDeviceNameRequest struct {
 	Name string `json:"name" binding:"required,min=1,max=50"`

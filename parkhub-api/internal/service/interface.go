@@ -370,6 +370,8 @@ type ParkingLotStatsResponse struct {
 
 // DeviceService 设备服务接口
 type DeviceService interface {
+	// Create 手动创建设备
+	Create(ctx context.Context, req *CreateDeviceRequest) (*domain.Device, error)
 	// GetByID 获取设备详情
 	GetByID(ctx context.Context, req *GetDeviceRequest) (*domain.Device, error)
 	// List 获取设备列表
@@ -378,6 +380,13 @@ type DeviceService interface {
 	UpdateName(ctx context.Context, req *UpdateDeviceNameRequest) (*domain.Device, error)
 	// GetStats 获取设备统计
 	GetStats(ctx context.Context, tenantID string) (*DeviceStatsResponse, error)
+}
+
+// CreateDeviceRequest 手动创建设备请求
+type CreateDeviceRequest struct {
+	ID       string // 设备序列号
+	TenantID string // 从JWT获取
+	Name     string // 可选
 }
 
 // GetDeviceRequest 获取设备请求

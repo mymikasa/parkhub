@@ -28,6 +28,18 @@ func (r *deviceRepo) Create(ctx context.Context, device *domain.Device) error {
 	return r.db.WithContext(ctx).Create(d).Error
 }
 
+func (r *deviceRepo) ExistsByID(ctx context.Context, id string) (bool, error) {
+	var count int64
+	err := r.db.WithContext(ctx).
+		Model(&dao.DeviceDAO{}).
+		Where("id = ? AND deleted_at IS NULL", id).
+		Count(&count).Error
+	if err != nil {
+		return false, err
+	}
+	return count > 0, nil
+}
+
 func (r *deviceRepo) FindByID(ctx context.Context, id string) (*domain.Device, error) {
 	var d dao.DeviceDAO
 	if err := r.db.WithContext(ctx).Where("id = ? AND deleted_at IS NULL", id).First(&d).Error; err != nil {

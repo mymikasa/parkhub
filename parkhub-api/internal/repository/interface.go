@@ -131,6 +131,7 @@ type ParkingLotStats struct {
 // DeviceRepo 设备数据访问接口
 type DeviceRepo interface {
 	Create(ctx context.Context, device *domain.Device) error
+	ExistsByID(ctx context.Context, id string) (bool, error)
 	FindByID(ctx context.Context, id string) (*domain.Device, error)
 	FindByIDGlobal(ctx context.Context, id string) (*domain.Device, error)
 	FindAll(ctx context.Context, tenantID string, filter DeviceFilter) ([]*domain.DeviceListItem, int64, error)
