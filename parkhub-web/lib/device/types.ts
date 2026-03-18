@@ -28,6 +28,11 @@ export interface DeviceDetail {
   updated_at: string;
 }
 
+export interface CreateDeviceRequest {
+  id: string;
+  name?: string;
+}
+
 export interface UpdateDeviceNameRequest {
   name: string;
 }

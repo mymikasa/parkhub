@@ -3,7 +3,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getValidAccessToken } from '@/lib/auth/store';
 import * as api from './api';
-import type { DeviceFilter, UpdateDeviceNameRequest } from './types';
+import type { DeviceFilter, CreateDeviceRequest, UpdateDeviceNameRequest } from './types';
 
 export const deviceKeys = {
   all: ['devices'] as const,
@@ -45,6 +45,22 @@ export function useDevice(id: string) {
       return api.getDevice(id, accessToken);
     },
     enabled: !!id,
+  });
+}
+
+export function useCreateDevice() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (data: CreateDeviceRequest) => {
+      const accessToken = await getValidAccessToken();
+      if (!accessToken) throw new Error('未登录');
+      return api.createDevice(data, accessToken);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: deviceKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: deviceKeys.stats() });
+    },
   });
 }
 

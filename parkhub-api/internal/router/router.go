@@ -215,6 +215,9 @@ func (r *Router) setupDeviceRoutes(rg *gin.RouterGroup) {
 	devices.Use(middleware.AuthMiddleware(r.jwtManager))
 	devices.Use(middleware.RequireRoles("platform_admin", "tenant_admin", "operator"))
 	{
+		// POST /api/v1/devices - 手动创建设备（仅admin）
+		devices.POST("", middleware.RequireRoles("platform_admin", "tenant_admin"), r.deviceHandler.Create)
+
 		// GET /api/v1/devices - 获取设备列表
 		devices.GET("", r.deviceHandler.List)
 

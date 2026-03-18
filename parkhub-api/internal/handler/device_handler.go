@@ -22,6 +22,33 @@ func NewDeviceHandler(deviceService service.DeviceService) *DeviceHandler {
 	return &DeviceHandler{deviceService: deviceService}
 }
 
+// Create 手动创建设备
+func (h *DeviceHandler) Create(c *gin.Context) {
+	tenantID := c.GetString("tenant_id")
+
+	var req dto.CreateDeviceRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, dto.Response{Code: 400, Message: validator.FormatValidationError(err)})
+		return
+	}
+
+	device, err := h.deviceService.Create(c.Request.Context(), &service.CreateDeviceRequest{
+		ID:       req.ID,
+		TenantID: tenantID,
+		Name:     req.Name,
+	})
+	if err != nil {
+		h.handleError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusCreated, dto.Response{
+		Code:    0,
+		Message: "创建成功",
+		Data:    h.toDeviceDetailDTO(device),
+	})
+}
+
 // List 获取设备列表
 func (h *DeviceHandler) List(c *gin.Context) {
 	tenantID := c.GetString("tenant_id")
@@ -169,6 +196,8 @@ func (h *DeviceHandler) handleError(c *gin.Context, err error) {
 		switch de.Code {
 		case "DEVICE_NOT_FOUND":
 			c.JSON(http.StatusNotFound, dto.Response{Code: 40401, Message: de.Message})
+		case "DEVICE_ID_DUPLICATE":
+			c.JSON(http.StatusConflict, dto.Response{Code: 40901, Message: de.Message})
 		case "FORBIDDEN":
 			c.JSON(http.StatusForbidden, dto.Response{Code: 40301, Message: de.Message})
 		default:

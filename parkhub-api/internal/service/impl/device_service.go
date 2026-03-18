@@ -22,6 +22,29 @@ func NewDeviceService(deviceRepo repository.DeviceRepo) service.DeviceService {
 	}
 }
 
+func (s *deviceServiceImpl) Create(ctx context.Context, req *service.CreateDeviceRequest) (*domain.Device, error) {
+	// 检查序列号是否已存在
+	exists, err := s.deviceRepo.ExistsByID(ctx, req.ID)
+	if err != nil {
+		return nil, err
+	}
+	if exists {
+		return nil, &domain.DomainError{Code: "DEVICE_ID_DUPLICATE", Message: "该设备序列号已存在"}
+	}
+
+	// 创建设备实体
+	device := domain.NewDevice(req.ID, req.TenantID)
+	if req.Name != "" {
+		device.Name = req.Name
+	}
+
+	if err := s.deviceRepo.Create(ctx, device); err != nil {
+		return nil, err
+	}
+
+	return device, nil
+}
+
 func (s *deviceServiceImpl) GetByID(ctx context.Context, req *service.GetDeviceRequest) (*domain.Device, error) {
 	device, err := s.deviceRepo.FindByID(ctx, req.ID)
 	if err != nil {

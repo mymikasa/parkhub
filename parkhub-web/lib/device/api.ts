@@ -4,6 +4,7 @@ import type {
   DeviceListResponse,
   DeviceFilter,
   DeviceStats,
+  CreateDeviceRequest,
   UpdateDeviceNameRequest,
 } from './types';
 
@@ -163,6 +164,33 @@ export async function getDeviceStats(accessToken: string): Promise<DeviceStats> 
     offline: raw.offline ?? raw.Offline ?? 0,
     pending: raw.pending ?? raw.Pending ?? 0,
     disabled: raw.disabled ?? raw.Disabled ?? 0,
+  };
+}
+
+export async function createDevice(
+  req: CreateDeviceRequest,
+  accessToken: string
+): Promise<DeviceDetail> {
+  const response = await request<DeviceRaw | ApiEnvelope<DeviceRaw>>(
+    '/api/v1/devices',
+    {
+      method: 'POST',
+      body: JSON.stringify(req),
+    },
+    accessToken
+  );
+  const raw = unwrapResponse(response);
+  return {
+    id: raw.id ?? raw.ID ?? '',
+    tenant_id: raw.tenant_id ?? raw.TenantID ?? '',
+    name: raw.name ?? raw.Name ?? '',
+    status: (raw.status ?? raw.Status ?? 'pending') as DeviceDetail['status'],
+    firmware_version: raw.firmware_version ?? raw.FirmwareVersion ?? '',
+    last_heartbeat: raw.last_heartbeat ?? raw.LastHeartbeat ?? null,
+    parking_lot_id: raw.parking_lot_id ?? raw.ParkingLotID ?? null,
+    gate_id: raw.gate_id ?? raw.GateID ?? null,
+    created_at: raw.created_at ?? raw.CreatedAt ?? '',
+    updated_at: raw.updated_at ?? raw.UpdatedAt ?? '',
   };
 }
 
