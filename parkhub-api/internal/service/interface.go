@@ -368,6 +368,75 @@ type ParkingLotStatsResponse struct {
 	TotalGates       int64
 }
 
+// DeviceService 设备服务接口
+type DeviceService interface {
+	// GetByID 获取设备详情
+	GetByID(ctx context.Context, req *GetDeviceRequest) (*domain.Device, error)
+	// List 获取设备列表
+	List(ctx context.Context, req *ListDevicesRequest) (*DeviceListResponse, error)
+	// UpdateName 更新设备名称
+	UpdateName(ctx context.Context, req *UpdateDeviceNameRequest) (*domain.Device, error)
+	// GetStats 获取设备统计
+	GetStats(ctx context.Context, tenantID string) (*DeviceStatsResponse, error)
+}
+
+// GetDeviceRequest 获取设备请求
+type GetDeviceRequest struct {
+	ID       string
+	TenantID string // 空表示平台管理员
+}
+
+// ListDevicesRequest 设备列表请求
+type ListDevicesRequest struct {
+	TenantID     string
+	ParkingLotID string
+	GateID       string
+	Status       *domain.DeviceStatus
+	Keyword      string
+	Page         int
+	PageSize     int
+}
+
+// UpdateDeviceNameRequest 更新设备名称请求
+type UpdateDeviceNameRequest struct {
+	ID       string
+	TenantID string
+	Name     string
+}
+
+// DeviceStatsResponse 设备统计响应
+type DeviceStatsResponse struct {
+	Total    int64 `json:"total"`
+	Active   int64 `json:"active"`
+	Offline  int64 `json:"offline"`
+	Pending  int64 `json:"pending"`
+	Disabled int64 `json:"disabled"`
+}
+
+// DeviceListResponse 设备列表响应
+type DeviceListResponse struct {
+	Items    []*DeviceListItem
+	Total    int64
+	Page     int
+	PageSize int
+}
+
+// DeviceListItem 设备列表项
+type DeviceListItem struct {
+	ID              string
+	TenantID        string
+	Name            string
+	Status          domain.DeviceStatus
+	FirmwareVersion string
+	LastHeartbeat   *string
+	ParkingLotID    *string
+	ParkingLotName  *string
+	GateID          *string
+	GateName        *string
+	CreatedAt       string
+	UpdatedAt       string
+}
+
 // GateService 出入口服务接口
 type GateService interface {
 	// Create 创建出入口

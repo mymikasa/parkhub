@@ -126,6 +126,33 @@ type ParkingLotStats struct {
 	TotalGates       int64
 }
 
+// DeviceRepo 设备数据访问接口
+type DeviceRepo interface {
+	FindByID(ctx context.Context, id string) (*domain.Device, error)
+	FindAll(ctx context.Context, tenantID string, filter DeviceFilter) ([]*domain.DeviceListItem, int64, error)
+	Update(ctx context.Context, device *domain.Device) error
+	CountByStatus(ctx context.Context, tenantID string) (*DeviceStats, error)
+}
+
+// DeviceStats 设备统计信息
+type DeviceStats struct {
+	Total    int64
+	Active   int64
+	Offline  int64
+	Pending  int64
+	Disabled int64
+}
+
+// DeviceFilter 设备查询过滤器
+type DeviceFilter struct {
+	ParkingLotID string
+	GateID       string
+	Status       *domain.DeviceStatus
+	Keyword      string
+	Page         int
+	PageSize     int
+}
+
 // GateRepo 出入口数据访问接口
 type GateRepo interface {
 	Create(ctx context.Context, gate *domain.Gate) error
