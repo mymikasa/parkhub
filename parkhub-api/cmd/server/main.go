@@ -13,7 +13,11 @@ import (
 	"github.com/parkhub/api/internal/config"
 	appdb "github.com/parkhub/api/internal/pkg/db"
 	"github.com/parkhub/api/internal/pkg/logger"
+	appmqtt "github.com/parkhub/api/internal/pkg/mqtt"
+	appredis "github.com/parkhub/api/internal/pkg/redis"
+	repoimpl "github.com/parkhub/api/internal/repository/impl"
 	"github.com/parkhub/api/internal/seed"
+	svcimpl "github.com/parkhub/api/internal/service/impl"
 	appwire "github.com/parkhub/api/internal/wire"
 )
 
@@ -57,6 +61,36 @@ func main() {
 	}
 	r.Setup()
 
+	// Initialize Redis
+	redisClient, redisCleanup, err := appredis.New(cfg.RedisURL)
+	if err != nil {
+		slog.Error("failed to connect to redis", "error", err)
+		os.Exit(1)
+	}
+	defer redisCleanup()
+
+	// Create heartbeat service (before MQTT connect so we can pass Subscribe as OnConnect callback)
+	deviceRepo := repoimpl.NewDeviceRepo(gormDB)
+	heartbeatSvc := svcimpl.NewHeartbeatService(nil, redisClient, deviceRepo, cfg.HeartbeatTimeoutSeconds)
+
+	// Initialize MQTT with re-subscribe on reconnect
+	mqttClient, mqttCleanup, err := appmqtt.New(appmqtt.Config{
+		BrokerURL: cfg.MQTTBrokerURL,
+		Username:  cfg.MQTTUsername,
+		Password:  cfg.MQTTPassword,
+		ClientID:  "parkhub-api-" + cfg.AppPort,
+		OnConnect: heartbeatSvc.Subscribe,
+	})
+	if err != nil {
+		slog.Error("failed to connect to mqtt broker", "error", err)
+		os.Exit(1)
+	}
+	defer mqttCleanup()
+
+	// Start heartbeat service with the connected MQTT client
+	heartbeatSvc.SetMQTTClient(mqttClient)
+	heartbeatSvc.Start()
+
 	srv := &http.Server{
 		Addr:    ":" + cfg.AppPort,
 		Handler: r.GetEngine(),
@@ -77,6 +111,8 @@ func main() {
 
 	<-ctx.Done()
 	slog.Info("shutdown signal received")
+
+	heartbeatSvc.Stop()
 
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()

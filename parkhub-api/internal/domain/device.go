@@ -68,6 +68,46 @@ func ValidateDeviceStatus(status DeviceStatus) bool {
 	}
 }
 
+// UpdateHeartbeat 更新心跳信息
+func (d *Device) UpdateHeartbeat(firmwareVersion string, now time.Time) {
+	d.FirmwareVersion = firmwareVersion
+	d.LastHeartbeat = &now
+	d.UpdatedAt = now
+}
+
+// MarkOnline 恢复在线
+// 已分配设备（非平台租户）：offline → active
+// 未分配设备（平台租户）：offline → pending
+func (d *Device) MarkOnline(now time.Time) {
+	if d.Status == DeviceStatusOffline {
+		if d.TenantID == PlatformTenantID {
+			d.Status = DeviceStatusPending
+		} else {
+			d.Status = DeviceStatusActive
+		}
+		d.UpdatedAt = now
+	}
+}
+
+// MarkOffline 标记离线
+func (d *Device) MarkOffline(now time.Time) {
+	if d.Status == DeviceStatusActive || d.Status == DeviceStatusPending {
+		d.Status = DeviceStatusOffline
+		d.UpdatedAt = now
+	}
+}
+
+// HeartbeatMessage 心跳消息（从 MQTT payload 解析）
+type HeartbeatMessage struct {
+	FirmwareVersion string `json:"firmware_version"`
+}
+
+// PlatformTenantID 平台租户ID（未分配设备归属此租户）
+const PlatformTenantID = "tenant-platform"
+
+// DefaultHeartbeatTimeoutSeconds 默认心跳超时（秒）
+const DefaultHeartbeatTimeoutSeconds = 300
+
 // DeviceListItem 设备列表项（带关联信息）
 type DeviceListItem struct {
 	Device

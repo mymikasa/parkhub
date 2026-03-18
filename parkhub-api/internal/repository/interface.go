@@ -3,6 +3,8 @@ package repository
 import (
 	"context"
 
+	"time"
+
 	"github.com/parkhub/api/internal/domain"
 	"github.com/parkhub/api/internal/repository/dao"
 )
@@ -131,8 +133,12 @@ type DeviceRepo interface {
 	Create(ctx context.Context, device *domain.Device) error
 	ExistsByID(ctx context.Context, id string) (bool, error)
 	FindByID(ctx context.Context, id string) (*domain.Device, error)
+	FindByIDGlobal(ctx context.Context, id string) (*domain.Device, error)
 	FindAll(ctx context.Context, tenantID string, filter DeviceFilter) ([]*domain.DeviceListItem, int64, error)
 	Update(ctx context.Context, device *domain.Device) error
+	UpdateHeartbeat(ctx context.Context, device *domain.Device) error
+	FindTimedOutDevices(ctx context.Context, threshold time.Time) ([]*domain.Device, error)
+	BatchUpdateStatus(ctx context.Context, ids []string, status domain.DeviceStatus) error
 	CountByStatus(ctx context.Context, tenantID string) (*DeviceStats, error)
 }
 
