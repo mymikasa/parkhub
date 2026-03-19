@@ -4,6 +4,7 @@ import "github.com/parkhub/api/internal/domain"
 
 // CreateTransitRecordRequest 创建通行记录请求
 type CreateTransitRecordRequest struct {
+	TenantID     string  `json:"tenant_id"`
 	ParkingLotID string  `json:"parking_lot_id" binding:"required"`
 	GateID       string  `json:"gate_id" binding:"required"`
 	Type         string  `json:"type" binding:"required,oneof=entry exit"`

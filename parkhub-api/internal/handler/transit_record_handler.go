@@ -35,6 +35,14 @@ func (h *TransitRecordHandler) Create(c *gin.Context) {
 	}
 
 	tenantID := c.GetString("tenant_id")
+	// 平台管理员无自带 tenant_id，需从请求体获取
+	if tenantID == "" {
+		tenantID = req.TenantID
+	}
+	if tenantID == "" {
+		c.JSON(http.StatusBadRequest, dto.Response{Code: 400, Message: "tenant_id 不能为空"})
+		return
+	}
 
 	if req.Type == "entry" {
 		record, err := h.transitRecordService.CreateEntry(c.Request.Context(), &service.CreateEntryRequest{
@@ -86,8 +94,17 @@ func (h *TransitRecordHandler) Get(c *gin.Context) {
 
 // List 获取通行记录列表
 func (h *TransitRecordHandler) List(c *gin.Context) {
-	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
-	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "20"))
+	page, err := strconv.Atoi(c.DefaultQuery("page", "1"))
+	if err != nil || page < 1 {
+		page = 1
+	}
+	pageSize, err := strconv.Atoi(c.DefaultQuery("page_size", "20"))
+	if err != nil || pageSize < 1 {
+		pageSize = 20
+	}
+	if pageSize > 100 {
+		pageSize = 100
+	}
 
 	req := &service.ListTransitRecordsRequest{
 		TenantID:     c.GetString("tenant_id"),
