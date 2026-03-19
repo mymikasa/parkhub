@@ -24,7 +24,7 @@ CREATE TABLE IF NOT EXISTS transit_records (
     KEY idx_parking_lot_plate (parking_lot_id, plate_number, type, created_at),
     KEY idx_status (tenant_id, status),
     KEY idx_created_at (tenant_id, created_at DESC),
-    KEY idx_entry_record_id (entry_record_id),
+    UNIQUE KEY uk_entry_record_id (entry_record_id),
     CONSTRAINT fk_transit_records_tenant FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE,
     CONSTRAINT fk_transit_records_parking_lot FOREIGN KEY (parking_lot_id) REFERENCES parking_lots(id) ON DELETE CASCADE,
     CONSTRAINT fk_transit_records_gate FOREIGN KEY (gate_id) REFERENCES gates(id) ON DELETE CASCADE,

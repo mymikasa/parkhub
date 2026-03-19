@@ -67,11 +67,20 @@ const (
 // OverstayThresholdHours 超时停放阈值（小时）
 const OverstayThresholdHours = 48
 
+// normalizePlateNumber 将空字符串车牌规范化为 nil
+func normalizePlateNumber(plateNumber *string) *string {
+	if plateNumber != nil && *plateNumber == "" {
+		return nil
+	}
+	return plateNumber
+}
+
 // NewEntryRecord 创建入场记录
 func NewEntryRecord(id, tenantID, parkingLotID, gateID string, plateNumber, imageURL *string) *TransitRecord {
 	now := time.Now()
+	plateNumber = normalizePlateNumber(plateNumber)
 	status := TransitStatusNormal
-	if plateNumber == nil || *plateNumber == "" {
+	if plateNumber == nil {
 		status = TransitStatusRecognitionFailed
 	}
 
@@ -92,9 +101,10 @@ func NewEntryRecord(id, tenantID, parkingLotID, gateID string, plateNumber, imag
 // NewExitRecord 创建出场记录
 func NewExitRecord(id, tenantID, parkingLotID, gateID string, plateNumber, imageURL *string, entryRecordID *string, fee *float64, parkingDuration *int) *TransitRecord {
 	now := time.Now()
+	plateNumber = normalizePlateNumber(plateNumber)
 
 	status := TransitStatusPaid
-	if plateNumber == nil || *plateNumber == "" {
+	if plateNumber == nil {
 		status = TransitStatusRecognitionFailed
 	} else if entryRecordID == nil {
 		status = TransitStatusNoEntry
