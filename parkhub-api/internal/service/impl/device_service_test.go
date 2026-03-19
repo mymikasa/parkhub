@@ -102,6 +102,14 @@ func (m *mockDeviceRepo) Update(ctx context.Context, device *domain.Device) erro
 	return nil
 }
 
+func (m *mockDeviceRepo) Delete(ctx context.Context, id string) error {
+	if _, ok := m.devices[id]; !ok {
+		return domain.ErrDeviceNotFound
+	}
+	delete(m.devices, id)
+	return nil
+}
+
 func (m *mockDeviceRepo) UpdateHeartbeat(ctx context.Context, device *domain.Device) error {
 	return m.Update(ctx, device)
 }
@@ -416,5 +424,94 @@ func TestDeviceService_Unbind_WritesAuditLog(t *testing.T) {
 	}
 	if detail["parking_lot_id"] != "lot-1" || detail["gate_id"] != "gate-1" || detail["tenant_id"] != "tenant-1" {
 		t.Fatalf("detail = %v", detail)
+	}
+}
+
+func TestDeviceService_Disable_Success(t *testing.T) {
+	svc, deviceRepo, _, _, _ := setupTestDeviceService()
+	createTestDevice(deviceRepo, "device-1", "tenant-1", domain.DeviceStatusActive)
+
+	device, err := svc.Disable(context.Background(), &service.ChangeDeviceStatusRequest{
+		ID:       "device-1",
+		TenantID: "tenant-1",
+	})
+	if err != nil {
+		t.Fatalf("Disable() error = %v", err)
+	}
+	if device.Status != domain.DeviceStatusDisabled {
+		t.Fatalf("Status = %v, want disabled", device.Status)
+	}
+}
+
+func TestDeviceService_Enable_FromDisabled_HeartbeatFreshToActive(t *testing.T) {
+	svc, deviceRepo, _, _, _ := setupTestDeviceService()
+	device := createTestDevice(deviceRepo, "device-1", "tenant-1", domain.DeviceStatusDisabled)
+	now := time.Now().Add(-1 * time.Minute)
+	device.LastHeartbeat = &now
+
+	updated, err := svc.Enable(context.Background(), &service.ChangeDeviceStatusRequest{
+		ID:       "device-1",
+		TenantID: "tenant-1",
+	})
+	if err != nil {
+		t.Fatalf("Enable() error = %v", err)
+	}
+	if updated.Status != domain.DeviceStatusActive {
+		t.Fatalf("Status = %v, want active", updated.Status)
+	}
+}
+
+func TestDeviceService_Enable_FromDisabled_HeartbeatExpiredToOffline(t *testing.T) {
+	svc, deviceRepo, _, _, _ := setupTestDeviceService()
+	device := createTestDevice(deviceRepo, "device-1", "tenant-1", domain.DeviceStatusDisabled)
+	stale := time.Now().Add(-10 * time.Minute)
+	device.LastHeartbeat = &stale
+
+	updated, err := svc.Enable(context.Background(), &service.ChangeDeviceStatusRequest{
+		ID:       "device-1",
+		TenantID: "tenant-1",
+	})
+	if err != nil {
+		t.Fatalf("Enable() error = %v", err)
+	}
+	if updated.Status != domain.DeviceStatusOffline {
+		t.Fatalf("Status = %v, want offline", updated.Status)
+	}
+}
+
+func TestDeviceService_Delete_RequiresUnbind(t *testing.T) {
+	svc, deviceRepo, _, _, _ := setupTestDeviceService()
+	device := createTestDevice(deviceRepo, "device-1", "tenant-1", domain.DeviceStatusActive)
+	lotID := "lot-1"
+	gateID := "gate-1"
+	device.ParkingLotID = &lotID
+	device.GateID = &gateID
+
+	err := svc.Delete(context.Background(), &service.DeleteDeviceRequest{
+		ID:       "device-1",
+		TenantID: "tenant-1",
+	})
+	if err == nil {
+		t.Fatal("Delete() error = nil, want DEVICE_MUST_UNBIND")
+	}
+	var domainErr *domain.DomainError
+	if !errors.As(err, &domainErr) || domainErr.Code != "DEVICE_MUST_UNBIND" {
+		t.Fatalf("error = %v, want DEVICE_MUST_UNBIND", err)
+	}
+}
+
+func TestDeviceService_Delete_Success(t *testing.T) {
+	svc, deviceRepo, _, _, _ := setupTestDeviceService()
+	createTestDevice(deviceRepo, "device-1", domain.PlatformTenantID, domain.DeviceStatusPending)
+
+	err := svc.Delete(context.Background(), &service.DeleteDeviceRequest{
+		ID:       "device-1",
+		TenantID: "",
+	})
+	if err != nil {
+		t.Fatalf("Delete() error = %v", err)
+	}
+	if _, ok := deviceRepo.devices["device-1"]; ok {
+		t.Fatal("device still exists after Delete()")
 	}
 }

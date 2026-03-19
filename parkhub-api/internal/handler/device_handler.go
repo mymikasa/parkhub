@@ -210,6 +210,64 @@ func (h *DeviceHandler) Unbind(c *gin.Context) {
 	})
 }
 
+func (h *DeviceHandler) Disable(c *gin.Context) {
+	id := c.Param("id")
+	tenantID := c.GetString("tenant_id")
+
+	device, err := h.deviceService.Disable(c.Request.Context(), &service.ChangeDeviceStatusRequest{
+		ID:       id,
+		TenantID: tenantID,
+	})
+	if err != nil {
+		h.handleError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, dto.Response{
+		Code:    0,
+		Message: "设备已禁用",
+		Data:    h.toDeviceDetailDTO(device),
+	})
+}
+
+func (h *DeviceHandler) Enable(c *gin.Context) {
+	id := c.Param("id")
+	tenantID := c.GetString("tenant_id")
+
+	device, err := h.deviceService.Enable(c.Request.Context(), &service.ChangeDeviceStatusRequest{
+		ID:       id,
+		TenantID: tenantID,
+	})
+	if err != nil {
+		h.handleError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, dto.Response{
+		Code:    0,
+		Message: "设备已启用",
+		Data:    h.toDeviceDetailDTO(device),
+	})
+}
+
+func (h *DeviceHandler) Delete(c *gin.Context) {
+	id := c.Param("id")
+	tenantID := c.GetString("tenant_id")
+
+	if err := h.deviceService.Delete(c.Request.Context(), &service.DeleteDeviceRequest{
+		ID:       id,
+		TenantID: tenantID,
+	}); err != nil {
+		h.handleError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, dto.Response{
+		Code:    0,
+		Message: "设备已删除",
+	})
+}
+
 // GetStats 获取设备统计
 func (h *DeviceHandler) GetStats(c *gin.Context) {
 	tenantID := c.GetString("tenant_id")
@@ -294,7 +352,7 @@ func (h *DeviceHandler) handleError(c *gin.Context, err error) {
 			c.JSON(http.StatusConflict, dto.Response{Code: 40901, Message: de.Message})
 		case "FORBIDDEN":
 			c.JSON(http.StatusForbidden, dto.Response{Code: 40301, Message: de.Message})
-		case "DEVICE_INVALID_STATUS", "DEVICE_GATE_CAPACITY_EXCEEDED", "DEVICE_NOT_BOUND":
+		case "DEVICE_INVALID_STATUS", "DEVICE_GATE_CAPACITY_EXCEEDED", "DEVICE_NOT_BOUND", "DEVICE_MUST_UNBIND":
 			c.JSON(http.StatusBadRequest, dto.Response{Code: 40003, Message: de.Message})
 		case "TENANT_NOT_FOUND", "PARKING_LOT_NOT_FOUND", "GATE_NOT_FOUND":
 			c.JSON(http.StatusNotFound, dto.Response{Code: 40402, Message: de.Message})

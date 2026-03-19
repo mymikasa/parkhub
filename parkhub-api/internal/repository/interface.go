@@ -138,6 +138,7 @@ type DeviceRepo interface {
 	CountByGateID(ctx context.Context, gateID string) (int64, error)
 	FindByGateID(ctx context.Context, gateID string) ([]*domain.Device, error)
 	Update(ctx context.Context, device *domain.Device) error
+	Delete(ctx context.Context, id string) error
 	UpdateHeartbeat(ctx context.Context, device *domain.Device) error
 	UnbindByGateID(ctx context.Context, gateID string) error
 	FindTimedOutDevices(ctx context.Context, threshold time.Time) ([]*domain.Device, error)

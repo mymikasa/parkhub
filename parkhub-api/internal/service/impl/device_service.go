@@ -285,6 +285,79 @@ func (s *deviceServiceImpl) Unbind(ctx context.Context, req *service.UnbindDevic
 	return device, nil
 }
 
+func (s *deviceServiceImpl) Disable(ctx context.Context, req *service.ChangeDeviceStatusRequest) (*domain.Device, error) {
+	device, err := s.deviceRepo.FindByID(ctx, req.ID)
+	if err != nil {
+		if err == domain.ErrDeviceNotFound {
+			return nil, &domain.DomainError{Code: "DEVICE_NOT_FOUND", Message: err.Error()}
+		}
+		return nil, err
+	}
+	if req.TenantID != "" && device.TenantID != req.TenantID {
+		return nil, &domain.DomainError{Code: "FORBIDDEN", Message: "无权操作该设备"}
+	}
+
+	device.Status = domain.DeviceStatusDisabled
+	device.UpdatedAt = time.Now()
+	if err := s.deviceRepo.Update(ctx, device); err != nil {
+		return nil, err
+	}
+
+	return device, nil
+}
+
+func (s *deviceServiceImpl) Enable(ctx context.Context, req *service.ChangeDeviceStatusRequest) (*domain.Device, error) {
+	device, err := s.deviceRepo.FindByID(ctx, req.ID)
+	if err != nil {
+		if err == domain.ErrDeviceNotFound {
+			return nil, &domain.DomainError{Code: "DEVICE_NOT_FOUND", Message: err.Error()}
+		}
+		return nil, err
+	}
+	if req.TenantID != "" && device.TenantID != req.TenantID {
+		return nil, &domain.DomainError{Code: "FORBIDDEN", Message: "无权操作该设备"}
+	}
+	if device.Status != domain.DeviceStatusDisabled {
+		return nil, &domain.DomainError{Code: "DEVICE_INVALID_STATUS", Message: "仅禁用状态设备可启用"}
+	}
+
+	if device.LastHeartbeat != nil && time.Since(*device.LastHeartbeat) < time.Duration(domain.DefaultHeartbeatTimeoutSeconds)*time.Second {
+		device.Status = domain.DeviceStatusActive
+	} else {
+		device.Status = domain.DeviceStatusOffline
+	}
+	device.UpdatedAt = time.Now()
+	if err := s.deviceRepo.Update(ctx, device); err != nil {
+		return nil, err
+	}
+
+	return device, nil
+}
+
+func (s *deviceServiceImpl) Delete(ctx context.Context, req *service.DeleteDeviceRequest) error {
+	device, err := s.deviceRepo.FindByID(ctx, req.ID)
+	if err != nil {
+		if err == domain.ErrDeviceNotFound {
+			return &domain.DomainError{Code: "DEVICE_NOT_FOUND", Message: err.Error()}
+		}
+		return err
+	}
+	if req.TenantID != "" && device.TenantID != req.TenantID {
+		return &domain.DomainError{Code: "FORBIDDEN", Message: "无权操作该设备"}
+	}
+	if device.ParkingLotID != nil || device.GateID != nil {
+		return &domain.DomainError{Code: "DEVICE_MUST_UNBIND", Message: domain.ErrDeviceMustUnbind.Error()}
+	}
+
+	if err := s.deviceRepo.Delete(ctx, req.ID); err != nil {
+		if err == domain.ErrDeviceNotFound {
+			return &domain.DomainError{Code: "DEVICE_NOT_FOUND", Message: err.Error()}
+		}
+		return err
+	}
+	return nil
+}
+
 func (s *deviceServiceImpl) GetStats(ctx context.Context, tenantID string) (*service.DeviceStatsResponse, error) {
 	stats, err := s.deviceRepo.CountByStatus(ctx, tenantID)
 	if err != nil {

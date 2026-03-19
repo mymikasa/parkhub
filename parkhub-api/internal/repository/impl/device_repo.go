@@ -196,6 +196,24 @@ func (r *deviceRepo) Update(ctx context.Context, device *domain.Device) error {
 	return nil
 }
 
+func (r *deviceRepo) Delete(ctx context.Context, id string) error {
+	now := r.db.NowFunc()
+	result := r.db.WithContext(ctx).
+		Model(&dao.DeviceDAO{}).
+		Where("id = ? AND deleted_at IS NULL", id).
+		Updates(map[string]any{
+			"deleted_at": now,
+			"updated_at": now,
+		})
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return domain.ErrDeviceNotFound
+	}
+	return nil
+}
+
 func (r *deviceRepo) UpdateHeartbeat(ctx context.Context, device *domain.Device) error {
 	d := dao.ToDeviceDAO(device)
 	return r.db.WithContext(ctx).Model(d).Where("deleted_at IS NULL").Updates(map[string]any{

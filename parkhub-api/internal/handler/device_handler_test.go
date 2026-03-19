@@ -14,8 +14,11 @@ import (
 )
 
 type stubDeviceService struct {
-	bindFn   func(ctx context.Context, req *service.BindDeviceRequest) (*domain.Device, error)
-	unbindFn func(ctx context.Context, req *service.UnbindDeviceRequest) (*domain.Device, error)
+	bindFn    func(ctx context.Context, req *service.BindDeviceRequest) (*domain.Device, error)
+	unbindFn  func(ctx context.Context, req *service.UnbindDeviceRequest) (*domain.Device, error)
+	disableFn func(ctx context.Context, req *service.ChangeDeviceStatusRequest) (*domain.Device, error)
+	enableFn  func(ctx context.Context, req *service.ChangeDeviceStatusRequest) (*domain.Device, error)
+	deleteFn  func(ctx context.Context, req *service.DeleteDeviceRequest) error
 }
 
 func (s *stubDeviceService) Create(ctx context.Context, req *service.CreateDeviceRequest) (*domain.Device, error) {
@@ -44,6 +47,27 @@ func (s *stubDeviceService) Unbind(ctx context.Context, req *service.UnbindDevic
 
 func (s *stubDeviceService) GetStats(ctx context.Context, tenantID string) (*service.DeviceStatsResponse, error) {
 	return nil, nil
+}
+
+func (s *stubDeviceService) Disable(ctx context.Context, req *service.ChangeDeviceStatusRequest) (*domain.Device, error) {
+	if s.disableFn == nil {
+		return nil, nil
+	}
+	return s.disableFn(ctx, req)
+}
+
+func (s *stubDeviceService) Enable(ctx context.Context, req *service.ChangeDeviceStatusRequest) (*domain.Device, error) {
+	if s.enableFn == nil {
+		return nil, nil
+	}
+	return s.enableFn(ctx, req)
+}
+
+func (s *stubDeviceService) Delete(ctx context.Context, req *service.DeleteDeviceRequest) error {
+	if s.deleteFn == nil {
+		return nil
+	}
+	return s.deleteFn(ctx, req)
 }
 
 // stubDeviceControlService is a stub implementation for the tests
@@ -114,6 +138,35 @@ func TestDeviceHandler_Unbind_MapsDomainError(t *testing.T) {
 	router.POST("/devices/:id/unbind", handler.Unbind)
 
 	req := httptest.NewRequest(http.MethodPost, "/devices/device-1/unbind", nil)
+	resp := httptest.NewRecorder()
+	router.ServeHTTP(resp, req)
+
+	if resp.Code != http.StatusBadRequest {
+		t.Fatalf("status = %v, want 400", resp.Code)
+	}
+	if !bytes.Contains(resp.Body.Bytes(), []byte(`"code":40003`)) {
+		t.Fatalf("body = %s", resp.Body.String())
+	}
+}
+
+func TestDeviceHandler_Delete_MapsDomainError(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	svc := &stubDeviceService{
+		deleteFn: func(ctx context.Context, req *service.DeleteDeviceRequest) error {
+			return &domain.DomainError{Code: "DEVICE_MUST_UNBIND", Message: "设备已绑定，请先解绑后删除"}
+		},
+	}
+	controlSvc := &stubDeviceControlService{}
+	handler := NewDeviceHandler(svc, controlSvc)
+
+	router := gin.New()
+	router.Use(func(c *gin.Context) {
+		c.Set("tenant_id", "tenant-1")
+	})
+	router.DELETE("/devices/:id", handler.Delete)
+
+	req := httptest.NewRequest(http.MethodDelete, "/devices/device-1", nil)
 	resp := httptest.NewRecorder()
 	router.ServeHTTP(resp, req)
 

@@ -384,6 +384,12 @@ type DeviceService interface {
 	Bind(ctx context.Context, req *BindDeviceRequest) (*domain.Device, error)
 	// Unbind 解绑设备
 	Unbind(ctx context.Context, req *UnbindDeviceRequest) (*domain.Device, error)
+	// Disable 禁用设备
+	Disable(ctx context.Context, req *ChangeDeviceStatusRequest) (*domain.Device, error)
+	// Enable 启用设备
+	Enable(ctx context.Context, req *ChangeDeviceStatusRequest) (*domain.Device, error)
+	// Delete 删除设备
+	Delete(ctx context.Context, req *DeleteDeviceRequest) error
 	// GetStats 获取设备统计
 	GetStats(ctx context.Context, tenantID string) (*DeviceStatsResponse, error)
 }
@@ -436,6 +442,16 @@ type UnbindDeviceRequest struct {
 	OperatorIP       string
 	OperatorRole     string
 	OperatorTenantID string
+}
+
+type ChangeDeviceStatusRequest struct {
+	ID       string
+	TenantID string
+}
+
+type DeleteDeviceRequest struct {
+	ID       string
+	TenantID string
 }
 
 // DeviceStatsResponse 设备统计响应
