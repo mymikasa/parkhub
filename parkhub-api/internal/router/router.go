@@ -1,6 +1,7 @@
 package router
 
 import (
+	pahomqtt "github.com/eclipse/paho.mqtt.golang"
 	"github.com/gin-gonic/gin"
 	"github.com/google/wire"
 	"github.com/parkhub/api/internal/handler"
@@ -49,6 +50,10 @@ func NewRouter(
 // GetEngine returns the underlying gin.Engine.
 func (r *Router) GetEngine() *gin.Engine {
 	return r.engine
+}
+
+func (r *Router) SetDeviceControlMQTTClient(client pahomqtt.Client) {
+	r.deviceHandler.SetMQTTClient(client)
 }
 
 // Setup 设置所有路由
