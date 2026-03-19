@@ -258,5 +258,14 @@ func (r *Router) setupDeviceRoutes(rg *gin.RouterGroup) {
 
 		// POST /api/v1/devices/:id/control - 远程控制设备
 		devices.POST("/:id/control", r.deviceHandler.Control)
+
+		// POST /api/v1/devices/:id/disable - 禁用设备（仅admin）
+		devices.POST("/:id/disable", middleware.RequireRoles("platform_admin", "tenant_admin"), r.deviceHandler.Disable)
+
+		// POST /api/v1/devices/:id/enable - 启用设备（仅admin）
+		devices.POST("/:id/enable", middleware.RequireRoles("platform_admin", "tenant_admin"), r.deviceHandler.Enable)
+
+		// DELETE /api/v1/devices/:id - 删除设备（仅admin）
+		devices.DELETE("/:id", middleware.RequireRoles("platform_admin", "tenant_admin"), r.deviceHandler.Delete)
 	}
 }

@@ -34,19 +34,24 @@ import {
   MapPin,
   Pencil,
   Plus,
+  Power,
   RefreshCw,
   Search,
   ShieldOff,
+  Trash2,
   TriangleAlert,
   Wifi,
   WifiOff,
   X,
 } from "lucide-react";
 import {
-  useCreateDevice,
   useBindDevice,
+  useCreateDevice,
+  useDeleteDevice,
+  useDisableDevice,
   useDevices,
   useDeviceStats,
+  useEnableDevice,
   useUnbindDevice,
   useUpdateDeviceName,
 } from "@/lib/device/hooks";
@@ -219,6 +224,9 @@ export default function DeviceManagementPage() {
   const { data: stats, isLoading: isLoadingStats } = useDeviceStats();
   const { isOperator } = usePermissions();
   const unbindMutation = useUnbindDevice();
+  const disableMutation = useDisableDevice();
+  const enableMutation = useEnableDevice();
+  const deleteMutation = useDeleteDevice();
 
   const devices = data?.items || [];
   const total = data?.total || 0;
@@ -247,6 +255,37 @@ export default function DeviceManagementPage() {
       refetch();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "解绑失败，请重试");
+    }
+  };
+
+  const handleToggleDisabled = async (device: Device) => {
+    const action = device.status === "disabled" ? "启用" : "禁用";
+    if (!window.confirm(`确认${action}设备 ${device.name || device.id} 吗？`)) return;
+
+    try {
+      if (device.status === "disabled") {
+        await enableMutation.mutateAsync(device.id);
+        toast.success("设备已启用");
+      } else {
+        await disableMutation.mutateAsync(device.id);
+        toast.success("设备已禁用");
+      }
+      refetch();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : `${action}失败，请重试`);
+    }
+  };
+
+  const handleDelete = async (device: Device) => {
+    if (device.parking_lot_id) return;
+    if (!window.confirm(`确认删除设备 ${device.name || device.id} 吗？此操作不可恢复。`)) return;
+
+    try {
+      await deleteMutation.mutateAsync(device.id);
+      toast.success("设备已删除");
+      refetch();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "删除失败，请重试");
     }
   };
 
@@ -496,6 +535,8 @@ export default function DeviceManagementPage() {
                           onEdit={() => setEditDevice(device)}
                           onBind={() => setBindDevice(device)}
                           onUnbind={() => handleUnbind(device)}
+                          onToggleDisabled={() => handleToggleDisabled(device)}
+                          onDelete={() => handleDelete(device)}
                           index={index}
                         />
                       ))}
@@ -612,6 +653,8 @@ function DeviceRow({
   onEdit,
   onBind,
   onUnbind,
+  onToggleDisabled,
+  onDelete,
   index,
 }: {
   device: Device;
@@ -620,6 +663,8 @@ function DeviceRow({
   onEdit: () => void;
   onBind: () => void;
   onUnbind: () => void;
+  onToggleDisabled: () => void;
+  onDelete: () => void;
   index: number;
 }) {
   const runtimeStatus = getRuntimeDeviceStatus(device.status, device.last_heartbeat);
@@ -629,6 +674,8 @@ function DeviceRow({
   const heartbeatTimedOut = device.status === "active" && runtimeStatus === "offline";
   const canBind = canEdit && (device.status === "pending" || device.status === "active");
   const isBound = !!device.parking_lot_id;
+  const canDelete = !isBound;
+  const canEnable = device.status === "disabled";
 
   return (
     <TableRow
@@ -745,6 +792,21 @@ function DeviceRow({
               />
             )}
             <button
+              onClick={onToggleDisabled}
+              className={`inline-flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-medium transition-colors ${
+                canEnable
+                  ? "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+                  : "border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100"
+              }`}
+            >
+              {canEnable ? (
+                <Power className="h-3.5 w-3.5" />
+              ) : (
+                <ShieldOff className="h-3.5 w-3.5" />
+              )}
+              {canEnable ? "启用" : "禁用"}
+            </button>
+            <button
               onClick={onBind}
               disabled={!canBind}
               className={`inline-flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-medium transition-colors ${
@@ -763,6 +825,15 @@ function DeviceRow({
               >
                 <X className="h-3.5 w-3.5" />
                 解绑
+              </button>
+            )}
+            {canDelete && (
+              <button
+                onClick={onDelete}
+                className="inline-flex items-center gap-1.5 rounded-xl border border-rose-200 bg-white px-3 py-1.5 text-xs font-medium text-rose-700 transition-colors hover:bg-rose-50"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                删除
               </button>
             )}
             <button

@@ -51,6 +51,11 @@ func (m *mockDeviceRepoForControl) Update(ctx context.Context, device *domain.De
 	return nil
 }
 
+func (m *mockDeviceRepoForControl) Delete(ctx context.Context, id string) error {
+	delete(m.devices, id)
+	return nil
+}
+
 func (m *mockDeviceRepoForControl) UpdateHeartbeat(ctx context.Context, device *domain.Device) error {
 	m.devices[device.ID] = device
 	return nil

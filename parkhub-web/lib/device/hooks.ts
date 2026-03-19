@@ -114,6 +114,56 @@ export function useUnbindDevice() {
   });
 }
 
+export function useDisableDevice() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const accessToken = await getValidAccessToken();
+      if (!accessToken) throw new Error('未登录');
+      return api.disableDevice(id, accessToken);
+    },
+    onSuccess: (_, id) => {
+      queryClient.invalidateQueries({ queryKey: deviceKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: deviceKeys.stats() });
+      queryClient.invalidateQueries({ queryKey: deviceKeys.detail(id) });
+    },
+  });
+}
+
+export function useEnableDevice() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const accessToken = await getValidAccessToken();
+      if (!accessToken) throw new Error('未登录');
+      return api.enableDevice(id, accessToken);
+    },
+    onSuccess: (_, id) => {
+      queryClient.invalidateQueries({ queryKey: deviceKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: deviceKeys.stats() });
+      queryClient.invalidateQueries({ queryKey: deviceKeys.detail(id) });
+    },
+  });
+}
+
+export function useDeleteDevice() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const accessToken = await getValidAccessToken();
+      if (!accessToken) throw new Error('未登录');
+      return api.deleteDevice(id, accessToken);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: deviceKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: deviceKeys.stats() });
+    },
+  });
+}
+
 export function useControlDevice() {
   return useMutation({
     mutationFn: async ({ id, command }: { id: string; command: ControlDeviceRequest['command'] }) => {

@@ -271,6 +271,47 @@ export async function unbindDevice(
   return mapDeviceDetail(unwrapResponse(response));
 }
 
+export async function disableDevice(
+  id: string,
+  accessToken: string
+): Promise<DeviceDetail> {
+  const response = await request<DeviceRaw | ApiEnvelope<DeviceRaw>>(
+    `/api/v1/devices/${id}/disable`,
+    {
+      method: 'POST',
+    },
+    accessToken
+  );
+  return mapDeviceDetail(unwrapResponse(response));
+}
+
+export async function enableDevice(
+  id: string,
+  accessToken: string
+): Promise<DeviceDetail> {
+  const response = await request<DeviceRaw | ApiEnvelope<DeviceRaw>>(
+    `/api/v1/devices/${id}/enable`,
+    {
+      method: 'POST',
+    },
+    accessToken
+  );
+  return mapDeviceDetail(unwrapResponse(response));
+}
+
+export async function deleteDevice(
+  id: string,
+  accessToken: string
+): Promise<void> {
+  await request<{ code: number; message: string }>(
+    `/api/v1/devices/${id}`,
+    {
+      method: 'DELETE',
+    },
+    accessToken
+  );
+}
+
 export async function controlDevice(
   id: string,
   req: ControlDeviceRequest,
