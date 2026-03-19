@@ -200,3 +200,38 @@ type BillingRuleRepo interface {
 	FindByID(ctx context.Context, id string) (*domain.BillingRule, error)
 	FindByParkingLotID(ctx context.Context, parkingLotID string) (*domain.BillingRule, error)
 }
+
+// TransitRecordRepo 通行记录数据访问接口
+type TransitRecordRepo interface {
+	Create(ctx context.Context, record *domain.TransitRecord) error
+	FindByID(ctx context.Context, id string) (*domain.TransitRecordListItem, error)
+	FindAll(ctx context.Context, filter TransitRecordFilter) ([]*domain.TransitRecordListItem, int64, error)
+	FindLatest(ctx context.Context, tenantID string, limit int) ([]*domain.TransitRecordListItem, error)
+	FindLatestUnmatchedEntry(ctx context.Context, parkingLotID, plateNumber string) (*domain.TransitRecord, error)
+	Update(ctx context.Context, record *domain.TransitRecord) error
+	CountTodayStats(ctx context.Context, tenantID string) (*TransitStats, error)
+	FindOverstay(ctx context.Context, tenantID string, threshold time.Time) ([]*domain.TransitRecordListItem, error)
+	CountExceptions(ctx context.Context, tenantID string) (int64, error)
+	FindUnmatchedEntriesBefore(ctx context.Context, threshold time.Time) ([]*domain.TransitRecord, error)
+}
+
+// TransitRecordFilter 通行记录查询过滤器
+type TransitRecordFilter struct {
+	TenantID     string
+	ParkingLotID string
+	PlateNumber  string
+	Type         *domain.TransitType
+	Status       *domain.TransitStatus
+	StartDate    *time.Time
+	EndDate      *time.Time
+	Page         int
+	PageSize     int
+}
+
+// TransitStats 通行记录今日统计
+type TransitStats struct {
+	EntryCount   int64
+	ExitCount    int64
+	OnSiteCount  int64
+	TodayRevenue float64
+}
