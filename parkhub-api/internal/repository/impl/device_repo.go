@@ -132,6 +132,13 @@ func (r *deviceRepo) CountByStatus(ctx context.Context, tenantID string) (*repos
 		Count  int64  `gorm:"column:count"`
 	}
 
+	type parkingLotStatusCount struct {
+		ParkingLotID   string `gorm:"column:parking_lot_id"`
+		ParkingLotName string `gorm:"column:parking_lot_name"`
+		Status         string `gorm:"column:status"`
+		Count          int64  `gorm:"column:count"`
+	}
+
 	q := r.db.WithContext(ctx).
 		Table("devices").
 		Select("status, COUNT(*) as count").
@@ -152,7 +159,7 @@ func (r *deviceRepo) CountByStatus(ctx context.Context, tenantID string) (*repos
 	for _, row := range rows {
 		switch domain.DeviceStatus(row.Status) {
 		case domain.DeviceStatusActive:
-			stats.Active = row.Count
+			stats.Online = row.Count
 		case domain.DeviceStatusOffline:
 			stats.Offline = row.Count
 		case domain.DeviceStatusPending:
@@ -161,6 +168,52 @@ func (r *deviceRepo) CountByStatus(ctx context.Context, tenantID string) (*repos
 			stats.Disabled = row.Count
 		}
 		stats.Total += row.Count
+	}
+
+	lotQuery := r.db.WithContext(ctx).
+		Table("devices").
+		Select("devices.parking_lot_id, parking_lots.name as parking_lot_name, devices.status, COUNT(*) as count").
+		Joins("JOIN parking_lots ON parking_lots.id = devices.parking_lot_id").
+		Where("devices.deleted_at IS NULL AND devices.parking_lot_id IS NOT NULL")
+
+	if tenantID != "" {
+		lotQuery = lotQuery.Where("devices.tenant_id = ?", tenantID)
+	}
+
+	lotQuery = lotQuery.Group("devices.parking_lot_id, parking_lots.name, devices.status")
+
+	var lotRows []parkingLotStatusCount
+	if err := lotQuery.Find(&lotRows).Error; err != nil {
+		return nil, err
+	}
+
+	byParkingLot := make(map[string]*repository.DeviceParkingLotStats)
+	for _, row := range lotRows {
+		item, ok := byParkingLot[row.ParkingLotID]
+		if !ok {
+			item = &repository.DeviceParkingLotStats{
+				ParkingLotID:   row.ParkingLotID,
+				ParkingLotName: row.ParkingLotName,
+			}
+			byParkingLot[row.ParkingLotID] = item
+		}
+
+		switch domain.DeviceStatus(row.Status) {
+		case domain.DeviceStatusActive:
+			item.Online = row.Count
+		case domain.DeviceStatusOffline:
+			item.Offline = row.Count
+		case domain.DeviceStatusPending:
+			item.Pending = row.Count
+		case domain.DeviceStatusDisabled:
+			item.Disabled = row.Count
+		}
+		item.Total += row.Count
+	}
+
+	stats.ByParkingLot = make([]*repository.DeviceParkingLotStats, 0, len(byParkingLot))
+	for _, item := range byParkingLot {
+		stats.ByParkingLot = append(stats.ByParkingLot, item)
 	}
 
 	return stats, nil

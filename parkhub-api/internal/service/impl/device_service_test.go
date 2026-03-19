@@ -13,7 +13,8 @@ import (
 )
 
 type mockDeviceRepo struct {
-	devices map[string]*domain.Device
+	devices         map[string]*domain.Device
+	parkingLotNames map[string]string
 }
 
 type mockAuditLogServiceForDevice struct {
@@ -34,7 +35,10 @@ func (m *mockAuditLogServiceForDevice) List(ctx context.Context, req *service.Li
 }
 
 func newMockDeviceRepo() *mockDeviceRepo {
-	return &mockDeviceRepo{devices: make(map[string]*domain.Device)}
+	return &mockDeviceRepo{
+		devices:         make(map[string]*domain.Device),
+		parkingLotNames: make(map[string]string),
+	}
 }
 
 func (m *mockDeviceRepo) Create(ctx context.Context, device *domain.Device) error {
@@ -138,14 +142,36 @@ func (m *mockDeviceRepo) BatchUpdateStatus(ctx context.Context, ids []string, st
 
 func (m *mockDeviceRepo) CountByStatus(ctx context.Context, tenantID string) (*repository.DeviceStats, error) {
 	stats := &repository.DeviceStats{}
+	byParkingLot := make(map[string]*repository.DeviceParkingLotStats)
 	for _, device := range m.devices {
 		if tenantID != "" && device.TenantID != tenantID {
 			continue
 		}
 		stats.Total++
+		if device.ParkingLotID != nil {
+			item, ok := byParkingLot[*device.ParkingLotID]
+			if !ok {
+				item = &repository.DeviceParkingLotStats{
+					ParkingLotID:   *device.ParkingLotID,
+					ParkingLotName: m.parkingLotNames[*device.ParkingLotID],
+				}
+				byParkingLot[*device.ParkingLotID] = item
+			}
+			item.Total++
+			switch device.Status {
+			case domain.DeviceStatusActive:
+				item.Online++
+			case domain.DeviceStatusOffline:
+				item.Offline++
+			case domain.DeviceStatusPending:
+				item.Pending++
+			case domain.DeviceStatusDisabled:
+				item.Disabled++
+			}
+		}
 		switch device.Status {
 		case domain.DeviceStatusActive:
-			stats.Active++
+			stats.Online++
 		case domain.DeviceStatusOffline:
 			stats.Offline++
 		case domain.DeviceStatusPending:
@@ -153,6 +179,10 @@ func (m *mockDeviceRepo) CountByStatus(ctx context.Context, tenantID string) (*r
 		case domain.DeviceStatusDisabled:
 			stats.Disabled++
 		}
+	}
+	stats.ByParkingLot = make([]*repository.DeviceParkingLotStats, 0, len(byParkingLot))
+	for _, item := range byParkingLot {
+		stats.ByParkingLot = append(stats.ByParkingLot, item)
 	}
 	return stats, nil
 }
@@ -424,6 +454,107 @@ func TestDeviceService_Unbind_WritesAuditLog(t *testing.T) {
 	}
 	if detail["parking_lot_id"] != "lot-1" || detail["gate_id"] != "gate-1" || detail["tenant_id"] != "tenant-1" {
 		t.Fatalf("detail = %v", detail)
+	}
+}
+
+func TestDeviceService_GetStats_TenantIsolationAndParkingLotBreakdown(t *testing.T) {
+	svc, deviceRepo, tenantRepo, parkingLotRepo, _ := setupTestDeviceService()
+	tenantRepo.tenants["tenant-1"] = domain.NewTenant("tenant-1", "测试租户1", "联系人", "13800138000")
+	tenantRepo.tenants["tenant-2"] = domain.NewTenant("tenant-2", "测试租户2", "联系人", "13800138001")
+	createTestParkingLot(parkingLotRepo, "lot-1", "tenant-1", "阳光停车场")
+	createTestParkingLot(parkingLotRepo, "lot-2", "tenant-1", "星光停车场")
+	createTestParkingLot(parkingLotRepo, "lot-3", "tenant-2", "月光停车场")
+	deviceRepo.parkingLotNames["lot-1"] = "阳光停车场"
+	deviceRepo.parkingLotNames["lot-2"] = "星光停车场"
+	deviceRepo.parkingLotNames["lot-3"] = "月光停车场"
+
+	deviceA := createTestDevice(deviceRepo, "device-a", "tenant-1", domain.DeviceStatusActive)
+	lot1 := "lot-1"
+	deviceA.ParkingLotID = &lot1
+
+	deviceB := createTestDevice(deviceRepo, "device-b", "tenant-1", domain.DeviceStatusOffline)
+	deviceB.ParkingLotID = &lot1
+
+	deviceC := createTestDevice(deviceRepo, "device-c", "tenant-1", domain.DeviceStatusDisabled)
+	lot2 := "lot-2"
+	deviceC.ParkingLotID = &lot2
+
+	deviceD := createTestDevice(deviceRepo, "device-d", "tenant-1", domain.DeviceStatusActive)
+	deviceD.ParkingLotID = &lot2
+
+	deviceE := createTestDevice(deviceRepo, "device-e", "tenant-2", domain.DeviceStatusActive)
+	lot3 := "lot-3"
+	deviceE.ParkingLotID = &lot3
+
+	createTestDevice(deviceRepo, "device-f", domain.PlatformTenantID, domain.DeviceStatusPending)
+
+	stats, err := svc.GetStats(context.Background(), "tenant-1")
+	if err != nil {
+		t.Fatalf("GetStats() error = %v", err)
+	}
+	if stats.Total != 4 {
+		t.Fatalf("Total = %v, want 4", stats.Total)
+	}
+	if stats.Online != 2 {
+		t.Fatalf("Online = %v, want 2", stats.Online)
+	}
+	if stats.Offline != 1 {
+		t.Fatalf("Offline = %v, want 1", stats.Offline)
+	}
+	if stats.Disabled != 1 {
+		t.Fatalf("Disabled = %v, want 1", stats.Disabled)
+	}
+	if stats.Pending != 0 {
+		t.Fatalf("Pending = %v, want 0", stats.Pending)
+	}
+	if len(stats.ByParkingLot) != 2 {
+		t.Fatalf("len(ByParkingLot) = %v, want 2", len(stats.ByParkingLot))
+	}
+	if stats.ByParkingLot[0].ParkingLotName != "星光停车场" {
+		t.Fatalf("ByParkingLot[0].ParkingLotName = %v, want 星光停车场", stats.ByParkingLot[0].ParkingLotName)
+	}
+	if stats.ByParkingLot[0].Online != 1 || stats.ByParkingLot[0].Disabled != 1 {
+		t.Fatalf("ByParkingLot[0] = %+v, want online=1 disabled=1", stats.ByParkingLot[0])
+	}
+	if stats.ByParkingLot[1].ParkingLotName != "阳光停车场" {
+		t.Fatalf("ByParkingLot[1].ParkingLotName = %v, want 阳光停车场", stats.ByParkingLot[1].ParkingLotName)
+	}
+	if stats.ByParkingLot[1].Online != 1 || stats.ByParkingLot[1].Offline != 1 {
+		t.Fatalf("ByParkingLot[1] = %+v, want online=1 offline=1", stats.ByParkingLot[1])
+	}
+}
+
+func TestDeviceService_GetStats_PlatformAdminSeesAllTenants(t *testing.T) {
+	svc, deviceRepo, tenantRepo, parkingLotRepo, _ := setupTestDeviceService()
+	tenantRepo.tenants["tenant-1"] = domain.NewTenant("tenant-1", "测试租户1", "联系人", "13800138000")
+	tenantRepo.tenants["tenant-2"] = domain.NewTenant("tenant-2", "测试租户2", "联系人", "13800138001")
+	createTestParkingLot(parkingLotRepo, "lot-1", "tenant-1", "阳光停车场")
+	createTestParkingLot(parkingLotRepo, "lot-2", "tenant-2", "月光停车场")
+	deviceRepo.parkingLotNames["lot-1"] = "阳光停车场"
+	deviceRepo.parkingLotNames["lot-2"] = "月光停车场"
+
+	deviceA := createTestDevice(deviceRepo, "device-a", "tenant-1", domain.DeviceStatusActive)
+	lot1 := "lot-1"
+	deviceA.ParkingLotID = &lot1
+
+	deviceB := createTestDevice(deviceRepo, "device-b", "tenant-2", domain.DeviceStatusOffline)
+	lot2 := "lot-2"
+	deviceB.ParkingLotID = &lot2
+
+	createTestDevice(deviceRepo, "device-c", domain.PlatformTenantID, domain.DeviceStatusPending)
+
+	stats, err := svc.GetStats(context.Background(), "")
+	if err != nil {
+		t.Fatalf("GetStats() error = %v", err)
+	}
+	if stats.Total != 3 {
+		t.Fatalf("Total = %v, want 3", stats.Total)
+	}
+	if stats.Online != 1 || stats.Offline != 1 || stats.Pending != 1 {
+		t.Fatalf("stats = %+v, want online=1 offline=1 pending=1", stats)
+	}
+	if len(stats.ByParkingLot) != 2 {
+		t.Fatalf("len(ByParkingLot) = %v, want 2", len(stats.ByParkingLot))
 	}
 }
 

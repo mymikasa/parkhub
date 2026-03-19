@@ -487,11 +487,22 @@ type BatchBindDeviceRequest struct {
 
 // DeviceStatsResponse 设备统计响应
 type DeviceStatsResponse struct {
-	Total    int64 `json:"total"`
-	Active   int64 `json:"active"`
-	Offline  int64 `json:"offline"`
-	Pending  int64 `json:"pending"`
-	Disabled int64 `json:"disabled"`
+	Total        int64                        `json:"total"`
+	Online       int64                        `json:"online"`
+	Offline      int64                        `json:"offline"`
+	Pending      int64                        `json:"pending"`
+	Disabled     int64                        `json:"disabled"`
+	ByParkingLot []*DeviceParkingLotStatsItem `json:"by_parking_lot"`
+}
+
+type DeviceParkingLotStatsItem struct {
+	ParkingLotID   string `json:"parking_lot_id"`
+	ParkingLotName string `json:"parking_lot_name"`
+	Total          int64  `json:"total"`
+	Online         int64  `json:"online"`
+	Offline        int64  `json:"offline"`
+	Pending        int64  `json:"pending"`
+	Disabled       int64  `json:"disabled"`
 }
 
 // DeviceListResponse 设备列表响应

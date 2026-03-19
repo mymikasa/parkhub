@@ -16,6 +16,7 @@ import (
 type stubDeviceService struct {
 	bindFn         func(ctx context.Context, req *service.BindDeviceRequest) (*domain.Device, error)
 	unbindFn       func(ctx context.Context, req *service.UnbindDeviceRequest) (*domain.Device, error)
+	statsFn        func(ctx context.Context, tenantID string) (*service.DeviceStatsResponse, error)
 	disableFn      func(ctx context.Context, req *service.ChangeDeviceStatusRequest) (*domain.Device, error)
 	enableFn       func(ctx context.Context, req *service.ChangeDeviceStatusRequest) (*domain.Device, error)
 	deleteFn       func(ctx context.Context, req *service.DeleteDeviceRequest) error
@@ -50,7 +51,10 @@ func (s *stubDeviceService) Unbind(ctx context.Context, req *service.UnbindDevic
 }
 
 func (s *stubDeviceService) GetStats(ctx context.Context, tenantID string) (*service.DeviceStatsResponse, error) {
-	return nil, nil
+	if s.statsFn == nil {
+		return nil, nil
+	}
+	return s.statsFn(ctx, tenantID)
 }
 
 func (s *stubDeviceService) Disable(ctx context.Context, req *service.ChangeDeviceStatusRequest) (*domain.Device, error) {
@@ -186,6 +190,56 @@ func TestDeviceHandler_Unbind_MapsDomainError(t *testing.T) {
 		t.Fatalf("status = %v, want 400", resp.Code)
 	}
 	if !bytes.Contains(resp.Body.Bytes(), []byte(`"code":40003`)) {
+		t.Fatalf("body = %s", resp.Body.String())
+	}
+}
+
+func TestDeviceHandler_GetStats_Success(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	svc := &stubDeviceService{
+		statsFn: func(ctx context.Context, tenantID string) (*service.DeviceStatsResponse, error) {
+			if tenantID != "tenant-1" {
+				t.Fatalf("tenantID = %v, want tenant-1", tenantID)
+			}
+			return &service.DeviceStatsResponse{
+				Total:    10,
+				Online:   6,
+				Offline:  2,
+				Pending:  1,
+				Disabled: 1,
+				ByParkingLot: []*service.DeviceParkingLotStatsItem{
+					{
+						ParkingLotID:   "lot-1",
+						ParkingLotName: "阳光停车场",
+						Total:          4,
+						Online:         3,
+						Offline:        1,
+					},
+				},
+			}, nil
+		},
+	}
+	controlSvc := &stubDeviceControlService{}
+	handler := NewDeviceHandler(svc, controlSvc)
+
+	router := gin.New()
+	router.Use(func(c *gin.Context) {
+		c.Set("tenant_id", "tenant-1")
+	})
+	router.GET("/devices/stats", handler.GetStats)
+
+	req := httptest.NewRequest(http.MethodGet, "/devices/stats", nil)
+	resp := httptest.NewRecorder()
+	router.ServeHTTP(resp, req)
+
+	if resp.Code != http.StatusOK {
+		t.Fatalf("status = %v, want 200", resp.Code)
+	}
+	if !bytes.Contains(resp.Body.Bytes(), []byte(`"online":6`)) {
+		t.Fatalf("body = %s", resp.Body.String())
+	}
+	if !bytes.Contains(resp.Body.Bytes(), []byte(`"parking_lot_name":"阳光停车场"`)) {
 		t.Fatalf("body = %s", resp.Body.String())
 	}
 }

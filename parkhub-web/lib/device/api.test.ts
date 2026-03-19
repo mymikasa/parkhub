@@ -75,18 +75,40 @@ describe('getDeviceStats', () => {
       message: 'success',
       data: {
         Total: 10,
-        Active: 5,
+        Online: 5,
         Offline: 2,
         Pending: 2,
         Disabled: 1,
+        ByParkingLot: [
+          {
+            ParkingLotID: 'lot-1',
+            ParkingLotName: '阳光停车场',
+            Total: 6,
+            Online: 4,
+            Offline: 1,
+            Pending: 0,
+            Disabled: 1,
+          },
+        ],
       },
     })
 
     const result = await getDeviceStats('token')
 
     expect(result.total).toBe(10)
-    expect(result.active).toBe(5)
+    expect(result.online).toBe(5)
     expect(result.pending).toBe(2)
+    expect(result.by_parking_lot).toEqual([
+      {
+        parking_lot_id: 'lot-1',
+        parking_lot_name: '阳光停车场',
+        total: 6,
+        online: 4,
+        offline: 1,
+        pending: 0,
+        disabled: 1,
+      },
+    ])
   })
 })
 

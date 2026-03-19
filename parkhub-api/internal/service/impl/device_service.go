@@ -3,6 +3,7 @@ package impl
 import (
 	"context"
 	"encoding/json"
+	"sort"
 	"time"
 
 	"github.com/google/uuid"
@@ -512,12 +513,33 @@ func (s *deviceServiceImpl) GetStats(ctx context.Context, tenantID string) (*ser
 		return nil, err
 	}
 
+	byParkingLot := make([]*service.DeviceParkingLotStatsItem, 0, len(stats.ByParkingLot))
+	for _, item := range stats.ByParkingLot {
+		byParkingLot = append(byParkingLot, &service.DeviceParkingLotStatsItem{
+			ParkingLotID:   item.ParkingLotID,
+			ParkingLotName: item.ParkingLotName,
+			Total:          item.Total,
+			Online:         item.Online,
+			Offline:        item.Offline,
+			Pending:        item.Pending,
+			Disabled:       item.Disabled,
+		})
+	}
+
+	sort.Slice(byParkingLot, func(i, j int) bool {
+		if byParkingLot[i].ParkingLotName == byParkingLot[j].ParkingLotName {
+			return byParkingLot[i].ParkingLotID < byParkingLot[j].ParkingLotID
+		}
+		return byParkingLot[i].ParkingLotName < byParkingLot[j].ParkingLotName
+	})
+
 	return &service.DeviceStatsResponse{
-		Total:    stats.Total,
-		Active:   stats.Active,
-		Offline:  stats.Offline,
-		Pending:  stats.Pending,
-		Disabled: stats.Disabled,
+		Total:        stats.Total,
+		Online:       stats.Online,
+		Offline:      stats.Offline,
+		Pending:      stats.Pending,
+		Disabled:     stats.Disabled,
+		ByParkingLot: byParkingLot,
 	}, nil
 }
 

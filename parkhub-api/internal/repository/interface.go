@@ -148,11 +148,22 @@ type DeviceRepo interface {
 
 // DeviceStats 设备统计信息
 type DeviceStats struct {
-	Total    int64
-	Active   int64
-	Offline  int64
-	Pending  int64
-	Disabled int64
+	Total        int64
+	Online       int64
+	Offline      int64
+	Pending      int64
+	Disabled     int64
+	ByParkingLot []*DeviceParkingLotStats
+}
+
+type DeviceParkingLotStats struct {
+	ParkingLotID   string
+	ParkingLotName string
+	Total          int64
+	Online         int64
+	Offline        int64
+	Pending        int64
+	Disabled       int64
 }
 
 // DeviceFilter 设备查询过滤器

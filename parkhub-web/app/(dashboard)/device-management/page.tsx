@@ -258,11 +258,11 @@ export default function DeviceManagementPage() {
   const total = data?.total || 0;
   const totalPages = Math.ceil(total / pageSize);
   const totalDevices = stats?.total || 0;
-  const activeDevices = stats?.active || 0;
+  const onlineDevices = stats?.online || 0;
   const offlineDevices = stats?.offline || 0;
   const pendingDevices = stats?.pending || 0;
   const disabledDevices = stats?.disabled || 0;
-  const onlineRate = formatPercent(activeDevices, totalDevices);
+  const onlineRate = formatPercent(onlineDevices, totalDevices);
   const heartbeatTimedOutCount = devices.filter(
     (device) =>
       device.status === "active" &&
@@ -442,7 +442,7 @@ export default function DeviceManagementPage() {
       </header>
 
       <div className="px-8 py-6">
-        <div className="grid grid-cols-4 gap-5">
+        <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-5">
           <StatsCard
             title="设备总数"
             value={totalDevices}
@@ -457,7 +457,7 @@ export default function DeviceManagementPage() {
           />
           <StatsCard
             title="在线设备"
-            value={activeDevices}
+            value={onlineDevices}
             icon={Wifi}
             iconBg="bg-emerald-50"
             iconColor="text-emerald-600"
@@ -480,23 +480,28 @@ export default function DeviceManagementPage() {
             active={activeStatusFilter === "offline"}
           />
           <StatsCard
-            title="待分配 / 已禁用"
-            value={pendingDevices + disabledDevices}
+            title="待分配"
+            value={pendingDevices}
             icon={Clock}
             iconBg="bg-amber-50"
             iconColor="text-amber-600"
-            valueColor="text-gray-900"
+            valueColor="text-amber-700"
             isLoading={isLoadingStats}
-            footer={`待分配 ${formatCount(pendingDevices)} · 已禁用 ${formatCount(disabledDevices)}`}
-            onClick={() =>
-              setActiveStatusFilter(
-                activeStatusFilter === "pending" ? "disabled" : "pending"
-              )
-            }
-            active={
-              activeStatusFilter === "pending" ||
-              activeStatusFilter === "disabled"
-            }
+            footer="等待完成车场与闸口绑定"
+            onClick={() => setActiveStatusFilter("pending")}
+            active={activeStatusFilter === "pending"}
+          />
+          <StatsCard
+            title="已禁用"
+            value={disabledDevices}
+            icon={ShieldOff}
+            iconBg="bg-slate-100"
+            iconColor="text-slate-600"
+            valueColor="text-slate-700"
+            isLoading={isLoadingStats}
+            footer="维修、停用或报废设备"
+            onClick={() => setActiveStatusFilter("disabled")}
+            active={activeStatusFilter === "disabled"}
           />
         </div>
       </div>

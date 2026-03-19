@@ -3,6 +3,7 @@ import type {
   DeviceDetail,
   DeviceListResponse,
   DeviceFilter,
+  DeviceParkingLotStats,
   DeviceStats,
   CreateDeviceRequest,
   UpdateDeviceNameRequest,
@@ -204,12 +205,40 @@ function buildQueryString(filter: DeviceFilter): string {
 }
 
 type DeviceStatsRaw = Partial<DeviceStats> & {
+  by_parking_lot?: DeviceParkingLotStatsRaw[];
+  ByParkingLot?: DeviceParkingLotStatsRaw[];
   Total?: number;
+  active?: number;
+  Online?: number;
   Active?: number;
   Offline?: number;
   Pending?: number;
   Disabled?: number;
 };
+
+type DeviceParkingLotStatsRaw = Partial<DeviceParkingLotStats> & {
+  ParkingLotID?: string;
+  ParkingLotName?: string;
+  Total?: number;
+  active?: number;
+  Online?: number;
+  Active?: number;
+  Offline?: number;
+  Pending?: number;
+  Disabled?: number;
+};
+
+function mapDeviceParkingLotStats(raw: DeviceParkingLotStatsRaw): DeviceParkingLotStats {
+  return {
+    parking_lot_id: raw.parking_lot_id ?? raw.ParkingLotID ?? '',
+    parking_lot_name: raw.parking_lot_name ?? raw.ParkingLotName ?? '',
+    total: raw.total ?? raw.Total ?? 0,
+    online: raw.online ?? raw.Online ?? raw.active ?? raw.Active ?? 0,
+    offline: raw.offline ?? raw.Offline ?? 0,
+    pending: raw.pending ?? raw.Pending ?? 0,
+    disabled: raw.disabled ?? raw.Disabled ?? 0,
+  };
+}
 
 export async function getDeviceStats(accessToken: string): Promise<DeviceStats> {
   const response = await request<DeviceStatsRaw | ApiEnvelope<DeviceStatsRaw>>(
@@ -220,10 +249,11 @@ export async function getDeviceStats(accessToken: string): Promise<DeviceStats> 
   const raw = unwrapResponse(response);
   return {
     total: raw.total ?? raw.Total ?? 0,
-    active: raw.active ?? raw.Active ?? 0,
+    online: raw.online ?? raw.Online ?? raw.active ?? raw.Active ?? 0,
     offline: raw.offline ?? raw.Offline ?? 0,
     pending: raw.pending ?? raw.Pending ?? 0,
     disabled: raw.disabled ?? raw.Disabled ?? 0,
+    by_parking_lot: (raw.by_parking_lot ?? raw.ByParkingLot ?? []).map(mapDeviceParkingLotStats),
   };
 }
 

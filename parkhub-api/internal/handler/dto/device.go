@@ -72,11 +72,22 @@ type DeviceListData struct {
 
 // DeviceStatsData 设备统计数据
 type DeviceStatsData struct {
-	Total    int64 `json:"total"`
-	Active   int64 `json:"active"`
-	Offline  int64 `json:"offline"`
-	Pending  int64 `json:"pending"`
-	Disabled int64 `json:"disabled"`
+	Total        int64                       `json:"total"`
+	Online       int64                       `json:"online"`
+	Offline      int64                       `json:"offline"`
+	Pending      int64                       `json:"pending"`
+	Disabled     int64                       `json:"disabled"`
+	ByParkingLot []DeviceParkingLotStatsData `json:"by_parking_lot"`
+}
+
+type DeviceParkingLotStatsData struct {
+	ParkingLotID   string `json:"parking_lot_id"`
+	ParkingLotName string `json:"parking_lot_name"`
+	Total          int64  `json:"total"`
+	Online         int64  `json:"online"`
+	Offline        int64  `json:"offline"`
+	Pending        int64  `json:"pending"`
+	Disabled       int64  `json:"disabled"`
 }
 
 type DeviceControlLogItem struct {
