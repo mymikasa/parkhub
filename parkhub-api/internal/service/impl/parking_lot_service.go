@@ -15,12 +15,14 @@ import (
 var ParkingLotServiceSet = wire.NewSet(NewParkingLotService)
 
 type parkingLotServiceImpl struct {
-	parkingLotRepo repository.ParkingLotRepo
+	parkingLotRepo  repository.ParkingLotRepo
+	billingRuleRepo repository.BillingRuleRepo
 }
 
-func NewParkingLotService(parkingLotRepo repository.ParkingLotRepo) service.ParkingLotService {
+func NewParkingLotService(parkingLotRepo repository.ParkingLotRepo, billingRuleRepo repository.BillingRuleRepo) service.ParkingLotService {
 	return &parkingLotServiceImpl{
-		parkingLotRepo: parkingLotRepo,
+		parkingLotRepo:  parkingLotRepo,
+		billingRuleRepo: billingRuleRepo,
 	}
 }
 
@@ -50,6 +52,12 @@ func (s *parkingLotServiceImpl) Create(ctx context.Context, req *service.CreateP
 	}
 
 	if err := s.parkingLotRepo.Create(ctx, lot); err != nil {
+		return nil, err
+	}
+
+	// 自动创建默认计费规则
+	billingRule := domain.NewBillingRule(uuid.New().String(), req.TenantID, lot.ID)
+	if err := s.billingRuleRepo.Create(ctx, billingRule); err != nil {
 		return nil, err
 	}
 

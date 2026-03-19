@@ -36,7 +36,8 @@ func InitializeApp(cfg *config.Config, db *gorm.DB) (*router.Router, error) {
 	userService := impl2.NewUserService(userRepo, tenantRepo, loginLogRepo, auditLogService)
 	userHandler := handler.NewUserHandler(userService, auditLogService)
 	parkingLotRepo := impl.NewParkingLotRepo(db)
-	parkingLotService := impl2.NewParkingLotService(parkingLotRepo)
+	billingRuleRepo := impl.NewBillingRuleRepo(db)
+	parkingLotService := impl2.NewParkingLotService(parkingLotRepo, billingRuleRepo)
 	parkingLotHandler := handler.NewParkingLotHandler(parkingLotService)
 	gateRepo := impl.NewGateRepo(db)
 	deviceRepo := impl.NewDeviceRepo(db)
@@ -46,6 +47,8 @@ func InitializeApp(cfg *config.Config, db *gorm.DB) (*router.Router, error) {
 	deviceControlLogRepo := impl.NewDeviceControlLogRepo(db)
 	deviceControlService := impl2.NewDeviceControlService(deviceRepo, deviceControlLogRepo, auditLogService)
 	deviceHandler := handler.NewDeviceHandler(deviceService, deviceControlService)
-	routerRouter := router.NewRouter(engine, jwtManager, authHandler, tenantHandler, userHandler, parkingLotHandler, gateHandler, deviceHandler)
+	billingRuleService := impl2.NewBillingRuleService(billingRuleRepo, parkingLotRepo, auditLogRepo)
+	billingRuleHandler := handler.NewBillingRuleHandler(billingRuleService)
+	routerRouter := router.NewRouter(engine, jwtManager, authHandler, tenantHandler, userHandler, parkingLotHandler, gateHandler, deviceHandler, billingRuleHandler)
 	return routerRouter, nil
 }

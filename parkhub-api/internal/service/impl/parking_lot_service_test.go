@@ -91,7 +91,8 @@ func (m *mockParkingLotRepo) GetStats(ctx context.Context, tenantID string) (*re
 
 func setupTestParkingLotService() (service.ParkingLotService, *mockParkingLotRepo) {
 	repo := newMockParkingLotRepo()
-	svc := NewParkingLotService(repo)
+	billingRepo := newMockBillingRuleRepo()
+	svc := NewParkingLotService(repo, billingRepo)
 	return svc, repo
 }
 

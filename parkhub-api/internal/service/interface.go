@@ -514,3 +514,41 @@ type ControlDeviceRequest struct {
 type ControlDeviceResponse struct {
 	Success bool
 }
+
+// BillingRuleService 计费规则服务接口
+type BillingRuleService interface {
+	// GetByParkingLotID 获取停车场的计费规则
+	GetByParkingLotID(ctx context.Context, req *GetBillingRuleRequest) (*domain.BillingRule, error)
+	// Update 更新计费规则
+	Update(ctx context.Context, req *UpdateBillingRuleRequest) (*domain.BillingRule, error)
+	// Calculate 费用模拟计算
+	Calculate(ctx context.Context, req *CalculateFeeRequest) (*domain.CalculateResult, error)
+}
+
+// GetBillingRuleRequest 获取计费规则请求
+type GetBillingRuleRequest struct {
+	OperatorRole     string
+	OperatorTenantID string
+	ParkingLotID     string
+}
+
+// UpdateBillingRuleRequest 更新计费规则请求
+type UpdateBillingRuleRequest struct {
+	OperatorID       string
+	OperatorRole     string
+	OperatorTenantID string
+	ID               string
+	FreeMinutes      int
+	PricePerHour     float64
+	DailyCap         float64
+	IP               string
+}
+
+// CalculateFeeRequest 费用模拟计算请求
+type CalculateFeeRequest struct {
+	OperatorRole     string
+	OperatorTenantID string
+	ParkingLotID     string
+	EntryTime        string // RFC3339
+	ExitTime         string // RFC3339
+}
