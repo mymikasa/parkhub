@@ -15,12 +15,14 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { useControlDevice } from '@/lib/device/hooks';
+import { getRuntimeDeviceStatus } from '@/lib/device/status';
 import type { DeviceStatus } from '@/lib/device/types';
 
 interface DeviceControlButtonProps {
   deviceId: string;
   deviceName: string;
   status: DeviceStatus;
+  lastHeartbeat?: string | null;
   disabled?: boolean;
   onSuccess?: () => void;
 }
@@ -29,13 +31,15 @@ export function DeviceControlButton({
   deviceId,
   deviceName,
   status,
+  lastHeartbeat = null,
   disabled = false,
   onSuccess,
 }: DeviceControlButtonProps) {
   const [open, setOpen] = useState(false);
   const controlMutation = useControlDevice();
 
-  const isOnline = status === 'active';
+  const runtimeStatus = getRuntimeDeviceStatus(status, lastHeartbeat);
+  const isOnline = runtimeStatus === 'active';
   const isDisabled = disabled || !isOnline;
   const isLoading = controlMutation.isPending;
 

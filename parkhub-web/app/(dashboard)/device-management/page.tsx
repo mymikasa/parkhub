@@ -53,6 +53,7 @@ import {
 import { usePermissions, useUser } from "@/lib/auth/hooks";
 import { useTenants } from "@/lib/tenant/hooks";
 import { useGates, useParkingLots } from "@/lib/parking-lot/hooks";
+import { DEVICE_OFFLINE_TIMEOUT_MS, getRuntimeDeviceStatus } from "@/lib/device/status";
 import type { Device, DeviceFilter, DeviceStatus } from "@/lib/device/types";
 import { DeviceControlButton } from "@/components/device";
 
@@ -152,13 +153,7 @@ function formatHeartbeat(heartbeat: string | null): {
   return { text: `${diffDays} 天前`, full };
 }
 
-function isHeartbeatStale(
-  heartbeat: string | null,
-  thresholdMinutes = 15
-): boolean {
-  if (!heartbeat) return false;
-  return Date.now() - new Date(heartbeat).getTime() > thresholdMinutes * 60000;
-}
+const HEARTBEAT_TIMEOUT_MINUTES = DEVICE_OFFLINE_TIMEOUT_MS / 60000;
 
 function generatePages(current: number, total: number): (number | "...")[] {
   if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
@@ -181,11 +176,10 @@ function formatCount(value: number): string {
   return new Intl.NumberFormat("zh-CN").format(value);
 }
 
-function getAttentionText(device: Device, staleHeartbeat: boolean): string {
-  if (device.status === "offline") return "设备离线，需要排查网络或供电";
-  if (device.status === "pending") return "尚未完成车场或闸口绑定";
-  if (device.status === "disabled") return "设备已禁用，不参与运行";
-  if (staleHeartbeat) return "心跳延迟超过 15 分钟";
+function getAttentionText(status: DeviceStatus): string {
+  if (status === "offline") return "设备离线，需要排查网络或供电";
+  if (status === "pending") return "尚未完成车场或闸口绑定";
+  if (status === "disabled") return "设备已禁用，不参与运行";
   return "运行稳定，链路正常";
 }
 
@@ -235,11 +229,13 @@ export default function DeviceManagementPage() {
   const pendingDevices = stats?.pending || 0;
   const disabledDevices = stats?.disabled || 0;
   const onlineRate = formatPercent(activeDevices, totalDevices);
-  const staleHeartbeatCount = devices.filter(
-    (device) => device.status === "active" && isHeartbeatStale(device.last_heartbeat)
+  const heartbeatTimedOutCount = devices.filter(
+    (device) =>
+      device.status === "active" &&
+      getRuntimeDeviceStatus(device.status, device.last_heartbeat) === "offline"
   ).length;
   const hasAttention =
-    offlineDevices > 0 || pendingDevices > 0 || staleHeartbeatCount > 0;
+    offlineDevices > 0 || pendingDevices > 0 || heartbeatTimedOutCount > 0;
 
   const handleUnbind = async (device: Device) => {
     if (!device.parking_lot_id) return;
@@ -382,13 +378,13 @@ export default function DeviceManagementPage() {
                 <div className="text-sm text-red-600 mt-0.5">
                   {offlineDevices > 0 && `离线 ${formatCount(offlineDevices)} 台`}
                   {offlineDevices > 0 &&
-                  (pendingDevices > 0 || staleHeartbeatCount > 0)
+                  (pendingDevices > 0 || heartbeatTimedOutCount > 0)
                     ? "，"
                     : ""}
                   {pendingDevices > 0 && `待分配 ${formatCount(pendingDevices)} 台`}
-                  {pendingDevices > 0 && staleHeartbeatCount > 0 ? "，" : ""}
-                  {staleHeartbeatCount > 0 &&
-                    `当前页心跳延迟 ${formatCount(staleHeartbeatCount)} 台`}
+                  {pendingDevices > 0 && heartbeatTimedOutCount > 0 ? "，" : ""}
+                  {heartbeatTimedOutCount > 0 &&
+                    `当前页心跳超时 ${formatCount(heartbeatTimedOutCount)} 台`}
                   。建议先处理连接异常，再完成设备绑定。
                 </div>
               </div>
@@ -626,11 +622,11 @@ function DeviceRow({
   onUnbind: () => void;
   index: number;
 }) {
-  const cfg = STATUS_CONFIG[device.status];
+  const runtimeStatus = getRuntimeDeviceStatus(device.status, device.last_heartbeat);
+  const cfg = STATUS_CONFIG[runtimeStatus];
   const heartbeat = formatHeartbeat(device.last_heartbeat);
   const StatusIcon = cfg.icon;
-  const staleHeartbeat =
-    device.status === "active" && isHeartbeatStale(device.last_heartbeat);
+  const heartbeatTimedOut = device.status === "active" && runtimeStatus === "offline";
   const canBind = canEdit && (device.status === "pending" || device.status === "active");
   const isBound = !!device.parking_lot_id;
 
@@ -651,9 +647,9 @@ function DeviceRow({
               <p className="truncate text-sm font-semibold text-slate-900">
                 {device.name || "未命名设备"}
               </p>
-              {staleHeartbeat && (
+              {heartbeatTimedOut && (
                 <span className="rounded-full bg-brand-50 px-2 py-0.5 text-[11px] font-medium text-brand-700">
-                  心跳延迟
+                  心跳超时
                 </span>
               )}
             </div>
@@ -692,7 +688,7 @@ function DeviceRow({
             className={`inline-flex w-fit items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${cfg.softBg} ${cfg.textColor} ring-1 ${cfg.ringColor}`}
           >
             <span className="relative flex h-1.5 w-1.5">
-              {device.status === "active" && (
+              {runtimeStatus === "active" && (
                 <span
                   className={`absolute inline-flex h-full w-full animate-ping rounded-full ${cfg.dotColor} opacity-75`}
                 />
@@ -704,7 +700,7 @@ function DeviceRow({
             {cfg.label}
           </span>
           <span className="text-xs text-slate-500">
-            {staleHeartbeat ? "心跳延迟超过 15 分钟" : cfg.note}
+            {heartbeatTimedOut ? `心跳超时超过 ${HEARTBEAT_TIMEOUT_MINUTES} 分钟` : cfg.note}
           </span>
         </div>
       </TableCell>
@@ -718,7 +714,7 @@ function DeviceRow({
           <div title={heartbeat.full} className="flex items-start gap-2">
             <Activity
               className={`mt-0.5 h-3.5 w-3.5 ${
-                staleHeartbeat ? "text-brand-500" : "text-emerald-500"
+                heartbeatTimedOut ? "text-rose-500" : "text-emerald-500"
               }`}
             />
             <div>
@@ -730,7 +726,7 @@ function DeviceRow({
                 {heartbeat.text}
               </p>
               <p className="text-xs text-slate-400">
-                {getAttentionText(device, staleHeartbeat)}
+                {getAttentionText(runtimeStatus)}
               </p>
             </div>
           </div>
@@ -745,6 +741,7 @@ function DeviceRow({
                 deviceId={device.id}
                 deviceName={device.name || device.id}
                 status={device.status}
+                lastHeartbeat={device.last_heartbeat}
               />
             )}
             <button
@@ -783,6 +780,7 @@ function DeviceRow({
                 deviceId={device.id}
                 deviceName={device.name || device.id}
                 status={device.status}
+                lastHeartbeat={device.last_heartbeat}
               />
             )}
             {!canControl && <span className="text-xs text-slate-300">无可用操作</span>}
