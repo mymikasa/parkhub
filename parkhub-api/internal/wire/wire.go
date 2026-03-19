@@ -29,6 +29,7 @@ func InitializeApp(cfg *config.Config, db *gorm.DB) (*router.Router, error) {
 		repoimpl.GateRepoSet,
 		repoimpl.DeviceRepoSet,
 		repoimpl.DeviceControlLogRepoSet,
+		repoimpl.BillingRuleRepoSet,
 		svcimpl.AuthServiceSet,
 		svcimpl.TenantServiceSet,
 		svcimpl.UserServiceSet,
@@ -37,12 +38,14 @@ func InitializeApp(cfg *config.Config, db *gorm.DB) (*router.Router, error) {
 		svcimpl.GateServiceSet,
 		svcimpl.DeviceServiceSet,
 		svcimpl.DeviceControlServiceSet,
+		svcimpl.BillingRuleServiceSet,
 		handler.AuthHandlerSet,
 		handler.TenantHandlerSet,
 		handler.UserHandlerSet,
 		handler.ParkingLotHandlerSet,
 		handler.GateHandlerSet,
 		handler.DeviceHandlerSet,
+		handler.BillingRuleHandlerSet,
 		router.RouterSet,
 	)
 	return nil, nil

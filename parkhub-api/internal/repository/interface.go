@@ -180,3 +180,11 @@ type DeviceControlLogRepo interface {
 	Create(ctx context.Context, log *domain.DeviceControlLog) error
 	FindByDeviceID(ctx context.Context, deviceID string, page, pageSize int) ([]*domain.DeviceControlLog, int64, error)
 }
+
+// BillingRuleRepo 计费规则数据访问接口
+type BillingRuleRepo interface {
+	Create(ctx context.Context, rule *domain.BillingRule) error
+	Update(ctx context.Context, rule *domain.BillingRule) error
+	FindByID(ctx context.Context, id string) (*domain.BillingRule, error)
+	FindByParkingLotID(ctx context.Context, parkingLotID string) (*domain.BillingRule, error)
+}

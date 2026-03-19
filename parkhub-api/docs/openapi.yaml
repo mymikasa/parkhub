@@ -43,6 +43,8 @@ tags:
     description: 用户管理接口
   - name: ParkingLot
     description: 停车场管理接口
+  - name: BillingRule
+    description: 计费规则管理接口
 
 paths:
   /auth/login:
@@ -86,6 +88,110 @@ paths:
     $ref: 'openapi/paths/parking-lot.yaml#/~1parking-lots~1{id}~1gates'
   /gates/{id}:
     $ref: 'openapi/paths/parking-lot.yaml#/~1gates~1{id}'
+
+  /billing-rules:
+    get:
+      tags: [BillingRule]
+      summary: 获取计费规则
+      description: 根据停车场ID获取计费规则。platform_admin 和 tenant_admin 有权访问。
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: parking_lot_id
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: 停车场ID
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code: { type: integer, example: 0 }
+                  message: { type: string, example: success }
+                  data:
+                    $ref: '#/components/schemas/BillingRule'
+        '400':
+          description: 缺少 parking_lot_id 参数
+        '403':
+          description: 无权访问
+        '404':
+          description: 计费规则不存在
+
+  /billing-rules/{id}:
+    put:
+      tags: [BillingRule]
+      summary: 更新计费规则
+      description: 更新指定计费规则的字段。变更将记录审计日志。
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: 计费规则ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateBillingRuleRequest'
+      responses:
+        '200':
+          description: 更新成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code: { type: integer, example: 0 }
+                  message: { type: string, example: 计费规则已更新 }
+                  data:
+                    $ref: '#/components/schemas/BillingRule'
+        '400':
+          description: 参数校验失败
+        '403':
+          description: 无权修改
+        '404':
+          description: 计费规则不存在
+
+  /billing-rules/calculate:
+    post:
+      tags: [BillingRule]
+      summary: 费用模拟计算
+      description: 根据停车场计费规则模拟计算停车费用，返回详细计费明细。
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CalculateFeeRequest'
+      responses:
+        '200':
+          description: 计算成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code: { type: integer, example: 0 }
+                  message: { type: string, example: success }
+                  data:
+                    $ref: '#/components/schemas/CalculateFeeResponse'
+        '400':
+          description: 参数错误（时间格式无效或出场早于入场）
+        '404':
+          description: 停车场或计费规则不存在
 
 components:
   securitySchemes:
@@ -206,6 +312,43 @@ components:
       $ref: 'openapi/schemas/common.yaml#/ErrorResponse'
     MessageResponse:
       $ref: 'openapi/schemas/common.yaml#/MessageResponse'
+    BillingRule:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        tenant_id: { type: string, format: uuid }
+        parking_lot_id: { type: string, format: uuid }
+        free_minutes: { type: integer, minimum: 0, maximum: 120, example: 15 }
+        price_per_hour: { type: number, format: decimal, minimum: 1, maximum: 50, example: 2.00 }
+        daily_cap: { type: number, format: decimal, minimum: 0, maximum: 500, example: 20.00, description: "0表示不封顶" }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+    UpdateBillingRuleRequest:
+      type: object
+      required: [price_per_hour]
+      properties:
+        free_minutes: { type: integer, minimum: 0, maximum: 120, example: 15 }
+        price_per_hour: { type: number, minimum: 1, maximum: 50, example: 2.00 }
+        daily_cap: { type: number, minimum: 0, maximum: 500, example: 20.00 }
+    CalculateFeeRequest:
+      type: object
+      required: [parking_lot_id, entry_time, exit_time]
+      properties:
+        parking_lot_id: { type: string, format: uuid }
+        entry_time: { type: string, format: date-time, example: "2024-01-01T08:00:00Z" }
+        exit_time: { type: string, format: date-time, example: "2024-01-01T10:30:00Z" }
+    CalculateFeeResponse:
+      type: object
+      properties:
+        parking_duration: { type: integer, description: "停车时长（分钟）" }
+        free_minutes: { type: integer, description: "免费时长（分钟）" }
+        billable_minutes: { type: integer, description: "计费时长（分钟）" }
+        billable_hours: { type: integer, description: "计费小时数（向上取整）" }
+        price_per_hour: { type: number, description: "单价（元/小时）" }
+        daily_cap: { type: number, description: "每日封顶（元）" }
+        days: { type: integer, description: "停车天数" }
+        raw_fee: { type: number, description: "原始费用" }
+        final_fee: { type: number, description: "最终费用" }
 
 x-error-codes:
   - code: INVALID_REQUEST
@@ -294,3 +437,23 @@ x-error-codes:
     status: 403
     numeric_code: 40305
     description: 该出入口存在未完成的通行记录，无法删除
+  - code: BILLING_RULE_NOT_FOUND
+    status: 404
+    numeric_code: 40402
+    description: 计费规则不存在
+  - code: INVALID_FREE_MINUTES
+    status: 400
+    numeric_code: 40003
+    description: 免费时长必须在0-120分钟之间
+  - code: INVALID_PRICE_PER_HOUR
+    status: 400
+    numeric_code: 40003
+    description: 计费单价必须在1-50元之间
+  - code: INVALID_DAILY_CAP
+    status: 400
+    numeric_code: 40003
+    description: 每日封顶必须在0-500元之间
+  - code: INVALID_TIME_RANGE
+    status: 400
+    numeric_code: 40003
+    description: 出场时间必须晚于入场时间

@@ -13,14 +13,15 @@ var RouterSet = wire.NewSet(NewRouter)
 
 // Router 路由器
 type Router struct {
-	engine            *gin.Engine
-	jwtManager        *jwt.JWTManager
-	authHandler       *handler.AuthHandler
-	tenantHandler     *handler.TenantHandler
-	userHandler       *handler.UserHandler
-	parkingLotHandler *handler.ParkingLotHandler
-	gateHandler       *handler.GateHandler
-	deviceHandler     *handler.DeviceHandler
+	engine             *gin.Engine
+	jwtManager         *jwt.JWTManager
+	authHandler        *handler.AuthHandler
+	tenantHandler      *handler.TenantHandler
+	userHandler        *handler.UserHandler
+	parkingLotHandler  *handler.ParkingLotHandler
+	gateHandler        *handler.GateHandler
+	deviceHandler      *handler.DeviceHandler
+	billingRuleHandler *handler.BillingRuleHandler
 }
 
 // NewRouter 创建路由器
@@ -33,16 +34,18 @@ func NewRouter(
 	parkingLotHandler *handler.ParkingLotHandler,
 	gateHandler *handler.GateHandler,
 	deviceHandler *handler.DeviceHandler,
+	billingRuleHandler *handler.BillingRuleHandler,
 ) *Router {
 	return &Router{
-		engine:            engine,
-		jwtManager:        jwtManager,
-		authHandler:       authHandler,
-		tenantHandler:     tenantHandler,
-		userHandler:       userHandler,
-		parkingLotHandler: parkingLotHandler,
-		gateHandler:       gateHandler,
-		deviceHandler:     deviceHandler,
+		engine:             engine,
+		jwtManager:         jwtManager,
+		authHandler:        authHandler,
+		tenantHandler:      tenantHandler,
+		userHandler:        userHandler,
+		parkingLotHandler:  parkingLotHandler,
+		gateHandler:        gateHandler,
+		deviceHandler:      deviceHandler,
+		billingRuleHandler: billingRuleHandler,
 	}
 }
 
@@ -69,6 +72,7 @@ func (r *Router) Setup() {
 		r.setupUserRoutes(v1)
 		r.setupParkingLotRoutes(v1)
 		r.setupDeviceRoutes(v1)
+		r.setupBillingRuleRoutes(v1)
 	}
 }
 
@@ -206,6 +210,23 @@ func (r *Router) setupParkingLotRoutes(rg *gin.RouterGroup) {
 
 		// DELETE /api/v1/gates/:id - 删除出入口
 		gates.DELETE("/:id", r.gateHandler.Delete)
+	}
+}
+
+// setupBillingRuleRoutes 设置计费规则路由
+func (r *Router) setupBillingRuleRoutes(rg *gin.RouterGroup) {
+	billingRules := rg.Group("/billing-rules")
+	billingRules.Use(middleware.AuthMiddleware(r.jwtManager))
+	billingRules.Use(middleware.RequireRoles("platform_admin", "tenant_admin"))
+	{
+		// GET /api/v1/billing-rules?parking_lot_id=xxx - 获取计费规则
+		billingRules.GET("", r.billingRuleHandler.Get)
+
+		// PUT /api/v1/billing-rules/:id - 更新计费规则
+		billingRules.PUT("/:id", r.billingRuleHandler.Update)
+
+		// POST /api/v1/billing-rules/calculate - 费用模拟计算
+		billingRules.POST("/calculate", r.billingRuleHandler.Calculate)
 	}
 }
 
