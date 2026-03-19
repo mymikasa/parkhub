@@ -71,10 +71,19 @@ func (s *stubDeviceService) Delete(ctx context.Context, req *service.DeleteDevic
 }
 
 // stubDeviceControlService is a stub implementation for the tests
-type stubDeviceControlService struct{}
+type stubDeviceControlService struct {
+	listLogsFn func(ctx context.Context, req *service.ListDeviceControlLogsRequest) (*service.ListDeviceControlLogsResponse, error)
+}
 
 func (s *stubDeviceControlService) Control(ctx context.Context, req *service.ControlDeviceRequest) (*service.ControlDeviceResponse, error) {
 	return &service.ControlDeviceResponse{Success: true}, nil
+}
+
+func (s *stubDeviceControlService) ListLogs(ctx context.Context, req *service.ListDeviceControlLogsRequest) (*service.ListDeviceControlLogsResponse, error) {
+	if s.listLogsFn == nil {
+		return &service.ListDeviceControlLogsResponse{}, nil
+	}
+	return s.listLogsFn(ctx, req)
 }
 
 func TestDeviceHandler_Bind_Success(t *testing.T) {
@@ -174,6 +183,57 @@ func TestDeviceHandler_Delete_MapsDomainError(t *testing.T) {
 		t.Fatalf("status = %v, want 400", resp.Code)
 	}
 	if !bytes.Contains(resp.Body.Bytes(), []byte(`"code":40003`)) {
+		t.Fatalf("body = %s", resp.Body.String())
+	}
+}
+
+func TestDeviceHandler_ListControlLogs_Success(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	svc := &stubDeviceService{}
+	controlSvc := &stubDeviceControlService{
+		listLogsFn: func(ctx context.Context, req *service.ListDeviceControlLogsRequest) (*service.ListDeviceControlLogsResponse, error) {
+			if req.DeviceID != "device-1" {
+				t.Fatalf("DeviceID = %v, want device-1", req.DeviceID)
+			}
+			if req.Page != 2 || req.PageSize != 20 {
+				t.Fatalf("page/pageSize = %d/%d, want 2/20", req.Page, req.PageSize)
+			}
+			return &service.ListDeviceControlLogsResponse{
+				Items: []*service.DeviceControlLogItem{
+					{
+						ID:           "log-1",
+						OperatorID:   "user-1",
+						OperatorName: "张三",
+						Command:      "open_gate",
+						CreatedAt:    "2026-03-19T10:00:00Z",
+					},
+				},
+				Total:    21,
+				Page:     2,
+				PageSize: 20,
+			}, nil
+		},
+	}
+	handler := NewDeviceHandler(svc, controlSvc)
+
+	router := gin.New()
+	router.Use(func(c *gin.Context) {
+		c.Set("tenant_id", "tenant-1")
+	})
+	router.GET("/devices/:id/control-logs", handler.ListControlLogs)
+
+	req := httptest.NewRequest(http.MethodGet, "/devices/device-1/control-logs?page=2&page_size=20", nil)
+	resp := httptest.NewRecorder()
+	router.ServeHTTP(resp, req)
+
+	if resp.Code != http.StatusOK {
+		t.Fatalf("status = %v, want 200", resp.Code)
+	}
+	if !bytes.Contains(resp.Body.Bytes(), []byte(`"total":21`)) {
+		t.Fatalf("body = %s", resp.Body.String())
+	}
+	if !bytes.Contains(resp.Body.Bytes(), []byte(`"operator_name":"张三"`)) {
 		t.Fatalf("body = %s", resp.Body.String())
 	}
 }

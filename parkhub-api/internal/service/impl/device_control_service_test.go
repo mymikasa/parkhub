@@ -3,6 +3,7 @@ package impl
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -90,6 +91,7 @@ func (m *mockDeviceRepoForControl) UnbindByGateID(ctx context.Context, gateID st
 type mockDeviceControlLogRepo struct {
 	logs      []*domain.DeviceControlLog
 	createErr error
+	findErr   error
 }
 
 type mockAuditLogServiceForControl struct {
@@ -122,7 +124,25 @@ func (m *mockDeviceControlLogRepo) Create(ctx context.Context, log *domain.Devic
 }
 
 func (m *mockDeviceControlLogRepo) FindByDeviceID(ctx context.Context, deviceID string, page, pageSize int) ([]*domain.DeviceControlLog, int64, error) {
-	return nil, 0, nil
+	if m.findErr != nil {
+		return nil, 0, m.findErr
+	}
+	deviceLogs := make([]*domain.DeviceControlLog, 0)
+	for _, log := range m.logs {
+		if log.DeviceID == deviceID {
+			deviceLogs = append(deviceLogs, log)
+		}
+	}
+	total := int64(len(deviceLogs))
+	start := (page - 1) * pageSize
+	if start > len(deviceLogs) {
+		start = len(deviceLogs)
+	}
+	end := start + pageSize
+	if end > len(deviceLogs) {
+		end = len(deviceLogs)
+	}
+	return deviceLogs[start:end], total, nil
 }
 
 // Test helpers
@@ -431,6 +451,61 @@ func TestDeviceControlService_Control_WritesAuditLog(t *testing.T) {
 	}
 	if log.IP != "127.0.0.1" {
 		t.Fatalf("IP = %v, want 127.0.0.1", log.IP)
+	}
+}
+
+func TestDeviceControlService_ListLogs_Pagination(t *testing.T) {
+	svc, deviceRepo, logRepo := setupTestDeviceControlService()
+	createOnlineDevice(deviceRepo, "device-1", "tenant-1")
+	now := time.Now()
+	for i := 0; i < 25; i++ {
+		logRepo.logs = append(logRepo.logs, &domain.DeviceControlLog{
+			ID:           fmt.Sprintf("log-%d", i+1),
+			TenantID:     "tenant-1",
+			DeviceID:     "device-1",
+			OperatorID:   "user-1",
+			OperatorName: "测试用户",
+			Command:      "open_gate",
+			CreatedAt:    now.Add(time.Duration(i) * time.Second),
+		})
+	}
+
+	resp, err := svc.ListLogs(context.Background(), &service.ListDeviceControlLogsRequest{
+		DeviceID: "device-1",
+		TenantID: "tenant-1",
+		Page:     2,
+		PageSize: 20,
+	})
+	if err != nil {
+		t.Fatalf("ListLogs() error = %v", err)
+	}
+	if resp.Total != 25 {
+		t.Fatalf("Total = %d, want 25", resp.Total)
+	}
+	if resp.Page != 2 || resp.PageSize != 20 {
+		t.Fatalf("Page/PageSize = %d/%d, want 2/20", resp.Page, resp.PageSize)
+	}
+	if len(resp.Items) != 5 {
+		t.Fatalf("len(Items) = %d, want 5", len(resp.Items))
+	}
+}
+
+func TestDeviceControlService_ListLogs_Forbidden(t *testing.T) {
+	svc, deviceRepo, _ := setupTestDeviceControlService()
+	createOnlineDevice(deviceRepo, "device-1", "tenant-1")
+
+	_, err := svc.ListLogs(context.Background(), &service.ListDeviceControlLogsRequest{
+		DeviceID: "device-1",
+		TenantID: "tenant-2",
+		Page:     1,
+		PageSize: 20,
+	})
+	if err == nil {
+		t.Fatal("ListLogs() should return forbidden error")
+	}
+	var domainErr *domain.DomainError
+	if !errors.As(err, &domainErr) || domainErr.Code != "FORBIDDEN" {
+		t.Fatalf("error = %v, want FORBIDDEN", err)
 	}
 }
 

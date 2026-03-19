@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { Icon } from "@/components/icons/FontAwesome";
@@ -783,6 +784,13 @@ function DeviceRow({
       <TableCell className="pr-6 py-4 text-right">
         {canEdit ? (
           <div className="flex justify-end gap-2">
+            <Link
+              href={`/device-management/${device.id}`}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 transition-colors hover:border-brand-200 hover:bg-brand-50 hover:text-brand-700"
+            >
+              <HardDrive className="h-3.5 w-3.5" />
+              详情
+            </Link>
             {canControl && (
               <DeviceControlButton
                 deviceId={device.id}
@@ -846,6 +854,13 @@ function DeviceRow({
           </div>
         ) : (
           <div className="flex justify-end gap-2">
+            <Link
+              href={`/device-management/${device.id}`}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 transition-colors hover:border-brand-200 hover:bg-brand-50 hover:text-brand-700"
+            >
+              <HardDrive className="h-3.5 w-3.5" />
+              详情
+            </Link>
             {canControl && (
               <DeviceControlButton
                 deviceId={device.id}
