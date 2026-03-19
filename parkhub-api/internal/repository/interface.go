@@ -157,12 +157,13 @@ type DeviceStats struct {
 }
 
 type DeviceParkingLotStats struct {
-	ParkingLotID string
-	Total        int64
-	Online       int64
-	Offline      int64
-	Pending      int64
-	Disabled     int64
+	ParkingLotID   string
+	ParkingLotName string
+	Total          int64
+	Online         int64
+	Offline        int64
+	Pending        int64
+	Disabled       int64
 }
 
 // DeviceFilter 设备查询过滤器

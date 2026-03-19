@@ -367,20 +367,9 @@ func (s *deviceServiceImpl) GetStats(ctx context.Context, tenantID string) (*ser
 
 	byParkingLot := make([]*service.DeviceParkingLotStatsItem, 0, len(stats.ByParkingLot))
 	for _, item := range stats.ByParkingLot {
-		parkingLotName := ""
-		if item.ParkingLotID != "" {
-			parkingLot, err := s.parkingLotRepo.FindByID(ctx, item.ParkingLotID)
-			if err != nil && err != domain.ErrParkingLotNotFound {
-				return nil, err
-			}
-			if parkingLot != nil {
-				parkingLotName = parkingLot.Name
-			}
-		}
-
 		byParkingLot = append(byParkingLot, &service.DeviceParkingLotStatsItem{
 			ParkingLotID:   item.ParkingLotID,
-			ParkingLotName: parkingLotName,
+			ParkingLotName: item.ParkingLotName,
 			Total:          item.Total,
 			Online:         item.Online,
 			Offline:        item.Offline,

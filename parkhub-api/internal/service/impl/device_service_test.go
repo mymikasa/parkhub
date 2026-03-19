@@ -13,7 +13,8 @@ import (
 )
 
 type mockDeviceRepo struct {
-	devices map[string]*domain.Device
+	devices         map[string]*domain.Device
+	parkingLotNames map[string]string
 }
 
 type mockAuditLogServiceForDevice struct {
@@ -34,7 +35,10 @@ func (m *mockAuditLogServiceForDevice) List(ctx context.Context, req *service.Li
 }
 
 func newMockDeviceRepo() *mockDeviceRepo {
-	return &mockDeviceRepo{devices: make(map[string]*domain.Device)}
+	return &mockDeviceRepo{
+		devices:         make(map[string]*domain.Device),
+		parkingLotNames: make(map[string]string),
+	}
 }
 
 func (m *mockDeviceRepo) Create(ctx context.Context, device *domain.Device) error {
@@ -147,7 +151,10 @@ func (m *mockDeviceRepo) CountByStatus(ctx context.Context, tenantID string) (*r
 		if device.ParkingLotID != nil {
 			item, ok := byParkingLot[*device.ParkingLotID]
 			if !ok {
-				item = &repository.DeviceParkingLotStats{ParkingLotID: *device.ParkingLotID}
+				item = &repository.DeviceParkingLotStats{
+					ParkingLotID:   *device.ParkingLotID,
+					ParkingLotName: m.parkingLotNames[*device.ParkingLotID],
+				}
 				byParkingLot[*device.ParkingLotID] = item
 			}
 			item.Total++
@@ -457,6 +464,9 @@ func TestDeviceService_GetStats_TenantIsolationAndParkingLotBreakdown(t *testing
 	createTestParkingLot(parkingLotRepo, "lot-1", "tenant-1", "阳光停车场")
 	createTestParkingLot(parkingLotRepo, "lot-2", "tenant-1", "星光停车场")
 	createTestParkingLot(parkingLotRepo, "lot-3", "tenant-2", "月光停车场")
+	deviceRepo.parkingLotNames["lot-1"] = "阳光停车场"
+	deviceRepo.parkingLotNames["lot-2"] = "星光停车场"
+	deviceRepo.parkingLotNames["lot-3"] = "月光停车场"
 
 	deviceA := createTestDevice(deviceRepo, "device-a", "tenant-1", domain.DeviceStatusActive)
 	lot1 := "lot-1"
@@ -520,6 +530,8 @@ func TestDeviceService_GetStats_PlatformAdminSeesAllTenants(t *testing.T) {
 	tenantRepo.tenants["tenant-2"] = domain.NewTenant("tenant-2", "测试租户2", "联系人", "13800138001")
 	createTestParkingLot(parkingLotRepo, "lot-1", "tenant-1", "阳光停车场")
 	createTestParkingLot(parkingLotRepo, "lot-2", "tenant-2", "月光停车场")
+	deviceRepo.parkingLotNames["lot-1"] = "阳光停车场"
+	deviceRepo.parkingLotNames["lot-2"] = "月光停车场"
 
 	deviceA := createTestDevice(deviceRepo, "device-a", "tenant-1", domain.DeviceStatusActive)
 	lot1 := "lot-1"
