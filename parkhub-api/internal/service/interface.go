@@ -633,3 +633,83 @@ type CalculateFeeRequest struct {
 	EntryTime        string // RFC3339
 	ExitTime         string // RFC3339
 }
+
+// TransitRecordService 通行记录服务接口
+type TransitRecordService interface {
+	// CreateEntry 创建入场记录
+	CreateEntry(ctx context.Context, req *CreateEntryRequest) (*domain.TransitRecord, error)
+	// CreateExit 创建出场记录（自动匹配入场+计费）
+	CreateExit(ctx context.Context, req *CreateExitRequest) (*domain.TransitRecord, error)
+	// GetByID 获取通行记录详情
+	GetByID(ctx context.Context, id, tenantID string) (*domain.TransitRecordListItem, error)
+	// List 获取通行记录列表
+	List(ctx context.Context, req *ListTransitRecordsRequest) (*TransitRecordListResponse, error)
+	// GetLatest 获取最新通行记录
+	GetLatest(ctx context.Context, tenantID string, limit int) ([]*domain.TransitRecordListItem, error)
+	// GetStats 获取今日统计
+	GetStats(ctx context.Context, tenantID string) (*TransitStatsResponse, error)
+	// GetOverstay 获取超时停放列表
+	GetOverstay(ctx context.Context, tenantID string) ([]*domain.TransitRecordListItem, error)
+	// Resolve 处理异常记录
+	Resolve(ctx context.Context, req *ResolveTransitRecordRequest) (*domain.TransitRecordListItem, error)
+	// ScanOverstay 定时扫描超时停放
+	ScanOverstay(ctx context.Context) error
+	// CountExceptions 统计未处理异常数
+	CountExceptions(ctx context.Context, tenantID string) (int64, error)
+}
+
+// CreateEntryRequest 创建入场记录请求
+type CreateEntryRequest struct {
+	TenantID     string
+	ParkingLotID string
+	GateID       string
+	PlateNumber  *string
+	ImageURL     *string
+}
+
+// CreateExitRequest 创建出场记录请求
+type CreateExitRequest struct {
+	TenantID     string
+	ParkingLotID string
+	GateID       string
+	PlateNumber  *string
+	ImageURL     *string
+}
+
+// ListTransitRecordsRequest 通行记录列表请求
+type ListTransitRecordsRequest struct {
+	TenantID     string
+	ParkingLotID string
+	PlateNumber  string
+	Type         *domain.TransitType
+	Status       *domain.TransitStatus
+	StartDate    *string // RFC3339
+	EndDate      *string // RFC3339
+	Page         int
+	PageSize     int
+}
+
+// ResolveTransitRecordRequest 处理异常记录请求
+type ResolveTransitRecordRequest struct {
+	ID          string
+	TenantID    string
+	ResolvedBy  string
+	PlateNumber *string
+	Remark      *string
+}
+
+// TransitRecordListResponse 通行记录列表响应
+type TransitRecordListResponse struct {
+	Items    []*domain.TransitRecordListItem
+	Total    int64
+	Page     int
+	PageSize int
+}
+
+// TransitStatsResponse 今日统计响应
+type TransitStatsResponse struct {
+	EntryCount   int64   `json:"entry_count"`
+	ExitCount    int64   `json:"exit_count"`
+	OnSiteCount  int64   `json:"on_site_count"`
+	TodayRevenue float64 `json:"today_revenue"`
+}
