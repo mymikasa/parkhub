@@ -8,6 +8,7 @@ import {
   faTriangleExclamation,
 } from "@fortawesome/free-solid-svg-icons";
 import Link from "next/link";
+import { isExceptionStatus } from "@/lib/transit-record/types";
 import type { TransitRecord } from "@/lib/transit-record";
 
 interface LiveTransitFeedProps {
@@ -74,7 +75,7 @@ export function LiveTransitFeed({ records }: LiveTransitFeedProps) {
       <div className="divide-y divide-gray-100 max-h-[520px] overflow-y-auto">
         {records.map((record, index) => {
           const isNew = newIds.has(record.id);
-          const isException = record.status === "exception";
+          const isException = isExceptionStatus(record.status);
           const isEntry = record.type === "entry";
 
           return (

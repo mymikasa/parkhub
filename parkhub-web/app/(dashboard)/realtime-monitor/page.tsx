@@ -26,7 +26,7 @@ export default function RealtimeMonitorPage() {
   const { data: stats } = useTransitStats(60000);
   const { data: latestRecords } = useLatestTransitRecords(10000);
   const { data: overstayRecords } = useOverstayRecords(60000);
-  const { data: parkingLotData } = useParkingLots({ page: 1, page_size: 50, status: "active" });
+  const { data: parkingLotData } = useParkingLots({ page: 1, page_size: 50, status: "active" }, true, 60000);
 
   const parkingLots = parkingLotData?.items ?? [];
   const totalSpaces = parkingLots.reduce((sum, lot) => sum + lot.total_spaces, 0);

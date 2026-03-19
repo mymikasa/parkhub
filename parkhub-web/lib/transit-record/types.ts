@@ -1,6 +1,12 @@
 export type TransitType = 'entry' | 'exit';
 
-export type TransitStatus = 'normal' | 'exception' | 'resolved';
+export type TransitStatus = 'normal' | 'paid' | 'no_exit' | 'no_entry' | 'recognition_failed';
+
+const EXCEPTION_STATUSES: TransitStatus[] = ['no_exit', 'no_entry', 'recognition_failed'];
+
+export function isExceptionStatus(status: TransitStatus): boolean {
+  return EXCEPTION_STATUSES.includes(status);
+}
 
 export interface TransitRecord {
   id: string;

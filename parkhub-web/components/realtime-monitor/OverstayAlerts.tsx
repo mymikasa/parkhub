@@ -6,6 +6,12 @@ interface OverstayAlertsProps {
   records: TransitRecord[];
 }
 
+function calcDurationMinutes(createdAt: string): number {
+  const now = new Date();
+  const entry = new Date(createdAt);
+  return Math.max(0, Math.floor((now.getTime() - entry.getTime()) / 60000));
+}
+
 function formatDuration(minutes: number): string {
   const days = Math.floor(minutes / 1440);
   const hours = Math.floor((minutes % 1440) / 60);
@@ -36,7 +42,7 @@ export function OverstayAlerts({ records }: OverstayAlertsProps) {
       </div>
       <div className="divide-y divide-gray-100">
         {records.map((record) => {
-          const durationMin = record.parking_duration ?? 0;
+          const durationMin = calcDurationMinutes(record.created_at);
           return (
             <div
               key={record.id}
