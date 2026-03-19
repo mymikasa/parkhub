@@ -43,6 +43,17 @@ export interface BindDeviceRequest {
   gate_id: string;
 }
 
+export interface BatchDeviceActionRequest {
+  ids: string[];
+}
+
+export interface BatchBindDeviceRequest {
+  ids: string[];
+  tenant_id: string;
+  parking_lot_id: string;
+  gate_id: string;
+}
+
 export interface DeviceListResponse {
   items: Device[];
   total: number;

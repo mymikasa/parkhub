@@ -277,6 +277,112 @@ func (h *DeviceHandler) Delete(c *gin.Context) {
 	})
 }
 
+func (h *DeviceHandler) BatchDisable(c *gin.Context) {
+	role := c.GetString("role")
+	tenantID := c.GetString("tenant_id")
+
+	var req dto.BatchDeviceActionRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, dto.Response{Code: 400, Message: validator.FormatValidationError(err)})
+		return
+	}
+
+	if err := h.deviceService.BatchDisable(c.Request.Context(), &service.BatchChangeDeviceStatusRequest{
+		IDs:              req.IDs,
+		OperatorRole:     role,
+		OperatorTenantID: tenantID,
+	}); err != nil {
+		h.handleError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, dto.Response{
+		Code:    0,
+		Message: "设备已批量禁用",
+	})
+}
+
+func (h *DeviceHandler) BatchEnable(c *gin.Context) {
+	role := c.GetString("role")
+	tenantID := c.GetString("tenant_id")
+
+	var req dto.BatchDeviceActionRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, dto.Response{Code: 400, Message: validator.FormatValidationError(err)})
+		return
+	}
+
+	if err := h.deviceService.BatchEnable(c.Request.Context(), &service.BatchChangeDeviceStatusRequest{
+		IDs:              req.IDs,
+		OperatorRole:     role,
+		OperatorTenantID: tenantID,
+	}); err != nil {
+		h.handleError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, dto.Response{
+		Code:    0,
+		Message: "设备已批量启用",
+	})
+}
+
+func (h *DeviceHandler) BatchDelete(c *gin.Context) {
+	role := c.GetString("role")
+	tenantID := c.GetString("tenant_id")
+
+	var req dto.BatchDeviceActionRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, dto.Response{Code: 400, Message: validator.FormatValidationError(err)})
+		return
+	}
+
+	if err := h.deviceService.BatchDelete(c.Request.Context(), &service.BatchDeleteDeviceRequest{
+		IDs:              req.IDs,
+		OperatorRole:     role,
+		OperatorTenantID: tenantID,
+	}); err != nil {
+		h.handleError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, dto.Response{
+		Code:    0,
+		Message: "设备已批量删除",
+	})
+}
+
+func (h *DeviceHandler) BatchBind(c *gin.Context) {
+	userID := c.GetString("user_id")
+	role := c.GetString("role")
+	tenantID := c.GetString("tenant_id")
+
+	var req dto.BatchBindDeviceRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, dto.Response{Code: 400, Message: validator.FormatValidationError(err)})
+		return
+	}
+
+	if err := h.deviceService.BatchBind(c.Request.Context(), &service.BatchBindDeviceRequest{
+		IDs:              req.IDs,
+		OperatorID:       userID,
+		OperatorIP:       c.ClientIP(),
+		OperatorRole:     role,
+		OperatorTenantID: tenantID,
+		TargetTenantID:   req.TenantID,
+		ParkingLotID:     req.ParkingLotID,
+		GateID:           req.GateID,
+	}); err != nil {
+		h.handleError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, dto.Response{
+		Code:    0,
+		Message: "设备已批量绑定",
+	})
+}
+
 // GetStats 获取设备统计
 func (h *DeviceHandler) GetStats(c *gin.Context) {
 	tenantID := c.GetString("tenant_id")

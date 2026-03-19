@@ -270,5 +270,17 @@ func (r *Router) setupDeviceRoutes(rg *gin.RouterGroup) {
 
 		// DELETE /api/v1/devices/:id - 删除设备（仅admin）
 		devices.DELETE("/:id", middleware.RequireRoles("platform_admin", "tenant_admin"), r.deviceHandler.Delete)
+
+		// POST /api/v1/devices/batch-disable - 批量禁用设备（仅admin）
+		devices.POST("/batch-disable", middleware.RequireRoles("platform_admin", "tenant_admin"), r.deviceHandler.BatchDisable)
+
+		// POST /api/v1/devices/batch-enable - 批量启用设备（仅admin）
+		devices.POST("/batch-enable", middleware.RequireRoles("platform_admin", "tenant_admin"), r.deviceHandler.BatchEnable)
+
+		// POST /api/v1/devices/batch-delete - 批量删除设备（仅admin）
+		devices.POST("/batch-delete", middleware.RequireRoles("platform_admin", "tenant_admin"), r.deviceHandler.BatchDelete)
+
+		// POST /api/v1/devices/batch-bind - 批量绑定设备（仅admin）
+		devices.POST("/batch-bind", middleware.RequireRoles("platform_admin", "tenant_admin"), r.deviceHandler.BatchBind)
 	}
 }
