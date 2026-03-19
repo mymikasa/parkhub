@@ -683,6 +683,7 @@ type ListTransitRecordsRequest struct {
 	PlateNumber  string
 	Type         *domain.TransitType
 	Status       *domain.TransitStatus
+	StatusGroup  string
 	StartDate    *string // RFC3339
 	EndDate      *string // RFC3339
 	Page         int

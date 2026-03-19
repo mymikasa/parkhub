@@ -222,6 +222,7 @@ type TransitRecordFilter struct {
 	PlateNumber  string
 	Type         *domain.TransitType
 	Status       *domain.TransitStatus
+	StatusGroup  string
 	StartDate    *time.Time
 	EndDate      *time.Time
 	Page         int
