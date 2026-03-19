@@ -20,6 +20,7 @@ var DeviceControlServiceSet = wire.NewSet(NewDeviceControlService)
 type deviceControlServiceImpl struct {
 	deviceRepo     repository.DeviceRepo
 	controlLogRepo repository.DeviceControlLogRepo
+	auditLogSvc    service.AuditLogService
 	mqttClient     pahomqtt.Client
 	offlineTimeout time.Duration
 }
@@ -27,10 +28,12 @@ type deviceControlServiceImpl struct {
 func NewDeviceControlService(
 	deviceRepo repository.DeviceRepo,
 	controlLogRepo repository.DeviceControlLogRepo,
+	auditLogSvc service.AuditLogService,
 ) service.DeviceControlService {
 	return &deviceControlServiceImpl{
 		deviceRepo:     deviceRepo,
 		controlLogRepo: controlLogRepo,
+		auditLogSvc:    auditLogSvc,
 		mqttClient:     nil,
 		offlineTimeout: time.Duration(domain.DefaultHeartbeatTimeoutSeconds) * time.Second,
 	}
@@ -76,6 +79,22 @@ func (s *deviceControlServiceImpl) Control(ctx context.Context, req *service.Con
 	}
 
 	s.publishCommand(device.ID, req.Command, req.OperatorID, req.OperatorName)
+
+	detail, _ := json.Marshal(map[string]string{
+		"command": req.Command,
+	})
+	tenantID := device.TenantID
+	_ = s.auditLogSvc.Log(ctx, &domain.AuditLog{
+		ID:         uuid.NewString(),
+		UserID:     req.OperatorID,
+		TenantID:   &tenantID,
+		Action:     domain.AuditActionDeviceGateOpened,
+		TargetType: "device",
+		TargetID:   device.ID,
+		Detail:     string(detail),
+		IP:         req.OperatorIP,
+		CreatedAt:  time.Now(),
+	})
 
 	return &service.ControlDeviceResponse{Success: true}, nil
 }

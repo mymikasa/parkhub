@@ -2,8 +2,10 @@ package impl
 
 import (
 	"context"
+	"encoding/json"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/google/wire"
 	"github.com/parkhub/api/internal/domain"
 	"github.com/parkhub/api/internal/repository"
@@ -17,6 +19,7 @@ type deviceServiceImpl struct {
 	tenantRepo     repository.TenantRepo
 	parkingLotRepo repository.ParkingLotRepo
 	gateRepo       repository.GateRepo
+	auditLogSvc    service.AuditLogService
 }
 
 func NewDeviceService(
@@ -24,12 +27,14 @@ func NewDeviceService(
 	tenantRepo repository.TenantRepo,
 	parkingLotRepo repository.ParkingLotRepo,
 	gateRepo repository.GateRepo,
+	auditLogSvc service.AuditLogService,
 ) service.DeviceService {
 	return &deviceServiceImpl{
 		deviceRepo:     deviceRepo,
 		tenantRepo:     tenantRepo,
 		parkingLotRepo: parkingLotRepo,
 		gateRepo:       gateRepo,
+		auditLogSvc:    auditLogSvc,
 	}
 }
 
@@ -203,6 +208,25 @@ func (s *deviceServiceImpl) Bind(ctx context.Context, req *service.BindDeviceReq
 	if err := s.deviceRepo.Update(ctx, device); err != nil {
 		return nil, err
 	}
+
+	detail, _ := json.Marshal(map[string]string{
+		"parking_lot_id": req.ParkingLotID,
+		"gate_id":        req.GateID,
+		"tenant_id":      targetTenantID,
+	})
+	targetTenantIDCopy := targetTenantID
+	_ = s.auditLogSvc.Log(ctx, &domain.AuditLog{
+		ID:         uuid.NewString(),
+		UserID:     req.OperatorID,
+		TenantID:   &targetTenantIDCopy,
+		Action:     domain.AuditActionDeviceBound,
+		TargetType: "device",
+		TargetID:   device.ID,
+		Detail:     string(detail),
+		IP:         req.OperatorIP,
+		CreatedAt:  time.Now(),
+	})
+
 	return device, nil
 }
 
@@ -225,10 +249,39 @@ func (s *deviceServiceImpl) Unbind(ctx context.Context, req *service.UnbindDevic
 		return nil, &domain.DomainError{Code: "DEVICE_NOT_BOUND", Message: domain.ErrDeviceNotBound.Error()}
 	}
 
+	beforeTenantID := device.TenantID
+	var beforeParkingLotID string
+	if device.ParkingLotID != nil {
+		beforeParkingLotID = *device.ParkingLotID
+	}
+	var beforeGateID string
+	if device.GateID != nil {
+		beforeGateID = *device.GateID
+	}
+
 	device.Unbind()
 	if err := s.deviceRepo.Update(ctx, device); err != nil {
 		return nil, err
 	}
+
+	detail, _ := json.Marshal(map[string]string{
+		"parking_lot_id": beforeParkingLotID,
+		"gate_id":        beforeGateID,
+		"tenant_id":      beforeTenantID,
+	})
+	beforeTenantIDCopy := beforeTenantID
+	_ = s.auditLogSvc.Log(ctx, &domain.AuditLog{
+		ID:         uuid.NewString(),
+		UserID:     req.OperatorID,
+		TenantID:   &beforeTenantIDCopy,
+		Action:     domain.AuditActionDeviceUnbound,
+		TargetType: "device",
+		TargetID:   device.ID,
+		Detail:     string(detail),
+		IP:         req.OperatorIP,
+		CreatedAt:  time.Now(),
+	})
+
 	return device, nil
 }
 

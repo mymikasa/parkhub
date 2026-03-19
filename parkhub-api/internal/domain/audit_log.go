@@ -6,12 +6,15 @@ import "time"
 type AuditAction string
 
 const (
-	AuditActionUserCreated     AuditAction = "user_created"
-	AuditActionUserUpdated     AuditAction = "user_updated"
-	AuditActionUserFrozen      AuditAction = "user_frozen"
-	AuditActionUserUnfrozen    AuditAction = "user_unfrozen"
-	AuditActionPasswordReset   AuditAction = "password_reset"
-	AuditActionPasswordChanged AuditAction = "password_changed"
+	AuditActionUserCreated      AuditAction = "user_created"
+	AuditActionUserUpdated      AuditAction = "user_updated"
+	AuditActionUserFrozen       AuditAction = "user_frozen"
+	AuditActionUserUnfrozen     AuditAction = "user_unfrozen"
+	AuditActionPasswordReset    AuditAction = "password_reset"
+	AuditActionPasswordChanged  AuditAction = "password_changed"
+	AuditActionDeviceBound      AuditAction = "device_bound"
+	AuditActionDeviceUnbound    AuditAction = "device_unbound"
+	AuditActionDeviceGateOpened AuditAction = "device_gate_opened"
 )
 
 // AuditLog 审计日志实体

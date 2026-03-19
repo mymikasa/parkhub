@@ -87,6 +87,23 @@ type mockDeviceControlLogRepo struct {
 	createErr error
 }
 
+type mockAuditLogServiceForControl struct {
+	logs []*domain.AuditLog
+}
+
+func newMockAuditLogServiceForControl() *mockAuditLogServiceForControl {
+	return &mockAuditLogServiceForControl{logs: make([]*domain.AuditLog, 0)}
+}
+
+func (m *mockAuditLogServiceForControl) Log(ctx context.Context, log *domain.AuditLog) error {
+	m.logs = append(m.logs, log)
+	return nil
+}
+
+func (m *mockAuditLogServiceForControl) List(ctx context.Context, req *service.ListAuditLogsRequest) (*service.AuditLogListResponse, error) {
+	return &service.AuditLogListResponse{}, nil
+}
+
 func newMockDeviceControlLogRepo() *mockDeviceControlLogRepo {
 	return &mockDeviceControlLogRepo{logs: make([]*domain.DeviceControlLog, 0)}
 }
@@ -106,10 +123,16 @@ func (m *mockDeviceControlLogRepo) FindByDeviceID(ctx context.Context, deviceID 
 // Test helpers
 
 func setupTestDeviceControlService() (service.DeviceControlService, *mockDeviceRepoForControl, *mockDeviceControlLogRepo) {
+	svc, deviceRepo, logRepo, _ := setupTestDeviceControlServiceWithAudit()
+	return svc, deviceRepo, logRepo
+}
+
+func setupTestDeviceControlServiceWithAudit() (service.DeviceControlService, *mockDeviceRepoForControl, *mockDeviceControlLogRepo, *mockAuditLogServiceForControl) {
 	deviceRepo := newMockDeviceRepoForControl()
 	logRepo := newMockDeviceControlLogRepo()
-	svc := NewDeviceControlService(deviceRepo, logRepo).(*deviceControlServiceImpl)
-	return svc, deviceRepo, logRepo
+	auditLogSvc := newMockAuditLogServiceForControl()
+	svc := NewDeviceControlService(deviceRepo, logRepo, auditLogSvc).(*deviceControlServiceImpl)
+	return svc, deviceRepo, logRepo, auditLogSvc
 }
 
 func createOnlineDevice(repo *mockDeviceRepoForControl, id, tenantID string) *domain.Device {
@@ -372,6 +395,37 @@ func TestDeviceControlService_Control_LogPersistence(t *testing.T) {
 	}
 	if log.Command != "open_gate" {
 		t.Errorf("Log Command = %v, want open_gate", log.Command)
+	}
+}
+
+func TestDeviceControlService_Control_WritesAuditLog(t *testing.T) {
+	svc, deviceRepo, _, auditLogSvc := setupTestDeviceControlServiceWithAudit()
+	createOnlineDevice(deviceRepo, "device-1", "tenant-1")
+
+	_, err := svc.Control(context.Background(), &service.ControlDeviceRequest{
+		DeviceID:     "device-1",
+		TenantID:     "tenant-1",
+		Command:      "open_gate",
+		OperatorID:   "user-1",
+		OperatorName: "Test User",
+		OperatorIP:   "127.0.0.1",
+	})
+	if err != nil {
+		t.Fatalf("Control() error = %v", err)
+	}
+
+	if len(auditLogSvc.logs) != 1 {
+		t.Fatalf("Expected 1 audit log, got %d", len(auditLogSvc.logs))
+	}
+	log := auditLogSvc.logs[0]
+	if log.Action != domain.AuditActionDeviceGateOpened {
+		t.Fatalf("Action = %v, want %v", log.Action, domain.AuditActionDeviceGateOpened)
+	}
+	if log.TargetType != "device" || log.TargetID != "device-1" {
+		t.Fatalf("Target = %s/%s, want device/device-1", log.TargetType, log.TargetID)
+	}
+	if log.IP != "127.0.0.1" {
+		t.Fatalf("IP = %v, want 127.0.0.1", log.IP)
 	}
 }
 

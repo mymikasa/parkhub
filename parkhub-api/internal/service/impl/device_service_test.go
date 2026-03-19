@@ -2,6 +2,7 @@ package impl
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"testing"
 	"time"
@@ -13,6 +14,23 @@ import (
 
 type mockDeviceRepo struct {
 	devices map[string]*domain.Device
+}
+
+type mockAuditLogServiceForDevice struct {
+	logs []*domain.AuditLog
+}
+
+func newMockAuditLogServiceForDevice() *mockAuditLogServiceForDevice {
+	return &mockAuditLogServiceForDevice{logs: make([]*domain.AuditLog, 0)}
+}
+
+func (m *mockAuditLogServiceForDevice) Log(ctx context.Context, log *domain.AuditLog) error {
+	m.logs = append(m.logs, log)
+	return nil
+}
+
+func (m *mockAuditLogServiceForDevice) List(ctx context.Context, req *service.ListAuditLogsRequest) (*service.AuditLogListResponse, error) {
+	return &service.AuditLogListResponse{}, nil
 }
 
 func newMockDeviceRepo() *mockDeviceRepo {
@@ -132,12 +150,18 @@ func (m *mockDeviceRepo) CountByStatus(ctx context.Context, tenantID string) (*r
 }
 
 func setupTestDeviceService() (service.DeviceService, *mockDeviceRepo, *mockTenantRepo, *mockParkingLotRepo, *mockGateRepo) {
+	svc, deviceRepo, tenantRepo, parkingLotRepo, gateRepo, _ := setupTestDeviceServiceWithAudit()
+	return svc, deviceRepo, tenantRepo, parkingLotRepo, gateRepo
+}
+
+func setupTestDeviceServiceWithAudit() (service.DeviceService, *mockDeviceRepo, *mockTenantRepo, *mockParkingLotRepo, *mockGateRepo, *mockAuditLogServiceForDevice) {
 	deviceRepo := newMockDeviceRepo()
 	tenantRepo := &mockTenantRepo{tenants: make(map[string]*domain.Tenant)}
 	parkingLotRepo := newMockParkingLotRepo()
 	gateRepo := newMockGateRepo()
-	svc := NewDeviceService(deviceRepo, tenantRepo, parkingLotRepo, gateRepo)
-	return svc, deviceRepo, tenantRepo, parkingLotRepo, gateRepo
+	auditLogSvc := newMockAuditLogServiceForDevice()
+	svc := NewDeviceService(deviceRepo, tenantRepo, parkingLotRepo, gateRepo, auditLogSvc)
+	return svc, deviceRepo, tenantRepo, parkingLotRepo, gateRepo, auditLogSvc
 }
 
 func createTestDevice(repo *mockDeviceRepo, id, tenantID string, status domain.DeviceStatus) *domain.Device {
@@ -315,5 +339,82 @@ func TestDeviceService_UnbindSuccess(t *testing.T) {
 	}
 	if updated.ParkingLotID != nil || updated.GateID != nil {
 		t.Fatalf("binding = %v/%v, want nil", updated.ParkingLotID, updated.GateID)
+	}
+}
+
+func TestDeviceService_Bind_WritesAuditLog(t *testing.T) {
+	svc, deviceRepo, tenantRepo, parkingLotRepo, gateRepo, auditLogSvc := setupTestDeviceServiceWithAudit()
+	createTestDevice(deviceRepo, "device-1", domain.PlatformTenantID, domain.DeviceStatusPending)
+	tenantRepo.tenants["tenant-1"] = domain.NewTenant("tenant-1", "测试租户", "联系人", "13800138000")
+	createTestParkingLot(parkingLotRepo, "lot-1", "tenant-1", "车场A")
+	createTestGate(gateRepo, "gate-1", "lot-1", "东入口", domain.GateTypeEntry)
+
+	_, err := svc.Bind(context.Background(), &service.BindDeviceRequest{
+		ID:             "device-1",
+		OperatorID:     "operator-1",
+		OperatorIP:     "127.0.0.1",
+		OperatorRole:   "platform_admin",
+		TargetTenantID: "tenant-1",
+		ParkingLotID:   "lot-1",
+		GateID:         "gate-1",
+	})
+	if err != nil {
+		t.Fatalf("Bind() error = %v", err)
+	}
+
+	if len(auditLogSvc.logs) != 1 {
+		t.Fatalf("Expected 1 audit log, got %d", len(auditLogSvc.logs))
+	}
+	log := auditLogSvc.logs[0]
+	if log.Action != domain.AuditActionDeviceBound {
+		t.Fatalf("Action = %v, want %v", log.Action, domain.AuditActionDeviceBound)
+	}
+	if log.TargetType != "device" || log.TargetID != "device-1" {
+		t.Fatalf("Target = %s/%s, want device/device-1", log.TargetType, log.TargetID)
+	}
+	var detail map[string]string
+	if err := json.Unmarshal([]byte(log.Detail), &detail); err != nil {
+		t.Fatalf("invalid detail json: %v", err)
+	}
+	if detail["parking_lot_id"] != "lot-1" || detail["gate_id"] != "gate-1" || detail["tenant_id"] != "tenant-1" {
+		t.Fatalf("detail = %v", detail)
+	}
+}
+
+func TestDeviceService_Unbind_WritesAuditLog(t *testing.T) {
+	svc, deviceRepo, _, _, _, auditLogSvc := setupTestDeviceServiceWithAudit()
+	device := createTestDevice(deviceRepo, "device-1", "tenant-1", domain.DeviceStatusActive)
+	lotID := "lot-1"
+	gateID := "gate-1"
+	device.ParkingLotID = &lotID
+	device.GateID = &gateID
+
+	_, err := svc.Unbind(context.Background(), &service.UnbindDeviceRequest{
+		ID:               "device-1",
+		OperatorID:       "operator-1",
+		OperatorIP:       "127.0.0.1",
+		OperatorRole:     "tenant_admin",
+		OperatorTenantID: "tenant-1",
+	})
+	if err != nil {
+		t.Fatalf("Unbind() error = %v", err)
+	}
+
+	if len(auditLogSvc.logs) != 1 {
+		t.Fatalf("Expected 1 audit log, got %d", len(auditLogSvc.logs))
+	}
+	log := auditLogSvc.logs[0]
+	if log.Action != domain.AuditActionDeviceUnbound {
+		t.Fatalf("Action = %v, want %v", log.Action, domain.AuditActionDeviceUnbound)
+	}
+	if log.TargetType != "device" || log.TargetID != "device-1" {
+		t.Fatalf("Target = %s/%s, want device/device-1", log.TargetType, log.TargetID)
+	}
+	var detail map[string]string
+	if err := json.Unmarshal([]byte(log.Detail), &detail); err != nil {
+		t.Fatalf("invalid detail json: %v", err)
+	}
+	if detail["parking_lot_id"] != "lot-1" || detail["gate_id"] != "gate-1" || detail["tenant_id"] != "tenant-1" {
+		t.Fatalf("detail = %v", detail)
 	}
 }
