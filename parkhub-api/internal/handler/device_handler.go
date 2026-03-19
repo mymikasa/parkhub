@@ -291,13 +291,30 @@ func (h *DeviceHandler) GetStats(c *gin.Context) {
 		Code:    0,
 		Message: "success",
 		Data: dto.DeviceStatsData{
-			Total:    stats.Total,
-			Active:   stats.Active,
-			Offline:  stats.Offline,
-			Pending:  stats.Pending,
-			Disabled: stats.Disabled,
+			Total:        stats.Total,
+			Online:       stats.Online,
+			Offline:      stats.Offline,
+			Pending:      stats.Pending,
+			Disabled:     stats.Disabled,
+			ByParkingLot: toDeviceParkingLotStatsDTO(stats.ByParkingLot),
 		},
 	})
+}
+
+func toDeviceParkingLotStatsDTO(items []*service.DeviceParkingLotStatsItem) []dto.DeviceParkingLotStatsData {
+	result := make([]dto.DeviceParkingLotStatsData, 0, len(items))
+	for _, item := range items {
+		result = append(result, dto.DeviceParkingLotStatsData{
+			ParkingLotID:   item.ParkingLotID,
+			ParkingLotName: item.ParkingLotName,
+			Total:          item.Total,
+			Online:         item.Online,
+			Offline:        item.Offline,
+			Pending:        item.Pending,
+			Disabled:       item.Disabled,
+		})
+	}
+	return result
 }
 
 func (h *DeviceHandler) Control(c *gin.Context) {

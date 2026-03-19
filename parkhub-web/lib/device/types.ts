@@ -52,7 +52,18 @@ export interface DeviceListResponse {
 
 export interface DeviceStats {
   total: number;
-  active: number;
+  online: number;
+  offline: number;
+  pending: number;
+  disabled: number;
+  by_parking_lot: DeviceParkingLotStats[];
+}
+
+export interface DeviceParkingLotStats {
+  parking_lot_id: string;
+  parking_lot_name: string;
+  total: number;
+  online: number;
   offline: number;
   pending: number;
   disabled: number;
