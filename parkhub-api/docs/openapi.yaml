@@ -45,6 +45,8 @@ tags:
     description: 停车场管理接口
   - name: BillingRule
     description: 计费规则管理接口
+  - name: TransitRecord
+    description: 通行记录接口（入场/出场/异常处理/统计/导出）
 
 paths:
   /auth/login:
@@ -193,6 +195,23 @@ paths:
         '404':
           description: 停车场或计费规则不存在
 
+  /transit-records:
+    $ref: 'openapi/paths/transit-record.yaml#/~1transit-records'
+  /transit-records/latest:
+    $ref: 'openapi/paths/transit-record.yaml#/~1transit-records~1latest'
+  /transit-records/stats:
+    $ref: 'openapi/paths/transit-record.yaml#/~1transit-records~1stats'
+  /transit-records/overstay:
+    $ref: 'openapi/paths/transit-record.yaml#/~1transit-records~1overstay'
+  /transit-records/exceptions/count:
+    $ref: 'openapi/paths/transit-record.yaml#/~1transit-records~1exceptions~1count'
+  /transit-records/export:
+    $ref: 'openapi/paths/transit-record.yaml#/~1transit-records~1export'
+  /transit-records/{id}:
+    $ref: 'openapi/paths/transit-record.yaml#/~1transit-records~1{id}'
+  /transit-records/{id}/resolve:
+    $ref: 'openapi/paths/transit-record.yaml#/~1transit-records~1{id}~1resolve'
+
 components:
   securitySchemes:
     BearerAuth:
@@ -312,6 +331,16 @@ components:
       $ref: 'openapi/schemas/common.yaml#/ErrorResponse'
     MessageResponse:
       $ref: 'openapi/schemas/common.yaml#/MessageResponse'
+    TransitRecordResponse:
+      $ref: 'openapi/schemas/transit-record.yaml#/TransitRecordResponse'
+    TransitRecordListResponse:
+      $ref: 'openapi/schemas/transit-record.yaml#/TransitRecordListResponse'
+    TransitStatsResponse:
+      $ref: 'openapi/schemas/transit-record.yaml#/TransitStatsResponse'
+    CreateTransitRecordRequest:
+      $ref: 'openapi/schemas/transit-record.yaml#/CreateTransitRecordRequest'
+    ResolveTransitRecordRequest:
+      $ref: 'openapi/schemas/transit-record.yaml#/ResolveTransitRecordRequest'
     BillingRule:
       type: object
       properties:
@@ -457,3 +486,23 @@ x-error-codes:
     status: 400
     numeric_code: 40003
     description: 出场时间必须晚于入场时间
+  - code: TRANSIT_RECORD_NOT_FOUND
+    status: 404
+    numeric_code: 40401
+    description: 通行记录不存在
+  - code: PARKING_LOT_FULL
+    status: 409
+    numeric_code: 40901
+    description: 车场已满，无可用车位
+  - code: GATE_TYPE_MISMATCH
+    status: 400
+    numeric_code: 40001
+    description: 通道类型与通行类型不匹配
+  - code: INVALID_TRANSIT_TYPE
+    status: 400
+    numeric_code: 40001
+    description: 无效的通行类型
+  - code: RECORD_ALREADY_RESOLVED
+    status: 409
+    numeric_code: 40902
+    description: 该异常记录已处理

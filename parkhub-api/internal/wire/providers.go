@@ -7,6 +7,7 @@ import (
 	"github.com/parkhub/api/internal/config"
 	"github.com/parkhub/api/internal/pkg/jwt"
 	"github.com/parkhub/api/internal/pkg/validator"
+	svcimpl "github.com/parkhub/api/internal/service/impl"
 )
 
 // NewGinEngine creates a configured gin.Engine.
@@ -32,4 +33,15 @@ func NewJWTManager(cfg *config.Config) *jwt.JWTManager {
 		refreshTTL = 7 * 24 * time.Hour
 	}
 	return jwt.NewJWTManager(cfg.JWTSecret, accessTTL, refreshTTL, cfg.JWTIssuer)
+}
+
+// NewMinIOConfig creates MinIOStorageConfig from app config.
+func NewMinIOConfig(cfg *config.Config) svcimpl.MinIOStorageConfig {
+	return svcimpl.MinIOStorageConfig{
+		Endpoint:  cfg.MinIOEndpoint,
+		AccessKey: cfg.MinIOAccessKey,
+		SecretKey: cfg.MinIOSecretKey,
+		Bucket:    cfg.MinIOBucket,
+		UseSSL:    cfg.MinIOUseSSL,
+	}
 }

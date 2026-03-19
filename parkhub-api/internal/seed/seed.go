@@ -171,21 +171,40 @@ func SeedData(db *gorm.DB) error {
 	}
 
 	// 7. 创建演示出入口
+	lot1EntryGate1 := uuid.New().String()
+	lot1EntryGate2 := uuid.New().String()
+	lot1ExitGate1 := uuid.New().String()
+	lot1ExitGate2 := uuid.New().String()
+	lot2EntryGate1 := uuid.New().String()
+	lot2EntryGate2 := uuid.New().String()
+	lot2ExitGate1 := uuid.New().String()
+	lot3EntryGate1 := uuid.New().String()
+	lot3ExitGate1 := uuid.New().String()
+
 	gateData := []dao.GateDAO{
-		{ID: uuid.New().String(), ParkingLotID: lot1ID, Name: "东入口", Type: string(domain.GateTypeEntry), CreatedAt: now, UpdatedAt: now},
-		{ID: uuid.New().String(), ParkingLotID: lot1ID, Name: "西入口", Type: string(domain.GateTypeEntry), CreatedAt: now, UpdatedAt: now},
-		{ID: uuid.New().String(), ParkingLotID: lot1ID, Name: "东出口", Type: string(domain.GateTypeExit), CreatedAt: now, UpdatedAt: now},
-		{ID: uuid.New().String(), ParkingLotID: lot1ID, Name: "西出口", Type: string(domain.GateTypeExit), CreatedAt: now, UpdatedAt: now},
-		{ID: uuid.New().String(), ParkingLotID: lot2ID, Name: "A入口", Type: string(domain.GateTypeEntry), CreatedAt: now, UpdatedAt: now},
-		{ID: uuid.New().String(), ParkingLotID: lot2ID, Name: "B入口", Type: string(domain.GateTypeEntry), CreatedAt: now, UpdatedAt: now},
-		{ID: uuid.New().String(), ParkingLotID: lot2ID, Name: "A出口", Type: string(domain.GateTypeExit), CreatedAt: now, UpdatedAt: now},
-		{ID: uuid.New().String(), ParkingLotID: lot3ID, Name: "主入口", Type: string(domain.GateTypeEntry), CreatedAt: now, UpdatedAt: now},
-		{ID: uuid.New().String(), ParkingLotID: lot3ID, Name: "主出口", Type: string(domain.GateTypeExit), CreatedAt: now, UpdatedAt: now},
+		{ID: lot1EntryGate1, ParkingLotID: lot1ID, Name: "东入口", Type: string(domain.GateTypeEntry), CreatedAt: now, UpdatedAt: now},
+		{ID: lot1EntryGate2, ParkingLotID: lot1ID, Name: "西入口", Type: string(domain.GateTypeEntry), CreatedAt: now, UpdatedAt: now},
+		{ID: lot1ExitGate1, ParkingLotID: lot1ID, Name: "东出口", Type: string(domain.GateTypeExit), CreatedAt: now, UpdatedAt: now},
+		{ID: lot1ExitGate2, ParkingLotID: lot1ID, Name: "西出口", Type: string(domain.GateTypeExit), CreatedAt: now, UpdatedAt: now},
+		{ID: lot2EntryGate1, ParkingLotID: lot2ID, Name: "A入口", Type: string(domain.GateTypeEntry), CreatedAt: now, UpdatedAt: now},
+		{ID: lot2EntryGate2, ParkingLotID: lot2ID, Name: "B入口", Type: string(domain.GateTypeEntry), CreatedAt: now, UpdatedAt: now},
+		{ID: lot2ExitGate1, ParkingLotID: lot2ID, Name: "A出口", Type: string(domain.GateTypeExit), CreatedAt: now, UpdatedAt: now},
+		{ID: lot3EntryGate1, ParkingLotID: lot3ID, Name: "主入口", Type: string(domain.GateTypeEntry), CreatedAt: now, UpdatedAt: now},
+		{ID: lot3ExitGate1, ParkingLotID: lot3ID, Name: "主出口", Type: string(domain.GateTypeExit), CreatedAt: now, UpdatedAt: now},
 	}
 	for _, gate := range gateData {
 		if err := db.Create(&gate).Error; err != nil {
 			return err
 		}
+	}
+
+	// 8. 创建演示通行记录
+	if err := seedTransitRecords(db, demoTenantID, operatorID, now,
+		lot1ID, lot2ID,
+		lot1EntryGate1, lot1ExitGate1,
+		lot2EntryGate1, lot2ExitGate1,
+	); err != nil {
+		return err
 	}
 
 	log.Println("Seed data created successfully!")
@@ -214,9 +233,132 @@ func SeedData(db *gorm.DB) error {
 	log.Println("  1. 阳光广场地下停车场 (500车位, 4个出入口)")
 	log.Println("  2. 星光购物中心停车场 (300车位, 3个出入口)")
 	log.Println("  3. 翠湖花园地面停车场 (80车位, 暂停运营)")
+	log.Println("------------------------------------")
+	log.Println("Demo Transit Records: 15 records seeded")
 	log.Println("====================================")
 
 	return nil
 }
 
-func strPtr(s string) *string { return &s }
+func strPtr(s string) *string  { return &s }
+func floatPtr(f float64) *float64 { return &f }
+func intPtr(i int) *int        { return &i }
+
+// seedTransitRecords 创建演示通行记录
+func seedTransitRecords(db *gorm.DB, tenantID, operatorID string, now time.Time,
+	lot1ID, lot2ID string,
+	lot1EntryGate, lot1ExitGate string,
+	lot2EntryGate, lot2ExitGate string,
+) error {
+	// --- 正常入场记录（当前在场） ---
+	entry1ID := uuid.New().String()
+	entry2ID := uuid.New().String()
+	entry3ID := uuid.New().String()
+	entry4ID := uuid.New().String()
+
+	entryRecords := []dao.TransitRecordDAO{
+		// 今天入场，正常在场
+		{ID: entry1ID, TenantID: tenantID, ParkingLotID: lot1ID, GateID: lot1EntryGate,
+			PlateNumber: strPtr("京A·12345"), Type: "entry", Status: "normal",
+			CreatedAt: now.Add(-2 * time.Hour), UpdatedAt: now.Add(-2 * time.Hour)},
+		{ID: entry2ID, TenantID: tenantID, ParkingLotID: lot1ID, GateID: lot1EntryGate,
+			PlateNumber: strPtr("京B·67890"), Type: "entry", Status: "normal",
+			CreatedAt: now.Add(-90 * time.Minute), UpdatedAt: now.Add(-90 * time.Minute)},
+		{ID: entry3ID, TenantID: tenantID, ParkingLotID: lot2ID, GateID: lot2EntryGate,
+			PlateNumber: strPtr("沪A·88888"), Type: "entry", Status: "normal",
+			CreatedAt: now.Add(-45 * time.Minute), UpdatedAt: now.Add(-45 * time.Minute)},
+		{ID: entry4ID, TenantID: tenantID, ParkingLotID: lot1ID, GateID: lot1EntryGate,
+			PlateNumber: strPtr("粤B·55555"), Type: "entry", Status: "normal",
+			CreatedAt: now.Add(-30 * time.Minute), UpdatedAt: now.Add(-30 * time.Minute)},
+	}
+
+	// --- 已完成的入场+出场配对记录（已缴费） ---
+	paidEntry1ID := uuid.New().String()
+	paidEntry2ID := uuid.New().String()
+	paidEntry3ID := uuid.New().String()
+
+	paidEntries := []dao.TransitRecordDAO{
+		{ID: paidEntry1ID, TenantID: tenantID, ParkingLotID: lot1ID, GateID: lot1EntryGate,
+			PlateNumber: strPtr("京C·11111"), Type: "entry", Status: "normal",
+			CreatedAt: now.Add(-5 * time.Hour), UpdatedAt: now.Add(-5 * time.Hour)},
+		{ID: paidEntry2ID, TenantID: tenantID, ParkingLotID: lot2ID, GateID: lot2EntryGate,
+			PlateNumber: strPtr("京D·22222"), Type: "entry", Status: "normal",
+			CreatedAt: now.Add(-3 * time.Hour), UpdatedAt: now.Add(-3 * time.Hour)},
+		{ID: paidEntry3ID, TenantID: tenantID, ParkingLotID: lot1ID, GateID: lot1EntryGate,
+			PlateNumber: strPtr("沪C·33333"), Type: "entry", Status: "normal",
+			CreatedAt: now.Add(-8 * time.Hour), UpdatedAt: now.Add(-8 * time.Hour)},
+	}
+
+	exitRecords := []dao.TransitRecordDAO{
+		{ID: uuid.New().String(), TenantID: tenantID, ParkingLotID: lot1ID, GateID: lot1ExitGate,
+			PlateNumber: strPtr("京C·11111"), Type: "exit", Status: "paid",
+			EntryRecordID: strPtr(paidEntry1ID), Fee: floatPtr(6.00), ParkingDuration: intPtr(180),
+			CreatedAt: now.Add(-2 * time.Hour), UpdatedAt: now.Add(-2 * time.Hour)},
+		{ID: uuid.New().String(), TenantID: tenantID, ParkingLotID: lot2ID, GateID: lot2ExitGate,
+			PlateNumber: strPtr("京D·22222"), Type: "exit", Status: "paid",
+			EntryRecordID: strPtr(paidEntry2ID), Fee: floatPtr(4.00), ParkingDuration: intPtr(90),
+			CreatedAt: now.Add(-90 * time.Minute), UpdatedAt: now.Add(-90 * time.Minute)},
+		{ID: uuid.New().String(), TenantID: tenantID, ParkingLotID: lot1ID, GateID: lot1ExitGate,
+			PlateNumber: strPtr("沪C·33333"), Type: "exit", Status: "paid",
+			EntryRecordID: strPtr(paidEntry3ID), Fee: floatPtr(16.00), ParkingDuration: intPtr(420),
+			CreatedAt: now.Add(-1 * time.Hour), UpdatedAt: now.Add(-1 * time.Hour)},
+	}
+
+	// --- 异常记录 ---
+
+	// 有入无出：3天前入场，超时未出场
+	overstayEntry1ID := uuid.New().String()
+	overstayEntry2ID := uuid.New().String()
+
+	overstayRecords := []dao.TransitRecordDAO{
+		{ID: overstayEntry1ID, TenantID: tenantID, ParkingLotID: lot1ID, GateID: lot1EntryGate,
+			PlateNumber: strPtr("京E·99999"), Type: "entry", Status: "no_exit",
+			CreatedAt: now.Add(-72 * time.Hour), UpdatedAt: now.Add(-24 * time.Hour)},
+		{ID: overstayEntry2ID, TenantID: tenantID, ParkingLotID: lot2ID, GateID: lot2EntryGate,
+			PlateNumber: strPtr("沪B·77777"), Type: "entry", Status: "no_exit",
+			CreatedAt: now.Add(-56 * time.Hour), UpdatedAt: now.Add(-8 * time.Hour)},
+	}
+
+	// 有出无入：出场时无匹配入场记录
+	noEntryRecords := []dao.TransitRecordDAO{
+		{ID: uuid.New().String(), TenantID: tenantID, ParkingLotID: lot1ID, GateID: lot1ExitGate,
+			PlateNumber: strPtr("浙A·66666"), Type: "exit", Status: "no_entry",
+			CreatedAt: now.Add(-4 * time.Hour), UpdatedAt: now.Add(-4 * time.Hour)},
+	}
+
+	// 识别失败：车牌为空
+	recognitionFailedRecords := []dao.TransitRecordDAO{
+		{ID: uuid.New().String(), TenantID: tenantID, ParkingLotID: lot1ID, GateID: lot1EntryGate,
+			PlateNumber: nil, Type: "entry", Status: "recognition_failed",
+			CreatedAt: now.Add(-20 * time.Minute), UpdatedAt: now.Add(-20 * time.Minute)},
+	}
+
+	// 已处理的异常记录
+	resolvedAt := now.Add(-1 * time.Hour)
+	resolvedRecords := []dao.TransitRecordDAO{
+		{ID: uuid.New().String(), TenantID: tenantID, ParkingLotID: lot2ID, GateID: lot2EntryGate,
+			PlateNumber: strPtr("苏A·44444"), Type: "entry", Status: "recognition_failed",
+			Remark: strPtr("人工核实后补录车牌"),
+			ResolvedAt: &resolvedAt, ResolvedBy: strPtr(operatorID),
+			CreatedAt: now.Add(-6 * time.Hour), UpdatedAt: resolvedAt},
+	}
+
+	// 批量插入所有记录
+	allRecords := make([]dao.TransitRecordDAO, 0, 15)
+	allRecords = append(allRecords, entryRecords...)
+	allRecords = append(allRecords, paidEntries...)
+	allRecords = append(allRecords, exitRecords...)
+	allRecords = append(allRecords, overstayRecords...)
+	allRecords = append(allRecords, noEntryRecords...)
+	allRecords = append(allRecords, recognitionFailedRecords...)
+	allRecords = append(allRecords, resolvedRecords...)
+
+	for _, record := range allRecords {
+		if err := db.Create(&record).Error; err != nil {
+			return err
+		}
+	}
+
+	log.Printf("Seeded %d transit records", len(allRecords))
+	return nil
+}
