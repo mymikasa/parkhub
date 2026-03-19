@@ -37,6 +37,13 @@ type Config struct {
 	// Heartbeat
 	HeartbeatTimeoutSeconds int
 
+	// MinIO
+	MinIOEndpoint  string
+	MinIOAccessKey string
+	MinIOSecretKey string
+	MinIOBucket    string
+	MinIOUseSSL    bool
+
 	LogLevel string
 }
 
@@ -60,6 +67,11 @@ func Load() (*Config, error) {
 		MQTTPassword:    getEnv("MQTT_BACKEND_PASSWORD", ""),
 		RedisURL:        getEnv("REDIS_URL", "redis://localhost:6379"),
 		HeartbeatTimeoutSeconds: getEnvInt("HEARTBEAT_TIMEOUT_SECONDS", 300),
+		MinIOEndpoint:  getEnv("MINIO_ENDPOINT", "localhost:9000"),
+		MinIOAccessKey: getEnv("MINIO_ACCESS_KEY", "minioadmin"),
+		MinIOSecretKey: getEnv("MINIO_SECRET_KEY", "minioadmin123"),
+		MinIOBucket:    getEnv("MINIO_BUCKET", "parkhub-images"),
+		MinIOUseSSL:    getEnv("MINIO_USE_SSL", "false") == "true",
 		LogLevel:       getEnv("LOG_LEVEL", "info"),
 	}
 

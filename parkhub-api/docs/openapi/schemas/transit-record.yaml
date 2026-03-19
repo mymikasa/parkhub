@@ -1,0 +1,84 @@
+CreateTransitRecordRequest:
+  type: object
+  required: [parking_lot_id, gate_id, type]
+  properties:
+    tenant_id:
+      type: string
+      format: uuid
+      description: 租户ID（平台管理员需提供，租户用户自动填充）
+    parking_lot_id:
+      type: string
+      format: uuid
+      description: 停车场ID
+    gate_id:
+      type: string
+      format: uuid
+      description: 出入口ID
+    type:
+      type: string
+      enum: [entry, exit]
+      description: 通行类型（entry=入场，exit=出场）
+    plate_number:
+      type: string
+      nullable: true
+      example: "沪A·88888"
+      description: 车牌号（为空时标记为识别失败）
+    image_url:
+      type: string
+      nullable: true
+      description: 抓拍图片 URL
+
+ResolveTransitRecordRequest:
+  type: object
+  properties:
+    plate_number:
+      type: string
+      nullable: true
+      example: "京B·12345"
+      description: 补录车牌号
+    remark:
+      type: string
+      nullable: true
+      example: "人工核实后放行"
+      description: 处理备注
+
+TransitRecordResponse:
+  type: object
+  properties:
+    id: { type: string, format: uuid }
+    tenant_id: { type: string, format: uuid }
+    parking_lot_id: { type: string, format: uuid }
+    parking_lot_name: { type: string, example: "阳光广场地下停车场" }
+    gate_id: { type: string, format: uuid }
+    gate_name: { type: string, example: "东入口" }
+    plate_number: { type: string, nullable: true, example: "沪A·88888" }
+    type: { type: string, enum: [entry, exit] }
+    status: { type: string, enum: [normal, paid, no_exit, no_entry, recognition_failed] }
+    image_url: { type: string, nullable: true }
+    fee: { type: number, nullable: true, example: 12.00, description: "停车费用（元）" }
+    entry_record_id: { type: string, format: uuid, nullable: true, description: "关联的入场记录ID" }
+    parking_duration: { type: integer, nullable: true, example: 150, description: "停车时长（分钟）" }
+    remark: { type: string, nullable: true }
+    resolved_at: { type: string, format: date-time, nullable: true }
+    resolved_by: { type: string, format: uuid, nullable: true }
+    created_at: { type: string, format: date-time }
+    updated_at: { type: string, format: date-time }
+
+TransitRecordListResponse:
+  type: object
+  properties:
+    items:
+      type: array
+      items:
+        $ref: '#/TransitRecordResponse'
+    total: { type: integer, example: 156 }
+    page: { type: integer, example: 1 }
+    page_size: { type: integer, example: 20 }
+
+TransitStatsResponse:
+  type: object
+  properties:
+    entry_count: { type: integer, example: 230, description: "今日入场数" }
+    exit_count: { type: integer, example: 185, description: "今日出场数" }
+    on_site_count: { type: integer, example: 172, description: "当前在场车辆数" }
+    today_revenue: { type: number, example: 3680.00, description: "今日营收（元）" }

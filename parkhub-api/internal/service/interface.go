@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"io"
 
 	"github.com/parkhub/api/internal/domain"
 )
@@ -632,6 +633,16 @@ type CalculateFeeRequest struct {
 	ParkingLotID     string
 	EntryTime        string // RFC3339
 	ExitTime         string // RFC3339
+}
+
+// StorageService 文件存储服务接口
+type StorageService interface {
+	// Upload 上传文件，返回可访问的 URL
+	Upload(ctx context.Context, objectName string, reader io.Reader, size int64, contentType string) (string, error)
+	// GetURL 获取文件的访问 URL
+	GetURL(ctx context.Context, objectName string) (string, error)
+	// Delete 删除文件
+	Delete(ctx context.Context, objectName string) error
 }
 
 // TransitRecordService 通行记录服务接口

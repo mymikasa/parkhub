@@ -80,6 +80,42 @@ services:
     networks:
       - parkhub-network
 
+  minio:
+    image: minio/minio:latest
+    container_name: parkhub-minio
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin123}
+    ports:
+      - "${MINIO_API_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+    volumes:
+      - minio_data:/data
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - parkhub-network
+
+  minio-init:
+    image: minio/mc:latest
+    container_name: parkhub-minio-init
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set parkhub http://minio:9000 $${MINIO_ROOT_USER:-minioadmin} $${MINIO_ROOT_PASSWORD:-minioadmin123};
+      mc mb --ignore-existing parkhub/parkhub-images;
+      mc anonymous set download parkhub/parkhub-images;
+      echo 'MinIO bucket parkhub-images created successfully';
+      "
+    networks:
+      - parkhub-network
+
   api:
     build:
       context: ./parkhub-api
@@ -100,6 +136,11 @@ services:
       MQTT_BROKER_URL: tcp://emqx:1883
       MQTT_BACKEND_USERNAME: ${MQTT_BACKEND_USERNAME:-backend_service}
       MQTT_BACKEND_PASSWORD: ${MQTT_BACKEND_PASSWORD:-backend_secret}
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin123}
+      MINIO_BUCKET: ${MINIO_BUCKET:-parkhub-images}
+      MINIO_USE_SSL: "false"
     ports:
       - "${APP_PORT:-8080}:8080"
     volumes:
@@ -114,6 +155,8 @@ services:
         condition: service_healthy
       emqx-init:
         condition: service_completed_successfully
+      minio:
+        condition: service_healthy
     networks:
       - parkhub-network
 
@@ -138,6 +181,7 @@ volumes:
   redis_data:
   emqx_data:
   emqx_log:
+  minio_data:
   go_mod_cache:
 
 networks:

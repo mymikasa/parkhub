@@ -1,0 +1,301 @@
+/transit-records:
+  post:
+    tags: [TransitRecord]
+    summary: 创建通行记录
+    description: |
+      创建入场或出场通行记录。
+      - 入场记录：车牌为空时自动标记为"识别失败"
+      - 出场记录：自动匹配入场记录并计算费用，无匹配时标记为"有出无入"
+    security:
+      - BearerAuth: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/transit-record.yaml#/CreateTransitRecordRequest'
+    responses:
+      '201':
+        description: 创建成功
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                code: { type: integer, example: 0 }
+                message: { type: string, example: 入场记录已创建 }
+                data:
+                  type: object
+                  properties:
+                    id: { type: string, format: uuid }
+                    fee: { type: number, nullable: true, description: 出场时返回费用 }
+                    parking_duration: { type: integer, nullable: true, description: 出场时返回停车时长（分钟） }
+                    status: { type: string, nullable: true, description: 出场时返回状态 }
+      '400':
+        description: 参数校验失败
+      '409':
+        description: 车场已满（入场时）
+
+  get:
+    tags: [TransitRecord]
+    summary: 通行记录列表
+    description: 分页查询通行记录，支持多维度筛选。
+    security:
+      - BearerAuth: []
+    parameters:
+      - name: page
+        in: query
+        schema: { type: integer, default: 1, minimum: 1 }
+      - name: page_size
+        in: query
+        schema: { type: integer, default: 20, minimum: 1, maximum: 100 }
+      - name: parking_lot_id
+        in: query
+        schema: { type: string, format: uuid }
+        description: 按停车场筛选
+      - name: plate_number
+        in: query
+        schema: { type: string }
+        description: 按车牌号模糊搜索
+      - name: type
+        in: query
+        schema: { type: string, enum: [entry, exit] }
+        description: 按通行类型筛选
+      - name: status
+        in: query
+        schema: { type: string, enum: [normal, paid, no_exit, no_entry, recognition_failed] }
+        description: 按状态筛选
+      - name: status_group
+        in: query
+        schema: { type: string, enum: [normal, exception] }
+        description: 按状态分组筛选（normal=正常+已缴费，exception=异常类）
+      - name: start_date
+        in: query
+        schema: { type: string, format: date-time }
+        description: 起始时间
+      - name: end_date
+        in: query
+        schema: { type: string, format: date-time }
+        description: 结束时间
+    responses:
+      '200':
+        description: 成功
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                code: { type: integer, example: 0 }
+                message: { type: string, example: success }
+                data:
+                  $ref: '../schemas/transit-record.yaml#/TransitRecordListResponse'
+
+/transit-records/latest:
+  get:
+    tags: [TransitRecord]
+    summary: 最新通行记录
+    description: 获取最新的通行记录，用于实时监控页面。
+    security:
+      - BearerAuth: []
+    parameters:
+      - name: limit
+        in: query
+        schema: { type: integer, default: 20, minimum: 1, maximum: 100 }
+        description: 返回条数
+    responses:
+      '200':
+        description: 成功
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                code: { type: integer, example: 0 }
+                message: { type: string, example: success }
+                data:
+                  type: array
+                  items:
+                    $ref: '../schemas/transit-record.yaml#/TransitRecordResponse'
+
+/transit-records/stats:
+  get:
+    tags: [TransitRecord]
+    summary: 今日通行统计
+    description: 获取当日的入场数、出场数、在场车辆数和营收。
+    security:
+      - BearerAuth: []
+    responses:
+      '200':
+        description: 成功
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                code: { type: integer, example: 0 }
+                message: { type: string, example: success }
+                data:
+                  $ref: '../schemas/transit-record.yaml#/TransitStatsResponse'
+
+/transit-records/overstay:
+  get:
+    tags: [TransitRecord]
+    summary: 超时停放预警
+    description: 获取超过 48 小时未出场的入场记录列表。
+    security:
+      - BearerAuth: []
+    responses:
+      '200':
+        description: 成功
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                code: { type: integer, example: 0 }
+                message: { type: string, example: success }
+                data:
+                  type: array
+                  items:
+                    $ref: '../schemas/transit-record.yaml#/TransitRecordResponse'
+
+/transit-records/exceptions/count:
+  get:
+    tags: [TransitRecord]
+    summary: 未处理异常数
+    description: 获取当前租户下未处理的异常通行记录数量。
+    security:
+      - BearerAuth: []
+    responses:
+      '200':
+        description: 成功
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                code: { type: integer, example: 0 }
+                message: { type: string, example: success }
+                data:
+                  type: object
+                  properties:
+                    count: { type: integer, example: 5 }
+
+/transit-records/export:
+  get:
+    tags: [TransitRecord]
+    summary: 导出通行记录
+    description: |
+      导出通行记录为 CSV 或 XLSX 格式。仅 platform_admin 和 tenant_admin 有权访问。
+      支持与列表相同的筛选参数。
+    security:
+      - BearerAuth: []
+    parameters:
+      - name: format
+        in: query
+        schema: { type: string, enum: [csv, xlsx], default: csv }
+        description: 导出格式
+      - name: parking_lot_id
+        in: query
+        schema: { type: string, format: uuid }
+      - name: plate_number
+        in: query
+        schema: { type: string }
+      - name: type
+        in: query
+        schema: { type: string, enum: [entry, exit] }
+      - name: status
+        in: query
+        schema: { type: string, enum: [normal, paid, no_exit, no_entry, recognition_failed] }
+      - name: status_group
+        in: query
+        schema: { type: string, enum: [normal, exception] }
+      - name: start_date
+        in: query
+        schema: { type: string, format: date-time }
+      - name: end_date
+        in: query
+        schema: { type: string, format: date-time }
+    responses:
+      '200':
+        description: 文件下载
+        content:
+          text/csv:
+            schema:
+              type: string
+              format: binary
+          application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+            schema:
+              type: string
+              format: binary
+        headers:
+          Content-Disposition:
+            schema: { type: string, example: 'attachment; filename="transit-records-20240101.csv"' }
+      '403':
+        description: 权限不足（仅管理员可导出）
+
+/transit-records/{id}:
+  get:
+    tags: [TransitRecord]
+    summary: 通行记录详情
+    description: 获取指定通行记录的完整信息。
+    security:
+      - BearerAuth: []
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+        description: 通行记录 ID
+    responses:
+      '200':
+        description: 成功
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                code: { type: integer, example: 0 }
+                message: { type: string, example: success }
+                data:
+                  $ref: '../schemas/transit-record.yaml#/TransitRecordResponse'
+      '404':
+        description: 通行记录不存在
+
+/transit-records/{id}/resolve:
+  put:
+    tags: [TransitRecord]
+    summary: 处理异常记录
+    description: |
+      处理异常通行记录（识别失败、有入无出、有出无入）。
+      可补录车牌号并添加备注。已处理的记录不可重复处理。
+    security:
+      - BearerAuth: []
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+        description: 通行记录 ID
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/transit-record.yaml#/ResolveTransitRecordRequest'
+    responses:
+      '200':
+        description: 处理成功
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                code: { type: integer, example: 0 }
+                message: { type: string, example: 异常已处理 }
+                data:
+                  $ref: '../schemas/transit-record.yaml#/TransitRecordResponse'
+      '404':
+        description: 通行记录不存在
+      '409':
+        description: 该记录已处理
