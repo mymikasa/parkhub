@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"strconv"
 
+	pahomqtt "github.com/eclipse/paho.mqtt.golang"
 	"github.com/gin-gonic/gin"
 	"github.com/google/wire"
 	"github.com/parkhub/api/internal/domain"
@@ -23,6 +24,14 @@ func NewDeviceHandler(deviceService service.DeviceService, deviceControlService 
 	return &DeviceHandler{
 		deviceService:        deviceService,
 		deviceControlService: deviceControlService,
+	}
+}
+
+func (h *DeviceHandler) SetMQTTClient(client pahomqtt.Client) {
+	if svc, ok := h.deviceControlService.(interface {
+		SetMQTTClient(pahomqtt.Client)
+	}); ok {
+		svc.SetMQTTClient(client)
 	}
 }
 

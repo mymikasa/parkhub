@@ -89,6 +89,7 @@ func main() {
 
 	// Start heartbeat service with the connected MQTT client
 	heartbeatSvc.SetMQTTClient(mqttClient)
+	r.SetDeviceControlMQTTClient(mqttClient)
 	heartbeatSvc.Start()
 
 	srv := &http.Server{
