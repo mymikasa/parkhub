@@ -71,7 +71,8 @@ func main() {
 
 	// Create heartbeat service (before MQTT connect so we can pass Subscribe as OnConnect callback)
 	deviceRepo := repoimpl.NewDeviceRepo(gormDB)
-	heartbeatSvc := svcimpl.NewHeartbeatService(nil, redisClient, deviceRepo, cfg.HeartbeatTimeoutSeconds)
+	parkingLotRepo := repoimpl.NewParkingLotRepo(gormDB)
+	heartbeatSvc := svcimpl.NewHeartbeatService(nil, redisClient, deviceRepo, parkingLotRepo, r.GetAlertHub(), cfg.HeartbeatTimeoutSeconds)
 
 	// Initialize MQTT with re-subscribe on reconnect
 	mqttClient, mqttCleanup, err := appmqtt.New(appmqtt.Config{

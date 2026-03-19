@@ -11,6 +11,7 @@ import (
 	pahomqtt "github.com/eclipse/paho.mqtt.golang"
 	"github.com/parkhub/api/internal/domain"
 	"github.com/parkhub/api/internal/repository"
+	"github.com/parkhub/api/internal/ws"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -32,10 +33,12 @@ var atomicGetAndDel = redis.NewScript(`
 
 // HeartbeatService 心跳处理服务
 type HeartbeatService struct {
-	mqttClient  pahomqtt.Client
-	redisClient *redis.Client
-	deviceRepo  repository.DeviceRepo
-	timeout     time.Duration
+	mqttClient     pahomqtt.Client
+	redisClient    *redis.Client
+	deviceRepo     repository.DeviceRepo
+	parkingLotRepo repository.ParkingLotRepo
+	alertHub       *ws.AlertHub
+	timeout        time.Duration
 
 	stopCh chan struct{}
 	wg     sync.WaitGroup
@@ -46,14 +49,18 @@ func NewHeartbeatService(
 	mqttClient pahomqtt.Client,
 	redisClient *redis.Client,
 	deviceRepo repository.DeviceRepo,
+	parkingLotRepo repository.ParkingLotRepo,
+	alertHub *ws.AlertHub,
 	timeoutSeconds int,
 ) *HeartbeatService {
 	return &HeartbeatService{
-		mqttClient:  mqttClient,
-		redisClient: redisClient,
-		deviceRepo:  deviceRepo,
-		timeout:     time.Duration(timeoutSeconds) * time.Second,
-		stopCh:      make(chan struct{}),
+		mqttClient:     mqttClient,
+		redisClient:    redisClient,
+		deviceRepo:     deviceRepo,
+		parkingLotRepo: parkingLotRepo,
+		alertHub:       alertHub,
+		timeout:        time.Duration(timeoutSeconds) * time.Second,
+		stopCh:         make(chan struct{}),
 	}
 }
 
@@ -221,6 +228,7 @@ func (s *HeartbeatService) syncOneDevice(ctx context.Context, key string) {
 	}
 
 	// 已有设备：更新心跳数据
+	prevStatus := device.Status
 	device.UpdateHeartbeat(firmwareVersion, lastHeartbeat)
 
 	// 恢复在线：已分配设备 offline → active，未分配设备 offline → pending
@@ -229,6 +237,18 @@ func (s *HeartbeatService) syncOneDevice(ctx context.Context, key string) {
 	if err := s.deviceRepo.UpdateHeartbeat(ctx, device); err != nil {
 		slog.Error("update heartbeat failed", "device_id", deviceID, "error", err)
 		return
+	}
+
+	if s.alertHub != nil && prevStatus == domain.DeviceStatusOffline {
+		deviceName := device.Name
+		if deviceName == "" {
+			deviceName = device.ID
+		}
+		parkingLotID := ""
+		if device.ParkingLotID != nil {
+			parkingLotID = *device.ParkingLotID
+		}
+		s.alertHub.BroadcastOnline(device.TenantID, device.ID, deviceName, parkingLotID, time.Now())
 	}
 }
 
@@ -274,5 +294,44 @@ func (s *HeartbeatService) detectOfflineDevices() {
 		return
 	}
 
+	if s.alertHub != nil {
+		s.broadcastOfflineAlerts(ctx, devices)
+	}
+
 	slog.Info("devices marked offline", "count", len(ids), "device_ids", ids)
+}
+
+func (s *HeartbeatService) broadcastOfflineAlerts(ctx context.Context, devices []*domain.Device) {
+	type group struct {
+		tenantID     string
+		parkingLotID string
+		count        int
+	}
+
+	groups := make(map[string]*group)
+	for _, device := range devices {
+		if device.ParkingLotID == nil || *device.ParkingLotID == "" {
+			continue
+		}
+		key := device.TenantID + ":" + *device.ParkingLotID
+		if _, ok := groups[key]; !ok {
+			groups[key] = &group{
+				tenantID:     device.TenantID,
+				parkingLotID: *device.ParkingLotID,
+			}
+		}
+		groups[key].count++
+	}
+
+	now := time.Now()
+	for _, item := range groups {
+		parkingLotName := ""
+		if s.parkingLotRepo != nil {
+			lot, err := s.parkingLotRepo.FindByID(ctx, item.parkingLotID)
+			if err == nil && lot != nil {
+				parkingLotName = lot.Name
+			}
+		}
+		s.alertHub.BroadcastOffline(item.tenantID, parkingLotName, item.count, now)
+	}
 }
