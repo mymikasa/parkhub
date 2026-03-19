@@ -277,6 +277,112 @@ func (h *DeviceHandler) Delete(c *gin.Context) {
 	})
 }
 
+func (h *DeviceHandler) BatchDisable(c *gin.Context) {
+	role := c.GetString("role")
+	tenantID := c.GetString("tenant_id")
+
+	var req dto.BatchDeviceActionRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, dto.Response{Code: 400, Message: validator.FormatValidationError(err)})
+		return
+	}
+
+	if err := h.deviceService.BatchDisable(c.Request.Context(), &service.BatchChangeDeviceStatusRequest{
+		IDs:              req.IDs,
+		OperatorRole:     role,
+		OperatorTenantID: tenantID,
+	}); err != nil {
+		h.handleError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, dto.Response{
+		Code:    0,
+		Message: "设备已批量禁用",
+	})
+}
+
+func (h *DeviceHandler) BatchEnable(c *gin.Context) {
+	role := c.GetString("role")
+	tenantID := c.GetString("tenant_id")
+
+	var req dto.BatchDeviceActionRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, dto.Response{Code: 400, Message: validator.FormatValidationError(err)})
+		return
+	}
+
+	if err := h.deviceService.BatchEnable(c.Request.Context(), &service.BatchChangeDeviceStatusRequest{
+		IDs:              req.IDs,
+		OperatorRole:     role,
+		OperatorTenantID: tenantID,
+	}); err != nil {
+		h.handleError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, dto.Response{
+		Code:    0,
+		Message: "设备已批量启用",
+	})
+}
+
+func (h *DeviceHandler) BatchDelete(c *gin.Context) {
+	role := c.GetString("role")
+	tenantID := c.GetString("tenant_id")
+
+	var req dto.BatchDeviceActionRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, dto.Response{Code: 400, Message: validator.FormatValidationError(err)})
+		return
+	}
+
+	if err := h.deviceService.BatchDelete(c.Request.Context(), &service.BatchDeleteDeviceRequest{
+		IDs:              req.IDs,
+		OperatorRole:     role,
+		OperatorTenantID: tenantID,
+	}); err != nil {
+		h.handleError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, dto.Response{
+		Code:    0,
+		Message: "设备已批量删除",
+	})
+}
+
+func (h *DeviceHandler) BatchBind(c *gin.Context) {
+	userID := c.GetString("user_id")
+	role := c.GetString("role")
+	tenantID := c.GetString("tenant_id")
+
+	var req dto.BatchBindDeviceRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, dto.Response{Code: 400, Message: validator.FormatValidationError(err)})
+		return
+	}
+
+	if err := h.deviceService.BatchBind(c.Request.Context(), &service.BatchBindDeviceRequest{
+		IDs:              req.IDs,
+		OperatorID:       userID,
+		OperatorIP:       c.ClientIP(),
+		OperatorRole:     role,
+		OperatorTenantID: tenantID,
+		TargetTenantID:   req.TenantID,
+		ParkingLotID:     req.ParkingLotID,
+		GateID:           req.GateID,
+	}); err != nil {
+		h.handleError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, dto.Response{
+		Code:    0,
+		Message: "设备已批量绑定",
+	})
+}
+
 // GetStats 获取设备统计
 func (h *DeviceHandler) GetStats(c *gin.Context) {
 	tenantID := c.GetString("tenant_id")
@@ -315,6 +421,46 @@ func toDeviceParkingLotStatsDTO(items []*service.DeviceParkingLotStatsItem) []dt
 		})
 	}
 	return result
+}
+
+func (h *DeviceHandler) ListControlLogs(c *gin.Context) {
+	deviceID := c.Param("id")
+	tenantID := c.GetString("tenant_id")
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "20"))
+
+	resp, err := h.deviceControlService.ListLogs(c.Request.Context(), &service.ListDeviceControlLogsRequest{
+		DeviceID: deviceID,
+		TenantID: tenantID,
+		Page:     page,
+		PageSize: pageSize,
+	})
+	if err != nil {
+		h.handleError(c, err)
+		return
+	}
+
+	items := make([]*dto.DeviceControlLogItem, len(resp.Items))
+	for i, item := range resp.Items {
+		items[i] = &dto.DeviceControlLogItem{
+			ID:           item.ID,
+			OperatorID:   item.OperatorID,
+			OperatorName: item.OperatorName,
+			Command:      item.Command,
+			CreatedAt:    item.CreatedAt,
+		}
+	}
+
+	c.JSON(http.StatusOK, dto.Response{
+		Code:    0,
+		Message: "success",
+		Data: dto.DeviceControlLogListData{
+			Items:    items,
+			Total:    resp.Total,
+			Page:     resp.Page,
+			PageSize: resp.PageSize,
+		},
+	})
 }
 
 func (h *DeviceHandler) Control(c *gin.Context) {

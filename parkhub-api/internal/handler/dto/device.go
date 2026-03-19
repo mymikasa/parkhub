@@ -17,6 +17,17 @@ type BindDeviceRequest struct {
 	GateID       string `json:"gate_id" binding:"required,min=1,max=36"`
 }
 
+type BatchDeviceActionRequest struct {
+	IDs []string `json:"ids" binding:"required,min=1,dive,required,min=1,max=100"`
+}
+
+type BatchBindDeviceRequest struct {
+	IDs          []string `json:"ids" binding:"required,min=1,dive,required,min=1,max=100"`
+	TenantID     string   `json:"tenant_id" binding:"required,min=1,max=36"`
+	ParkingLotID string   `json:"parking_lot_id" binding:"required,min=1,max=36"`
+	GateID       string   `json:"gate_id" binding:"required,min=1,max=36"`
+}
+
 type ControlDeviceRequest struct {
 	Command string `json:"command" binding:"required,oneof=open_gate"`
 }
@@ -77,6 +88,21 @@ type DeviceParkingLotStatsData struct {
 	Offline        int64  `json:"offline"`
 	Pending        int64  `json:"pending"`
 	Disabled       int64  `json:"disabled"`
+}
+
+type DeviceControlLogItem struct {
+	ID           string `json:"id"`
+	OperatorID   string `json:"operator_id"`
+	OperatorName string `json:"operator_name"`
+	Command      string `json:"command"`
+	CreatedAt    string `json:"created_at"`
+}
+
+type DeviceControlLogListData struct {
+	Items    []*DeviceControlLogItem `json:"items"`
+	Total    int64                   `json:"total"`
+	Page     int                     `json:"page"`
+	PageSize int                     `json:"page_size"`
 }
 
 // ToDeviceListItemDTO converts service layer item to DTO.

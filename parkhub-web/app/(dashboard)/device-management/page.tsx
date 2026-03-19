@@ -1,11 +1,13 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { Icon } from "@/components/icons/FontAwesome";
 import { faXmark } from "@fortawesome/free-solid-svg-icons";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogClose,
@@ -46,6 +48,10 @@ import {
 } from "lucide-react";
 import {
   useBindDevice,
+  useBatchBindDevices,
+  useBatchDeleteDevices,
+  useBatchDisableDevices,
+  useBatchEnableDevices,
   useCreateDevice,
   useDeleteDevice,
   useDisableDevice,
@@ -198,6 +204,8 @@ export default function DeviceManagementPage() {
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [editDevice, setEditDevice] = useState<Device | null>(null);
   const [bindDevice, setBindDevice] = useState<Device | null>(null);
+  const [selectedDeviceIds, setSelectedDeviceIds] = useState<string[]>([]);
+  const [showBatchBindDialog, setShowBatchBindDialog] = useState(false);
 
   const pageSize = 20;
 
@@ -227,8 +235,26 @@ export default function DeviceManagementPage() {
   const disableMutation = useDisableDevice();
   const enableMutation = useEnableDevice();
   const deleteMutation = useDeleteDevice();
+  const batchDisableMutation = useBatchDisableDevices();
+  const batchEnableMutation = useBatchEnableDevices();
+  const batchDeleteMutation = useBatchDeleteDevices();
+  const batchBindMutation = useBatchBindDevices();
 
-  const devices = data?.items || [];
+  const devices = useMemo(() => data?.items ?? [], [data?.items]);
+  const selectedSet = new Set(selectedDeviceIds);
+  const selectedDevices = devices.filter((device) => selectedSet.has(device.id));
+  const selectedCount = selectedDevices.length;
+  const allSelected = selectedCount > 0 && selectedCount === devices.length;
+  const canBatchEnable =
+    selectedCount > 0 && selectedDevices.every((device) => device.status === "disabled");
+  const canBatchDelete =
+    selectedCount > 0 && selectedDevices.every((device) => !device.parking_lot_id);
+  const canBatchBind =
+    selectedCount > 0 &&
+    selectedDevices.every(
+      (device) => device.status === "pending" || device.status === "active"
+    );
+
   const total = data?.total || 0;
   const totalPages = Math.ceil(total / pageSize);
   const totalDevices = stats?.total || 0;
@@ -244,6 +270,36 @@ export default function DeviceManagementPage() {
   ).length;
   const hasAttention =
     offlineDevices > 0 || pendingDevices > 0 || heartbeatTimedOutCount > 0;
+
+  useEffect(() => {
+    setSelectedDeviceIds([]);
+  }, [currentPage, activeStatusFilter, debouncedSearch]);
+
+  useEffect(() => {
+    if (!devices.length) {
+      setSelectedDeviceIds([]);
+      return;
+    }
+    setSelectedDeviceIds((prev) => prev.filter((id) => devices.some((d) => d.id === id)));
+  }, [devices]);
+
+  const toggleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedDeviceIds(devices.map((device) => device.id));
+      return;
+    }
+    setSelectedDeviceIds([]);
+  };
+
+  const toggleSelectDevice = (deviceID: string, checked: boolean) => {
+    setSelectedDeviceIds((prev) => {
+      if (checked) {
+        if (prev.includes(deviceID)) return prev;
+        return [...prev, deviceID];
+      }
+      return prev.filter((id) => id !== deviceID);
+    });
+  };
 
   const handleUnbind = async (device: Device) => {
     if (!device.parking_lot_id) return;
@@ -286,6 +342,48 @@ export default function DeviceManagementPage() {
       refetch();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "删除失败，请重试");
+    }
+  };
+
+  const handleBatchDisable = async () => {
+    if (!selectedCount) return;
+    if (!window.confirm(`确认批量禁用 ${selectedCount} 台设备吗？`)) return;
+
+    try {
+      await batchDisableMutation.mutateAsync(selectedDeviceIds);
+      toast.success("设备已批量禁用");
+      setSelectedDeviceIds([]);
+      refetch();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "批量禁用失败，请重试");
+    }
+  };
+
+  const handleBatchEnable = async () => {
+    if (!selectedCount) return;
+    if (!window.confirm(`确认批量启用 ${selectedCount} 台设备吗？`)) return;
+
+    try {
+      await batchEnableMutation.mutateAsync(selectedDeviceIds);
+      toast.success("设备已批量启用");
+      setSelectedDeviceIds([]);
+      refetch();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "批量启用失败，请重试");
+    }
+  };
+
+  const handleBatchDelete = async () => {
+    if (!selectedCount) return;
+    if (!window.confirm(`确认批量删除 ${selectedCount} 台设备吗？此操作不可恢复。`)) return;
+
+    try {
+      await batchDeleteMutation.mutateAsync(selectedDeviceIds);
+      toast.success("设备已批量删除");
+      setSelectedDeviceIds([]);
+      refetch();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "批量删除失败，请重试");
     }
   };
 
@@ -487,6 +585,52 @@ export default function DeviceManagementPage() {
             </div>
           </div>
 
+          {!isOperator && selectedCount > 0 && (
+            <div className="border-b border-surface-border bg-brand-50/40 px-6 py-3">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <span className="text-sm font-medium text-brand-700">
+                  已选择 {formatCount(selectedCount)} 台设备
+                </span>
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    onClick={handleBatchDisable}
+                    disabled={batchDisableMutation.isPending}
+                    className="inline-flex items-center gap-1.5 rounded-xl border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-700 transition-colors hover:bg-amber-100 disabled:opacity-50"
+                  >
+                    批量禁用
+                  </button>
+                  <button
+                    onClick={handleBatchEnable}
+                    disabled={!canBatchEnable || batchEnableMutation.isPending}
+                    className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-medium text-emerald-700 transition-colors hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    批量启用
+                  </button>
+                  <button
+                    onClick={() => setShowBatchBindDialog(true)}
+                    disabled={!canBatchBind || batchBindMutation.isPending}
+                    className="inline-flex items-center gap-1.5 rounded-xl border border-brand-200 bg-brand-50 px-3 py-1.5 text-xs font-medium text-brand-700 transition-colors hover:bg-brand-100 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    批量绑定
+                  </button>
+                  <button
+                    onClick={handleBatchDelete}
+                    disabled={!canBatchDelete || batchDeleteMutation.isPending}
+                    className="inline-flex items-center gap-1.5 rounded-xl border border-rose-200 bg-white px-3 py-1.5 text-xs font-medium text-rose-700 transition-colors hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    批量删除
+                  </button>
+                  <button
+                    onClick={() => setSelectedDeviceIds([])}
+                    className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-50"
+                  >
+                    取消选择
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
             {isLoading ? (
               <div className="flex flex-col items-center justify-center py-28">
                 <div className="flex h-16 w-16 items-center justify-center rounded-[22px] bg-brand-50 text-brand-600">
@@ -513,6 +657,15 @@ export default function DeviceManagementPage() {
                   <Table>
                     <TableHeader>
                       <TableRow className="bg-gray-50/80 hover:bg-gray-50/80">
+                        {!isOperator && (
+                          <TableHead className="w-12 pl-6">
+                            <Checkbox
+                              checked={allSelected}
+                              onCheckedChange={(checked) => toggleSelectAll(checked === true)}
+                              aria-label="全选当前页设备"
+                            />
+                          </TableHead>
+                        )}
                         <TableHead className="pl-6 text-xs font-medium uppercase tracking-wider text-gray-500">
                           设备信息
                         </TableHead>
@@ -542,6 +695,10 @@ export default function DeviceManagementPage() {
                           onUnbind={() => handleUnbind(device)}
                           onToggleDisabled={() => handleToggleDisabled(device)}
                           onDelete={() => handleDelete(device)}
+                          selected={selectedSet.has(device.id)}
+                          onToggleSelect={(checked) =>
+                            toggleSelectDevice(device.id, checked)
+                          }
                           index={index}
                         />
                       ))}
@@ -590,6 +747,21 @@ export default function DeviceManagementPage() {
         }}
         onSuccess={() => {
           setBindDevice(null);
+          refetch();
+        }}
+      />
+      <BatchBindDeviceDialog
+        open={showBatchBindDialog}
+        onOpenChange={setShowBatchBindDialog}
+        selectedDevices={selectedDevices}
+        onSubmit={async (data) => {
+          await batchBindMutation.mutateAsync({
+            ids: selectedDeviceIds,
+            ...data,
+          });
+          setSelectedDeviceIds([]);
+          setShowBatchBindDialog(false);
+          toast.success("设备已批量绑定");
           refetch();
         }}
       />
@@ -660,6 +832,8 @@ function DeviceRow({
   onUnbind,
   onToggleDisabled,
   onDelete,
+  selected,
+  onToggleSelect,
   index,
 }: {
   device: Device;
@@ -670,6 +844,8 @@ function DeviceRow({
   onUnbind: () => void;
   onToggleDisabled: () => void;
   onDelete: () => void;
+  selected: boolean;
+  onToggleSelect: (checked: boolean) => void;
   index: number;
 }) {
   const runtimeStatus = getRuntimeDeviceStatus(device.status, device.last_heartbeat);
@@ -687,7 +863,16 @@ function DeviceRow({
       className={`border-b border-slate-100/90 transition-colors ${cfg.rowTint}`}
       style={{ animationDelay: `${index * 30}ms` }}
     >
-      <TableCell className="pl-6 py-4">
+      {canEdit && (
+        <TableCell className="w-12 pl-6 py-4">
+          <Checkbox
+            checked={selected}
+            onCheckedChange={(checked) => onToggleSelect(checked === true)}
+            aria-label={`选择设备 ${device.id}`}
+          />
+        </TableCell>
+      )}
+      <TableCell className={`${canEdit ? "" : "pl-6"} py-4`}>
         <div className="flex items-center gap-3">
           <div
             className={`flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-2xl ${cfg.iconBg} shadow-sm`}
@@ -788,6 +973,13 @@ function DeviceRow({
       <TableCell className="pr-6 py-4 text-right">
         {canEdit ? (
           <div className="flex justify-end gap-2">
+            <Link
+              href={`/device-management/${device.id}`}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 transition-colors hover:border-brand-200 hover:bg-brand-50 hover:text-brand-700"
+            >
+              <HardDrive className="h-3.5 w-3.5" />
+              详情
+            </Link>
             {canControl && (
               <DeviceControlButton
                 deviceId={device.id}
@@ -851,6 +1043,13 @@ function DeviceRow({
           </div>
         ) : (
           <div className="flex justify-end gap-2">
+            <Link
+              href={`/device-management/${device.id}`}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 transition-colors hover:border-brand-200 hover:bg-brand-50 hover:text-brand-700"
+            >
+              <HardDrive className="h-3.5 w-3.5" />
+              详情
+            </Link>
             {canControl && (
               <DeviceControlButton
                 deviceId={device.id}
@@ -1501,6 +1700,230 @@ function BindDeviceDialog({
               "确认改绑"
             ) : (
               "确认绑定"
+            )}
+          </button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function BatchBindDeviceDialog({
+  open,
+  onOpenChange,
+  selectedDevices,
+  onSubmit,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  selectedDevices: Device[];
+  onSubmit: (data: { tenant_id: string; parking_lot_id: string; gate_id: string }) => Promise<void>;
+}) {
+  const user = useUser();
+  const { isPlatformAdmin } = usePermissions();
+  const [tenantId, setTenantId] = useState("");
+  const [parkingLotId, setParkingLotId] = useState("");
+  const [gateId, setGateId] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const previousTenantId = useRef("");
+  const previousParkingLotId = useRef("");
+
+  useEffect(() => {
+    if (!open) return;
+    const nextTenantId = isPlatformAdmin ? "" : user?.tenant_id || "";
+    setTenantId(nextTenantId);
+    setParkingLotId("");
+    setGateId("");
+    previousTenantId.current = nextTenantId;
+    previousParkingLotId.current = "";
+  }, [open, isPlatformAdmin, user?.tenant_id]);
+
+  const { data: tenantsData, isLoading: isLoadingTenants } = useTenants(
+    { page: 1, page_size: 100 },
+    open && isPlatformAdmin
+  );
+  const tenantOptions = tenantsData?.items || [];
+
+  const effectiveTenantId = isPlatformAdmin ? tenantId : user?.tenant_id || "";
+  const { data: parkingLotsData, isLoading: isLoadingLots } = useParkingLots(
+    {
+      tenant_id: effectiveTenantId || undefined,
+      page: 1,
+      page_size: 100,
+    },
+    open && !!effectiveTenantId
+  );
+  const parkingLots = parkingLotsData?.items || [];
+  const { data: gatesData = [], isLoading: isLoadingGates } = useGates(
+    open ? parkingLotId : ""
+  );
+
+  useEffect(() => {
+    if (tenantId === previousTenantId.current) return;
+    setParkingLotId("");
+    setGateId("");
+    previousTenantId.current = tenantId;
+  }, [tenantId]);
+
+  useEffect(() => {
+    if (parkingLotId === previousParkingLotId.current) return;
+    setGateId("");
+    previousParkingLotId.current = parkingLotId;
+  }, [parkingLotId]);
+
+  const handleSubmit = async () => {
+    if (!selectedDevices.length) return;
+    if (!effectiveTenantId) {
+      toast.error("请选择租户");
+      return;
+    }
+    if (!parkingLotId || !gateId) {
+      toast.error("请选择车场和出入口");
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      await onSubmit({
+        tenant_id: effectiveTenantId,
+        parking_lot_id: parkingLotId,
+        gate_id: gateId,
+      });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "批量绑定失败，请重试");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent
+        showCloseButton={false}
+        overlayClassName="bg-black/40 supports-backdrop-filter:backdrop-blur-[4px]"
+        className="overflow-hidden rounded-[28px] border-0 bg-white p-0 shadow-[0_30px_80px_-25px_rgba(15,23,42,0.35)] ring-0 sm:max-w-lg"
+      >
+        <div className="border-b border-slate-100 bg-[linear-gradient(135deg,#f8fbff_0%,#ffffff_100%)] px-6 py-5">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-brand-50 text-brand-600">
+                <MapPin className="h-4 w-4" />
+              </div>
+              <div>
+                <DialogTitle className="text-lg font-semibold text-slate-950">
+                  批量绑定设备
+                </DialogTitle>
+                <p className="mt-1 text-sm text-slate-500">
+                  已选择 {formatCount(selectedDevices.length)} 台设备，绑定到同一出入口。
+                </p>
+              </div>
+            </div>
+            <DialogClose className="flex h-9 w-9 items-center justify-center rounded-xl text-slate-400 transition-colors hover:bg-white hover:text-slate-700">
+              <Icon icon={faXmark} />
+            </DialogClose>
+          </div>
+        </div>
+
+        <div className="space-y-5 p-6">
+          <div className="rounded-[24px] border border-slate-200 bg-slate-50/70 p-4 text-xs text-slate-500">
+            {selectedDevices
+              .slice(0, 3)
+              .map((device) => device.name || device.id)
+              .join("、")}
+            {selectedDevices.length > 3
+              ? ` 等 ${formatCount(selectedDevices.length)} 台`
+              : ""}
+          </div>
+
+          {isPlatformAdmin && (
+            <div>
+              <Label className="mb-1.5 block text-sm font-medium text-slate-700">
+                租户 <span className="text-rose-500">*</span>
+              </Label>
+              <select
+                value={tenantId}
+                onChange={(e) => setTenantId(e.target.value)}
+                className="h-11 w-full rounded-2xl border border-slate-200 bg-slate-50/70 px-4 text-sm text-slate-900 outline-none focus:border-brand-500 focus:bg-white"
+              >
+                <option value="">请选择租户</option>
+                {tenantOptions.map((tenant) => (
+                  <option key={tenant.id} value={tenant.id}>
+                    {tenant.company_name}
+                  </option>
+                ))}
+              </select>
+              {isLoadingTenants && (
+                <p className="mt-1.5 text-xs text-slate-400">正在加载租户列表...</p>
+              )}
+            </div>
+          )}
+
+          <div>
+            <Label className="mb-1.5 block text-sm font-medium text-slate-700">
+              车场 <span className="text-rose-500">*</span>
+            </Label>
+            <select
+              value={parkingLotId}
+              onChange={(e) => setParkingLotId(e.target.value)}
+              disabled={!effectiveTenantId}
+              className="h-11 w-full rounded-2xl border border-slate-200 bg-slate-50/70 px-4 text-sm text-slate-900 outline-none focus:border-brand-500 focus:bg-white disabled:cursor-not-allowed disabled:text-slate-400"
+            >
+              <option value="">请选择车场</option>
+              {parkingLots.map((lot) => (
+                <option key={lot.id} value={lot.id}>
+                  {lot.name}
+                </option>
+              ))}
+            </select>
+            {isLoadingLots && effectiveTenantId && (
+              <p className="mt-1.5 text-xs text-slate-400">正在加载车场列表...</p>
+            )}
+          </div>
+
+          <div>
+            <Label className="mb-1.5 block text-sm font-medium text-slate-700">
+              出入口 <span className="text-rose-500">*</span>
+            </Label>
+            <select
+              value={gateId}
+              onChange={(e) => setGateId(e.target.value)}
+              disabled={!parkingLotId}
+              className="h-11 w-full rounded-2xl border border-slate-200 bg-slate-50/70 px-4 text-sm text-slate-900 outline-none focus:border-brand-500 focus:bg-white disabled:cursor-not-allowed disabled:text-slate-400"
+            >
+              <option value="">请选择出入口</option>
+              {gatesData.map((gate) => (
+                <option key={gate.id} value={gate.id}>
+                  {gate.name} · 已绑 {gate.bound_device_count || 0} 台
+                </option>
+              ))}
+            </select>
+            {isLoadingGates && parkingLotId && (
+              <p className="mt-1.5 text-xs text-slate-400">正在加载出入口列表...</p>
+            )}
+          </div>
+        </div>
+
+        <div className="flex items-center justify-end gap-3 border-t border-slate-100 bg-slate-50/70 px-6 py-4">
+          <button
+            type="button"
+            onClick={() => onOpenChange(false)}
+            className="h-10 rounded-xl border border-slate-200 px-5 text-sm font-medium text-slate-700 transition-colors hover:bg-white"
+          >
+            取消
+          </button>
+          <button
+            type="button"
+            onClick={handleSubmit}
+            disabled={isSubmitting}
+            className="btn-primary h-10 rounded-xl px-5 text-sm font-medium text-white disabled:opacity-50"
+          >
+            {isSubmitting ? (
+              <span className="flex items-center gap-2">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                提交中
+              </span>
+            ) : (
+              "确认批量绑定"
             )}
           </button>
         </div>

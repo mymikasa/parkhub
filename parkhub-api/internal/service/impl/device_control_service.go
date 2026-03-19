@@ -99,6 +99,51 @@ func (s *deviceControlServiceImpl) Control(ctx context.Context, req *service.Con
 	return &service.ControlDeviceResponse{Success: true}, nil
 }
 
+func (s *deviceControlServiceImpl) ListLogs(ctx context.Context, req *service.ListDeviceControlLogsRequest) (*service.ListDeviceControlLogsResponse, error) {
+	device, err := s.deviceRepo.FindByID(ctx, req.DeviceID)
+	if err != nil {
+		if err == domain.ErrDeviceNotFound {
+			return nil, &domain.DomainError{Code: "DEVICE_NOT_FOUND", Message: err.Error()}
+		}
+		return nil, err
+	}
+	if req.TenantID != "" && device.TenantID != req.TenantID {
+		return nil, &domain.DomainError{Code: "FORBIDDEN", Message: "无权访问该设备控制日志"}
+	}
+
+	page := req.Page
+	if page <= 0 {
+		page = 1
+	}
+	pageSize := req.PageSize
+	if pageSize <= 0 {
+		pageSize = 20
+	}
+
+	logs, total, err := s.controlLogRepo.FindByDeviceID(ctx, req.DeviceID, page, pageSize)
+	if err != nil {
+		return nil, err
+	}
+
+	items := make([]*service.DeviceControlLogItem, len(logs))
+	for i, log := range logs {
+		items[i] = &service.DeviceControlLogItem{
+			ID:           log.ID,
+			OperatorID:   log.OperatorID,
+			OperatorName: log.OperatorName,
+			Command:      log.Command,
+			CreatedAt:    log.CreatedAt.Format(time.RFC3339),
+		}
+	}
+
+	return &service.ListDeviceControlLogsResponse{
+		Items:    items,
+		Total:    total,
+		Page:     page,
+		PageSize: pageSize,
+	}, nil
+}
+
 func (s *deviceControlServiceImpl) isDeviceOnline(device *domain.Device) bool {
 	if device.Status != domain.DeviceStatusActive {
 		return false
