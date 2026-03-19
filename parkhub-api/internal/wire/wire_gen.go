@@ -52,6 +52,9 @@ func InitializeApp(cfg *config.Config, db *gorm.DB) (*router.Router, error) {
 	webSocketHandler := handler.NewWebSocketHandler(jwtManager, alertHub)
 	billingRuleService := impl2.NewBillingRuleService(billingRuleRepo, parkingLotRepo, auditLogRepo)
 	billingRuleHandler := handler.NewBillingRuleHandler(billingRuleService)
-	routerRouter := router.NewRouter(engine, jwtManager, authHandler, tenantHandler, userHandler, parkingLotHandler, gateHandler, deviceHandler, webSocketHandler, billingRuleHandler)
+	transitRecordRepo := impl.NewTransitRecordRepo(db)
+	transitRecordService := impl2.NewTransitRecordService(db, transitRecordRepo, parkingLotRepo, gateRepo, billingRuleRepo)
+	transitRecordHandler := handler.NewTransitRecordHandler(transitRecordService)
+	routerRouter := router.NewRouter(engine, jwtManager, authHandler, tenantHandler, userHandler, parkingLotHandler, gateHandler, deviceHandler, webSocketHandler, billingRuleHandler, transitRecordHandler)
 	return routerRouter, nil
 }

@@ -24,7 +24,8 @@ type Router struct {
 	gateHandler        *handler.GateHandler
 	deviceHandler      *handler.DeviceHandler
 	webSocketHandler   *handler.WebSocketHandler
-	billingRuleHandler *handler.BillingRuleHandler
+	billingRuleHandler     *handler.BillingRuleHandler
+	transitRecordHandler   *handler.TransitRecordHandler
 }
 
 // NewRouter 创建路由器
@@ -39,18 +40,20 @@ func NewRouter(
 	deviceHandler *handler.DeviceHandler,
 	webSocketHandler *handler.WebSocketHandler,
 	billingRuleHandler *handler.BillingRuleHandler,
+	transitRecordHandler *handler.TransitRecordHandler,
 ) *Router {
 	return &Router{
-		engine:             engine,
-		jwtManager:         jwtManager,
-		authHandler:        authHandler,
-		tenantHandler:      tenantHandler,
-		userHandler:        userHandler,
-		parkingLotHandler:  parkingLotHandler,
-		gateHandler:        gateHandler,
-		deviceHandler:      deviceHandler,
-		webSocketHandler:   webSocketHandler,
-		billingRuleHandler: billingRuleHandler,
+		engine:               engine,
+		jwtManager:           jwtManager,
+		authHandler:          authHandler,
+		tenantHandler:        tenantHandler,
+		userHandler:          userHandler,
+		parkingLotHandler:    parkingLotHandler,
+		gateHandler:          gateHandler,
+		deviceHandler:        deviceHandler,
+		webSocketHandler:     webSocketHandler,
+		billingRuleHandler:   billingRuleHandler,
+		transitRecordHandler: transitRecordHandler,
 	}
 }
 
@@ -88,6 +91,7 @@ func (r *Router) Setup() {
 		r.setupParkingLotRoutes(v1)
 		r.setupDeviceRoutes(v1)
 		r.setupBillingRuleRoutes(v1)
+		r.setupTransitRecordRoutes(v1)
 	}
 }
 
@@ -292,5 +296,41 @@ func (r *Router) setupDeviceRoutes(rg *gin.RouterGroup) {
 
 		// POST /api/v1/devices/batch-bind - 批量绑定设备（仅admin）
 		devices.POST("/batch-bind", middleware.RequireRoles("platform_admin", "tenant_admin"), r.deviceHandler.BatchBind)
+	}
+}
+
+// setupTransitRecordRoutes 设置通行记录路由
+func (r *Router) setupTransitRecordRoutes(rg *gin.RouterGroup) {
+	records := rg.Group("/transit-records")
+	records.Use(middleware.AuthMiddleware(r.jwtManager))
+	records.Use(middleware.RequireRoles("platform_admin", "tenant_admin", "operator"))
+	{
+		// POST /api/v1/transit-records - 创建通行记录
+		records.POST("", r.transitRecordHandler.Create)
+
+		// GET /api/v1/transit-records - 通行记录列表
+		records.GET("", r.transitRecordHandler.List)
+
+		// 固定路径必须在 :id 之前注册
+		// GET /api/v1/transit-records/latest - 最新通行记录
+		records.GET("/latest", r.transitRecordHandler.GetLatest)
+
+		// GET /api/v1/transit-records/stats - 今日统计
+		records.GET("/stats", r.transitRecordHandler.GetStats)
+
+		// GET /api/v1/transit-records/overstay - 超时停放预警
+		records.GET("/overstay", r.transitRecordHandler.GetOverstay)
+
+		// GET /api/v1/transit-records/exceptions/count - 未处理异常数
+		records.GET("/exceptions/count", r.transitRecordHandler.GetExceptionCount)
+
+		// GET /api/v1/transit-records/export - 导出
+		records.GET("/export", middleware.RequireRoles("platform_admin", "tenant_admin"), r.transitRecordHandler.Export)
+
+		// GET /api/v1/transit-records/:id - 通行记录详情
+		records.GET("/:id", r.transitRecordHandler.Get)
+
+		// PUT /api/v1/transit-records/:id/resolve - 处理异常
+		records.PUT("/:id/resolve", r.transitRecordHandler.Resolve)
 	}
 }

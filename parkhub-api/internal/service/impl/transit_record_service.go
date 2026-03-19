@@ -289,6 +289,12 @@ func (s *transitRecordServiceImpl) Resolve(ctx context.Context, req *service.Res
 	}
 
 	record := &item.TransitRecord
+
+	// 仅允许对异常记录执行"处理异常"操作
+	if !record.IsException() {
+		return nil, &domain.DomainError{Code: domain.CodeInvalidTransitType, Message: "仅可处理异常通行记录"}
+	}
+
 	if err := record.Resolve(req.ResolvedBy, req.PlateNumber, req.Remark); err != nil {
 		if err == domain.ErrRecordAlreadyResolved {
 			return nil, &domain.DomainError{Code: domain.CodeRecordAlreadyResolved, Message: err.Error()}
