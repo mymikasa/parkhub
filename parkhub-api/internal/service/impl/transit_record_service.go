@@ -219,8 +219,13 @@ func (s *transitRecordServiceImpl) List(ctx context.Context, req *service.ListTr
 		PlateNumber:  req.PlateNumber,
 		Type:         req.Type,
 		Status:       req.Status,
+		StatusGroup:  req.StatusGroup,
 		Page:         req.Page,
 		PageSize:     req.PageSize,
+	}
+
+	if req.StatusGroup != "" && req.StatusGroup != "normal" && req.StatusGroup != "exception" {
+		return nil, &domain.DomainError{Code: domain.CodeInvalidTransitType, Message: "状态筛选无效"}
 	}
 
 	if req.StartDate != nil {

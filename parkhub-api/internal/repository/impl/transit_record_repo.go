@@ -63,6 +63,19 @@ func (r *transitRecordRepo) FindAll(ctx context.Context, filter repository.Trans
 	if filter.Status != nil {
 		q = q.Where("transit_records.status = ?", string(*filter.Status))
 	}
+	if filter.StatusGroup == "normal" {
+		q = q.Where("transit_records.status IN ?", []string{
+			string(domain.TransitStatusNormal),
+			string(domain.TransitStatusPaid),
+		})
+	}
+	if filter.StatusGroup == "exception" {
+		q = q.Where("transit_records.status IN ?", []string{
+			string(domain.TransitStatusNoExit),
+			string(domain.TransitStatusNoEntry),
+			string(domain.TransitStatusRecognitionFailed),
+		})
+	}
 	if filter.StartDate != nil {
 		q = q.Where("transit_records.created_at >= ?", *filter.StartDate)
 	}
@@ -141,15 +154,15 @@ func (r *transitRecordRepo) FindLatestUnmatchedEntry(ctx context.Context, parkin
 func (r *transitRecordRepo) Update(ctx context.Context, record *domain.TransitRecord) error {
 	d := dao.ToTransitRecordDAO(record)
 	result := r.db.WithContext(ctx).Model(d).Updates(map[string]any{
-		"plate_number":    d.PlateNumber,
-		"status":          d.Status,
-		"fee":             d.Fee,
-		"entry_record_id": d.EntryRecordID,
+		"plate_number":     d.PlateNumber,
+		"status":           d.Status,
+		"fee":              d.Fee,
+		"entry_record_id":  d.EntryRecordID,
 		"parking_duration": d.ParkingDuration,
-		"remark":          d.Remark,
-		"resolved_at":     d.ResolvedAt,
-		"resolved_by":     d.ResolvedBy,
-		"updated_at":      d.UpdatedAt,
+		"remark":           d.Remark,
+		"resolved_at":      d.ResolvedAt,
+		"resolved_by":      d.ResolvedBy,
+		"updated_at":       d.UpdatedAt,
 	})
 	if result.Error != nil {
 		return result.Error

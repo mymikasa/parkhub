@@ -110,6 +110,7 @@ func (h *TransitRecordHandler) List(c *gin.Context) {
 		TenantID:     c.GetString("tenant_id"),
 		ParkingLotID: c.Query("parking_lot_id"),
 		PlateNumber:  c.Query("plate_number"),
+		StatusGroup:  c.Query("status_group"),
 		Page:         page,
 		PageSize:     pageSize,
 	}
@@ -238,6 +239,7 @@ func (h *TransitRecordHandler) Export(c *gin.Context) {
 		TenantID:     c.GetString("tenant_id"),
 		ParkingLotID: c.Query("parking_lot_id"),
 		PlateNumber:  c.Query("plate_number"),
+		StatusGroup:  c.Query("status_group"),
 		Page:         1,
 		PageSize:     10000, // 导出上限
 	}
