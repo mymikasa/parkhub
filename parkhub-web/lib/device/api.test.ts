@@ -1,5 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
+  batchBindDevices,
+  batchDeleteDevices,
+  batchDisableDevices,
+  batchEnableDevices,
   bindDevice,
   createDevice,
   getDevice,
@@ -207,6 +211,51 @@ describe('device mutations', () => {
     expect(result.status).toBe('pending')
     expect(result.parking_lot_id).toBeNull()
     expect(mockFetch.mock.calls[0][0]).toContain('/api/v1/devices/device-1/unbind')
+    expect(mockFetch.mock.calls[0][1].method).toBe('POST')
+  })
+
+  it('batchDisableDevices sends POST to batch-disable endpoint', async () => {
+    mockJsonResponse({ code: 0, message: 'ok' })
+
+    await batchDisableDevices({ ids: ['device-1', 'device-2'] }, 'token')
+
+    expect(mockFetch.mock.calls[0][0]).toContain('/api/v1/devices/batch-disable')
+    expect(mockFetch.mock.calls[0][1].method).toBe('POST')
+    expect(JSON.parse(mockFetch.mock.calls[0][1].body)).toEqual({ ids: ['device-1', 'device-2'] })
+  })
+
+  it('batchEnableDevices sends POST to batch-enable endpoint', async () => {
+    mockJsonResponse({ code: 0, message: 'ok' })
+
+    await batchEnableDevices({ ids: ['device-1'] }, 'token')
+
+    expect(mockFetch.mock.calls[0][0]).toContain('/api/v1/devices/batch-enable')
+    expect(mockFetch.mock.calls[0][1].method).toBe('POST')
+  })
+
+  it('batchDeleteDevices sends POST to batch-delete endpoint', async () => {
+    mockJsonResponse({ code: 0, message: 'ok' })
+
+    await batchDeleteDevices({ ids: ['device-1'] }, 'token')
+
+    expect(mockFetch.mock.calls[0][0]).toContain('/api/v1/devices/batch-delete')
+    expect(mockFetch.mock.calls[0][1].method).toBe('POST')
+  })
+
+  it('batchBindDevices sends POST to batch-bind endpoint', async () => {
+    mockJsonResponse({ code: 0, message: 'ok' })
+
+    await batchBindDevices(
+      {
+        ids: ['device-1', 'device-2'],
+        tenant_id: 'tenant-1',
+        parking_lot_id: 'lot-1',
+        gate_id: 'gate-1',
+      },
+      'token'
+    )
+
+    expect(mockFetch.mock.calls[0][0]).toContain('/api/v1/devices/batch-bind')
     expect(mockFetch.mock.calls[0][1].method).toBe('POST')
   })
 })

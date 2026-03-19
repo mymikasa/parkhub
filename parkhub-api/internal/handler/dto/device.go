@@ -17,6 +17,17 @@ type BindDeviceRequest struct {
 	GateID       string `json:"gate_id" binding:"required,min=1,max=36"`
 }
 
+type BatchDeviceActionRequest struct {
+	IDs []string `json:"ids" binding:"required,min=1,dive,required,min=1,max=100"`
+}
+
+type BatchBindDeviceRequest struct {
+	IDs          []string `json:"ids" binding:"required,min=1,dive,required,min=1,max=100"`
+	TenantID     string   `json:"tenant_id" binding:"required,min=1,max=36"`
+	ParkingLotID string   `json:"parking_lot_id" binding:"required,min=1,max=36"`
+	GateID       string   `json:"gate_id" binding:"required,min=1,max=36"`
+}
+
 type ControlDeviceRequest struct {
 	Command string `json:"command" binding:"required,oneof=open_gate"`
 }

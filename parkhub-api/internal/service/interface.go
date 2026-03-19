@@ -390,6 +390,14 @@ type DeviceService interface {
 	Enable(ctx context.Context, req *ChangeDeviceStatusRequest) (*domain.Device, error)
 	// Delete 删除设备
 	Delete(ctx context.Context, req *DeleteDeviceRequest) error
+	// BatchDisable 批量禁用设备
+	BatchDisable(ctx context.Context, req *BatchChangeDeviceStatusRequest) error
+	// BatchEnable 批量启用设备
+	BatchEnable(ctx context.Context, req *BatchChangeDeviceStatusRequest) error
+	// BatchDelete 批量删除设备
+	BatchDelete(ctx context.Context, req *BatchDeleteDeviceRequest) error
+	// BatchBind 批量绑定设备
+	BatchBind(ctx context.Context, req *BatchBindDeviceRequest) error
 	// GetStats 获取设备统计
 	GetStats(ctx context.Context, tenantID string) (*DeviceStatsResponse, error)
 }
@@ -452,6 +460,29 @@ type ChangeDeviceStatusRequest struct {
 type DeleteDeviceRequest struct {
 	ID       string
 	TenantID string
+}
+
+type BatchChangeDeviceStatusRequest struct {
+	IDs              []string
+	OperatorRole     string
+	OperatorTenantID string
+}
+
+type BatchDeleteDeviceRequest struct {
+	IDs              []string
+	OperatorRole     string
+	OperatorTenantID string
+}
+
+type BatchBindDeviceRequest struct {
+	IDs              []string
+	OperatorID       string
+	OperatorIP       string
+	OperatorRole     string
+	OperatorTenantID string
+	TargetTenantID   string
+	ParkingLotID     string
+	GateID           string
 }
 
 // DeviceStatsResponse 设备统计响应

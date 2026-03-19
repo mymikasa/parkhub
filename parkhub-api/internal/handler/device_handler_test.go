@@ -14,11 +14,15 @@ import (
 )
 
 type stubDeviceService struct {
-	bindFn    func(ctx context.Context, req *service.BindDeviceRequest) (*domain.Device, error)
-	unbindFn  func(ctx context.Context, req *service.UnbindDeviceRequest) (*domain.Device, error)
-	disableFn func(ctx context.Context, req *service.ChangeDeviceStatusRequest) (*domain.Device, error)
-	enableFn  func(ctx context.Context, req *service.ChangeDeviceStatusRequest) (*domain.Device, error)
-	deleteFn  func(ctx context.Context, req *service.DeleteDeviceRequest) error
+	bindFn         func(ctx context.Context, req *service.BindDeviceRequest) (*domain.Device, error)
+	unbindFn       func(ctx context.Context, req *service.UnbindDeviceRequest) (*domain.Device, error)
+	disableFn      func(ctx context.Context, req *service.ChangeDeviceStatusRequest) (*domain.Device, error)
+	enableFn       func(ctx context.Context, req *service.ChangeDeviceStatusRequest) (*domain.Device, error)
+	deleteFn       func(ctx context.Context, req *service.DeleteDeviceRequest) error
+	batchDisableFn func(ctx context.Context, req *service.BatchChangeDeviceStatusRequest) error
+	batchEnableFn  func(ctx context.Context, req *service.BatchChangeDeviceStatusRequest) error
+	batchDeleteFn  func(ctx context.Context, req *service.BatchDeleteDeviceRequest) error
+	batchBindFn    func(ctx context.Context, req *service.BatchBindDeviceRequest) error
 }
 
 func (s *stubDeviceService) Create(ctx context.Context, req *service.CreateDeviceRequest) (*domain.Device, error) {
@@ -68,6 +72,34 @@ func (s *stubDeviceService) Delete(ctx context.Context, req *service.DeleteDevic
 		return nil
 	}
 	return s.deleteFn(ctx, req)
+}
+
+func (s *stubDeviceService) BatchDisable(ctx context.Context, req *service.BatchChangeDeviceStatusRequest) error {
+	if s.batchDisableFn == nil {
+		return nil
+	}
+	return s.batchDisableFn(ctx, req)
+}
+
+func (s *stubDeviceService) BatchEnable(ctx context.Context, req *service.BatchChangeDeviceStatusRequest) error {
+	if s.batchEnableFn == nil {
+		return nil
+	}
+	return s.batchEnableFn(ctx, req)
+}
+
+func (s *stubDeviceService) BatchDelete(ctx context.Context, req *service.BatchDeleteDeviceRequest) error {
+	if s.batchDeleteFn == nil {
+		return nil
+	}
+	return s.batchDeleteFn(ctx, req)
+}
+
+func (s *stubDeviceService) BatchBind(ctx context.Context, req *service.BatchBindDeviceRequest) error {
+	if s.batchBindFn == nil {
+		return nil
+	}
+	return s.batchBindFn(ctx, req)
 }
 
 // stubDeviceControlService is a stub implementation for the tests
@@ -183,6 +215,83 @@ func TestDeviceHandler_Delete_MapsDomainError(t *testing.T) {
 		t.Fatalf("status = %v, want 400", resp.Code)
 	}
 	if !bytes.Contains(resp.Body.Bytes(), []byte(`"code":40003`)) {
+		t.Fatalf("body = %s", resp.Body.String())
+	}
+}
+
+func TestDeviceHandler_BatchDisable_Success(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	svc := &stubDeviceService{
+		batchDisableFn: func(ctx context.Context, req *service.BatchChangeDeviceStatusRequest) error {
+			if req.OperatorRole != "tenant_admin" {
+				t.Fatalf("OperatorRole = %v, want tenant_admin", req.OperatorRole)
+			}
+			if req.OperatorTenantID != "tenant-1" {
+				t.Fatalf("OperatorTenantID = %v, want tenant-1", req.OperatorTenantID)
+			}
+			if len(req.IDs) != 2 || req.IDs[0] != "device-1" || req.IDs[1] != "device-2" {
+				t.Fatalf("IDs = %v", req.IDs)
+			}
+			return nil
+		},
+	}
+	controlSvc := &stubDeviceControlService{}
+	handler := NewDeviceHandler(svc, controlSvc)
+
+	router := gin.New()
+	router.Use(func(c *gin.Context) {
+		c.Set("role", "tenant_admin")
+		c.Set("tenant_id", "tenant-1")
+	})
+	router.POST("/devices/batch-disable", handler.BatchDisable)
+
+	body, _ := json.Marshal(map[string][]string{
+		"ids": []string{"device-1", "device-2"},
+	})
+	req := httptest.NewRequest(http.MethodPost, "/devices/batch-disable", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	resp := httptest.NewRecorder()
+	router.ServeHTTP(resp, req)
+
+	if resp.Code != http.StatusOK {
+		t.Fatalf("status = %v, want 200", resp.Code)
+	}
+	if !bytes.Contains(resp.Body.Bytes(), []byte(`"message":"设备已批量禁用"`)) {
+		t.Fatalf("body = %s", resp.Body.String())
+	}
+}
+
+func TestDeviceHandler_BatchDelete_MapsDomainError(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	svc := &stubDeviceService{
+		batchDeleteFn: func(ctx context.Context, req *service.BatchDeleteDeviceRequest) error {
+			return &domain.DomainError{Code: "FORBIDDEN", Message: "tenant_admin仅可批量操作同一车场设备"}
+		},
+	}
+	controlSvc := &stubDeviceControlService{}
+	handler := NewDeviceHandler(svc, controlSvc)
+
+	router := gin.New()
+	router.Use(func(c *gin.Context) {
+		c.Set("role", "tenant_admin")
+		c.Set("tenant_id", "tenant-1")
+	})
+	router.POST("/devices/batch-delete", handler.BatchDelete)
+
+	body, _ := json.Marshal(map[string][]string{
+		"ids": []string{"device-1", "device-2"},
+	})
+	req := httptest.NewRequest(http.MethodPost, "/devices/batch-delete", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	resp := httptest.NewRecorder()
+	router.ServeHTTP(resp, req)
+
+	if resp.Code != http.StatusForbidden {
+		t.Fatalf("status = %v, want 403", resp.Code)
+	}
+	if !bytes.Contains(resp.Body.Bytes(), []byte(`"code":40301`)) {
 		t.Fatalf("body = %s", resp.Body.String())
 	}
 }

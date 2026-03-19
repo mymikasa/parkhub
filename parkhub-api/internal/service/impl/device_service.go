@@ -358,6 +358,142 @@ func (s *deviceServiceImpl) Delete(ctx context.Context, req *service.DeleteDevic
 	return nil
 }
 
+func (s *deviceServiceImpl) BatchDisable(ctx context.Context, req *service.BatchChangeDeviceStatusRequest) error {
+	if err := ensureBatchOperatorRole(req.OperatorRole); err != nil {
+		return err
+	}
+
+	devices, err := s.loadBatchDevices(ctx, req.IDs)
+	if err != nil {
+		return err
+	}
+
+	if req.OperatorRole == "tenant_admin" {
+		if err := validateTenantAdminBatchDevices(devices, req.OperatorTenantID, false); err != nil {
+			return err
+		}
+		if err := validateTenantAdminSingleParkingLot(devices); err != nil {
+			return err
+		}
+	}
+
+	ids := make([]string, 0, len(devices))
+	for _, device := range devices {
+		ids = append(ids, device.ID)
+	}
+
+	return s.deviceRepo.BatchUpdateStatus(ctx, ids, domain.DeviceStatusDisabled)
+}
+
+func (s *deviceServiceImpl) BatchEnable(ctx context.Context, req *service.BatchChangeDeviceStatusRequest) error {
+	if err := ensureBatchOperatorRole(req.OperatorRole); err != nil {
+		return err
+	}
+
+	devices, err := s.loadBatchDevices(ctx, req.IDs)
+	if err != nil {
+		return err
+	}
+
+	if req.OperatorRole == "tenant_admin" {
+		if err := validateTenantAdminBatchDevices(devices, req.OperatorTenantID, false); err != nil {
+			return err
+		}
+		if err := validateTenantAdminSingleParkingLot(devices); err != nil {
+			return err
+		}
+	}
+
+	for _, device := range devices {
+		if device.Status != domain.DeviceStatusDisabled {
+			return &domain.DomainError{Code: "DEVICE_INVALID_STATUS", Message: "仅禁用状态设备可启用"}
+		}
+
+		if device.LastHeartbeat != nil && time.Since(*device.LastHeartbeat) < time.Duration(domain.DefaultHeartbeatTimeoutSeconds)*time.Second {
+			device.Status = domain.DeviceStatusActive
+		} else {
+			device.Status = domain.DeviceStatusOffline
+		}
+		device.UpdatedAt = time.Now()
+		if err := s.deviceRepo.Update(ctx, device); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (s *deviceServiceImpl) BatchDelete(ctx context.Context, req *service.BatchDeleteDeviceRequest) error {
+	if err := ensureBatchOperatorRole(req.OperatorRole); err != nil {
+		return err
+	}
+
+	devices, err := s.loadBatchDevices(ctx, req.IDs)
+	if err != nil {
+		return err
+	}
+
+	if req.OperatorRole == "tenant_admin" {
+		if err := validateTenantAdminBatchDevices(devices, req.OperatorTenantID, false); err != nil {
+			return err
+		}
+		if err := validateTenantAdminSingleParkingLot(devices); err != nil {
+			return err
+		}
+	}
+
+	for _, device := range devices {
+		if device.ParkingLotID != nil || device.GateID != nil {
+			return &domain.DomainError{Code: "DEVICE_MUST_UNBIND", Message: domain.ErrDeviceMustUnbind.Error()}
+		}
+		if err := s.deviceRepo.Delete(ctx, device.ID); err != nil {
+			if err == domain.ErrDeviceNotFound {
+				return &domain.DomainError{Code: "DEVICE_NOT_FOUND", Message: err.Error()}
+			}
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (s *deviceServiceImpl) BatchBind(ctx context.Context, req *service.BatchBindDeviceRequest) error {
+	if err := ensureBatchOperatorRole(req.OperatorRole); err != nil {
+		return err
+	}
+
+	devices, err := s.loadBatchDevices(ctx, req.IDs)
+	if err != nil {
+		return err
+	}
+
+	if req.OperatorRole == "tenant_admin" {
+		if err := validateTenantAdminBatchDevices(devices, req.OperatorTenantID, true); err != nil {
+			return err
+		}
+		if err := validateTenantAdminSingleParkingLot(devices); err != nil {
+			return err
+		}
+	}
+
+	for _, device := range devices {
+		if _, err := s.Bind(ctx, &service.BindDeviceRequest{
+			ID:               device.ID,
+			OperatorID:       req.OperatorID,
+			OperatorIP:       req.OperatorIP,
+			OperatorRole:     req.OperatorRole,
+			OperatorTenantID: req.OperatorTenantID,
+			TargetTenantID:   req.TargetTenantID,
+			ParkingLotID:     req.ParkingLotID,
+			GateID:           req.GateID,
+		}); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func (s *deviceServiceImpl) GetStats(ctx context.Context, tenantID string) (*service.DeviceStatsResponse, error) {
 	stats, err := s.deviceRepo.CountByStatus(ctx, tenantID)
 	if err != nil {
@@ -394,4 +530,67 @@ func toDeviceListItem(item *domain.DeviceListItem) *service.DeviceListItem {
 		CreatedAt:       item.CreatedAt.Format(time.RFC3339),
 		UpdatedAt:       item.UpdatedAt.Format(time.RFC3339),
 	}
+}
+
+func ensureBatchOperatorRole(role string) error {
+	if role != "platform_admin" && role != "tenant_admin" {
+		return &domain.DomainError{Code: "FORBIDDEN", Message: "无权操作该设备"}
+	}
+	return nil
+}
+
+func (s *deviceServiceImpl) loadBatchDevices(ctx context.Context, ids []string) ([]*domain.Device, error) {
+	uniqueIDs := uniqueDeviceIDs(ids)
+	devices := make([]*domain.Device, 0, len(uniqueIDs))
+	for _, id := range uniqueIDs {
+		device, err := s.deviceRepo.FindByID(ctx, id)
+		if err != nil {
+			if err == domain.ErrDeviceNotFound {
+				return nil, &domain.DomainError{Code: "DEVICE_NOT_FOUND", Message: err.Error()}
+			}
+			return nil, err
+		}
+		devices = append(devices, device)
+	}
+	return devices, nil
+}
+
+func uniqueDeviceIDs(ids []string) []string {
+	seen := make(map[string]struct{}, len(ids))
+	unique := make([]string, 0, len(ids))
+	for _, id := range ids {
+		if _, ok := seen[id]; ok {
+			continue
+		}
+		seen[id] = struct{}{}
+		unique = append(unique, id)
+	}
+	return unique
+}
+
+func validateTenantAdminBatchDevices(devices []*domain.Device, operatorTenantID string, allowPlatformTenant bool) error {
+	for _, device := range devices {
+		if device.TenantID == operatorTenantID {
+			continue
+		}
+		if allowPlatformTenant && device.TenantID == domain.PlatformTenantID {
+			continue
+		}
+		return &domain.DomainError{Code: "FORBIDDEN", Message: "无权操作该设备"}
+	}
+	return nil
+}
+
+func validateTenantAdminSingleParkingLot(devices []*domain.Device) error {
+	parkingLotSet := make(map[string]struct{})
+	for _, device := range devices {
+		if device.ParkingLotID == nil || *device.ParkingLotID == "" {
+			continue
+		}
+		parkingLotSet[*device.ParkingLotID] = struct{}{}
+		if len(parkingLotSet) > 1 {
+			return &domain.DomainError{Code: "FORBIDDEN", Message: "tenant_admin仅可批量操作同一车场设备"}
+		}
+	}
+	return nil
 }

@@ -7,6 +7,8 @@ import type {
   CreateDeviceRequest,
   UpdateDeviceNameRequest,
   BindDeviceRequest,
+  BatchDeviceActionRequest,
+  BatchBindDeviceRequest,
   ControlDeviceRequest,
   ControlDeviceResponse,
   DeviceControlLogItem,
@@ -365,6 +367,62 @@ export async function deleteDevice(
     `/api/v1/devices/${id}`,
     {
       method: 'DELETE',
+    },
+    accessToken
+  );
+}
+
+export async function batchDisableDevices(
+  req: BatchDeviceActionRequest,
+  accessToken: string
+): Promise<void> {
+  await request<{ code: number; message: string }>(
+    '/api/v1/devices/batch-disable',
+    {
+      method: 'POST',
+      body: JSON.stringify(req),
+    },
+    accessToken
+  );
+}
+
+export async function batchEnableDevices(
+  req: BatchDeviceActionRequest,
+  accessToken: string
+): Promise<void> {
+  await request<{ code: number; message: string }>(
+    '/api/v1/devices/batch-enable',
+    {
+      method: 'POST',
+      body: JSON.stringify(req),
+    },
+    accessToken
+  );
+}
+
+export async function batchDeleteDevices(
+  req: BatchDeviceActionRequest,
+  accessToken: string
+): Promise<void> {
+  await request<{ code: number; message: string }>(
+    '/api/v1/devices/batch-delete',
+    {
+      method: 'POST',
+      body: JSON.stringify(req),
+    },
+    accessToken
+  );
+}
+
+export async function batchBindDevices(
+  req: BatchBindDeviceRequest,
+  accessToken: string
+): Promise<void> {
+  await request<{ code: number; message: string }>(
+    '/api/v1/devices/batch-bind',
+    {
+      method: 'POST',
+      body: JSON.stringify(req),
     },
     accessToken
   );

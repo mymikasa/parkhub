@@ -177,6 +177,75 @@ export function useDeleteDevice() {
   });
 }
 
+export function useBatchDisableDevices() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (ids: string[]) => {
+      const accessToken = await getValidAccessToken();
+      if (!accessToken) throw new Error('未登录');
+      return api.batchDisableDevices({ ids }, accessToken);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: deviceKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: deviceKeys.stats() });
+    },
+  });
+}
+
+export function useBatchEnableDevices() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (ids: string[]) => {
+      const accessToken = await getValidAccessToken();
+      if (!accessToken) throw new Error('未登录');
+      return api.batchEnableDevices({ ids }, accessToken);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: deviceKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: deviceKeys.stats() });
+    },
+  });
+}
+
+export function useBatchDeleteDevices() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (ids: string[]) => {
+      const accessToken = await getValidAccessToken();
+      if (!accessToken) throw new Error('未登录');
+      return api.batchDeleteDevices({ ids }, accessToken);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: deviceKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: deviceKeys.stats() });
+    },
+  });
+}
+
+export function useBatchBindDevices() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (data: {
+      ids: string[];
+      tenant_id: string;
+      parking_lot_id: string;
+      gate_id: string;
+    }) => {
+      const accessToken = await getValidAccessToken();
+      if (!accessToken) throw new Error('未登录');
+      return api.batchBindDevices(data, accessToken);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: deviceKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: deviceKeys.stats() });
+    },
+  });
+}
+
 export function useControlDevice() {
   return useMutation({
     mutationFn: async ({ id, command }: { id: string; command: ControlDeviceRequest['command'] }) => {

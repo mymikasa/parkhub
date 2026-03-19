@@ -515,3 +515,150 @@ func TestDeviceService_Delete_Success(t *testing.T) {
 		t.Fatal("device still exists after Delete()")
 	}
 }
+
+func TestDeviceService_BatchDisable_TenantAdminSameLot_Success(t *testing.T) {
+	svc, deviceRepo, _, _, _ := setupTestDeviceService()
+	device1 := createTestDevice(deviceRepo, "device-1", "tenant-1", domain.DeviceStatusActive)
+	device2 := createTestDevice(deviceRepo, "device-2", "tenant-1", domain.DeviceStatusOffline)
+	lotID := "lot-1"
+	device1.ParkingLotID = &lotID
+	device2.ParkingLotID = &lotID
+
+	err := svc.BatchDisable(context.Background(), &service.BatchChangeDeviceStatusRequest{
+		IDs:              []string{"device-1", "device-2"},
+		OperatorRole:     "tenant_admin",
+		OperatorTenantID: "tenant-1",
+	})
+	if err != nil {
+		t.Fatalf("BatchDisable() error = %v", err)
+	}
+	if deviceRepo.devices["device-1"].Status != domain.DeviceStatusDisabled {
+		t.Fatalf("device-1 status = %v, want disabled", deviceRepo.devices["device-1"].Status)
+	}
+	if deviceRepo.devices["device-2"].Status != domain.DeviceStatusDisabled {
+		t.Fatalf("device-2 status = %v, want disabled", deviceRepo.devices["device-2"].Status)
+	}
+}
+
+func TestDeviceService_BatchDisable_TenantAdminCrossParkingLotForbidden(t *testing.T) {
+	svc, deviceRepo, _, _, _ := setupTestDeviceService()
+	device1 := createTestDevice(deviceRepo, "device-1", "tenant-1", domain.DeviceStatusActive)
+	device2 := createTestDevice(deviceRepo, "device-2", "tenant-1", domain.DeviceStatusOffline)
+	lotA := "lot-a"
+	lotB := "lot-b"
+	device1.ParkingLotID = &lotA
+	device2.ParkingLotID = &lotB
+
+	err := svc.BatchDisable(context.Background(), &service.BatchChangeDeviceStatusRequest{
+		IDs:              []string{"device-1", "device-2"},
+		OperatorRole:     "tenant_admin",
+		OperatorTenantID: "tenant-1",
+	})
+	if err == nil {
+		t.Fatal("BatchDisable() error = nil, want forbidden")
+	}
+	var domainErr *domain.DomainError
+	if !errors.As(err, &domainErr) || domainErr.Code != "FORBIDDEN" {
+		t.Fatalf("error = %v, want FORBIDDEN", err)
+	}
+}
+
+func TestDeviceService_BatchDisable_PlatformAdminCanCrossParkingLots(t *testing.T) {
+	svc, deviceRepo, _, _, _ := setupTestDeviceService()
+	device1 := createTestDevice(deviceRepo, "device-1", "tenant-1", domain.DeviceStatusActive)
+	device2 := createTestDevice(deviceRepo, "device-2", "tenant-2", domain.DeviceStatusOffline)
+	lotA := "lot-a"
+	lotB := "lot-b"
+	device1.ParkingLotID = &lotA
+	device2.ParkingLotID = &lotB
+
+	err := svc.BatchDisable(context.Background(), &service.BatchChangeDeviceStatusRequest{
+		IDs:          []string{"device-1", "device-2"},
+		OperatorRole: "platform_admin",
+	})
+	if err != nil {
+		t.Fatalf("BatchDisable() error = %v", err)
+	}
+	if deviceRepo.devices["device-1"].Status != domain.DeviceStatusDisabled {
+		t.Fatalf("device-1 status = %v, want disabled", deviceRepo.devices["device-1"].Status)
+	}
+	if deviceRepo.devices["device-2"].Status != domain.DeviceStatusDisabled {
+		t.Fatalf("device-2 status = %v, want disabled", deviceRepo.devices["device-2"].Status)
+	}
+}
+
+func TestDeviceService_BatchEnable_Success(t *testing.T) {
+	svc, deviceRepo, _, _, _ := setupTestDeviceService()
+	device1 := createTestDevice(deviceRepo, "device-1", "tenant-1", domain.DeviceStatusDisabled)
+	device2 := createTestDevice(deviceRepo, "device-2", "tenant-1", domain.DeviceStatusDisabled)
+	lotID := "lot-1"
+	device1.ParkingLotID = &lotID
+	device2.ParkingLotID = &lotID
+	fresh := time.Now().Add(-1 * time.Minute)
+	stale := time.Now().Add(-10 * time.Minute)
+	device1.LastHeartbeat = &fresh
+	device2.LastHeartbeat = &stale
+
+	err := svc.BatchEnable(context.Background(), &service.BatchChangeDeviceStatusRequest{
+		IDs:              []string{"device-1", "device-2"},
+		OperatorRole:     "tenant_admin",
+		OperatorTenantID: "tenant-1",
+	})
+	if err != nil {
+		t.Fatalf("BatchEnable() error = %v", err)
+	}
+	if deviceRepo.devices["device-1"].Status != domain.DeviceStatusActive {
+		t.Fatalf("device-1 status = %v, want active", deviceRepo.devices["device-1"].Status)
+	}
+	if deviceRepo.devices["device-2"].Status != domain.DeviceStatusOffline {
+		t.Fatalf("device-2 status = %v, want offline", deviceRepo.devices["device-2"].Status)
+	}
+}
+
+func TestDeviceService_BatchDelete_RequiresUnbind(t *testing.T) {
+	svc, deviceRepo, _, _, _ := setupTestDeviceService()
+	device := createTestDevice(deviceRepo, "device-1", "tenant-1", domain.DeviceStatusActive)
+	lotID := "lot-1"
+	gateID := "gate-1"
+	device.ParkingLotID = &lotID
+	device.GateID = &gateID
+
+	err := svc.BatchDelete(context.Background(), &service.BatchDeleteDeviceRequest{
+		IDs:              []string{"device-1"},
+		OperatorRole:     "tenant_admin",
+		OperatorTenantID: "tenant-1",
+	})
+	if err == nil {
+		t.Fatal("BatchDelete() error = nil, want DEVICE_MUST_UNBIND")
+	}
+	var domainErr *domain.DomainError
+	if !errors.As(err, &domainErr) || domainErr.Code != "DEVICE_MUST_UNBIND" {
+		t.Fatalf("error = %v, want DEVICE_MUST_UNBIND", err)
+	}
+}
+
+func TestDeviceService_BatchBind_TenantAdminCrossParkingLotForbidden(t *testing.T) {
+	svc, deviceRepo, _, _, _ := setupTestDeviceService()
+	device1 := createTestDevice(deviceRepo, "device-1", domain.PlatformTenantID, domain.DeviceStatusPending)
+	device2 := createTestDevice(deviceRepo, "device-2", domain.PlatformTenantID, domain.DeviceStatusActive)
+	lotA := "lot-a"
+	lotB := "lot-b"
+	device1.ParkingLotID = &lotA
+	device2.ParkingLotID = &lotB
+
+	err := svc.BatchBind(context.Background(), &service.BatchBindDeviceRequest{
+		IDs:              []string{"device-1", "device-2"},
+		OperatorRole:     "tenant_admin",
+		OperatorTenantID: "tenant-1",
+		TargetTenantID:   "tenant-1",
+		ParkingLotID:     "lot-x",
+		GateID:           "gate-x",
+	})
+	if err == nil {
+		t.Fatal("BatchBind() error = nil, want FORBIDDEN")
+	}
+	var domainErr *domain.DomainError
+	if !errors.As(err, &domainErr) || domainErr.Code != "FORBIDDEN" {
+		t.Fatalf("error = %v, want FORBIDDEN", err)
+	}
+}
