@@ -9,6 +9,8 @@ import type {
   BindDeviceRequest,
   ControlDeviceRequest,
   ControlDeviceResponse,
+  DeviceControlLogItem,
+  DeviceControlLogListResponse,
 } from './types';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080';
@@ -45,6 +47,25 @@ type DeviceListRaw = {
   page?: number;
   page_size?: number;
   Items?: DeviceRaw[];
+  Total?: number;
+  Page?: number;
+  PageSize?: number;
+};
+
+type DeviceControlLogRaw = Partial<DeviceControlLogItem> & {
+  ID?: string;
+  OperatorID?: string;
+  OperatorName?: string;
+  Command?: string;
+  CreatedAt?: string;
+};
+
+type DeviceControlLogListRaw = {
+  items?: DeviceControlLogRaw[];
+  total?: number;
+  page?: number;
+  page_size?: number;
+  Items?: DeviceControlLogRaw[];
   Total?: number;
   Page?: number;
   PageSize?: number;
@@ -129,6 +150,25 @@ function mapDeviceDetail(raw: DeviceRaw): DeviceDetail {
 function mapDeviceList(raw: DeviceListRaw): DeviceListResponse {
   return {
     items: (raw.items ?? raw.Items ?? []).map(mapDevice),
+    total: raw.total ?? raw.Total ?? 0,
+    page: raw.page ?? raw.Page ?? 1,
+    page_size: raw.page_size ?? raw.PageSize ?? 20,
+  };
+}
+
+function mapDeviceControlLog(raw: DeviceControlLogRaw): DeviceControlLogItem {
+  return {
+    id: raw.id ?? raw.ID ?? '',
+    operator_id: raw.operator_id ?? raw.OperatorID ?? '',
+    operator_name: raw.operator_name ?? raw.OperatorName ?? '',
+    command: raw.command ?? raw.Command ?? '',
+    created_at: raw.created_at ?? raw.CreatedAt ?? '',
+  };
+}
+
+function mapDeviceControlLogList(raw: DeviceControlLogListRaw): DeviceControlLogListResponse {
+  return {
+    items: (raw.items ?? raw.Items ?? []).map(mapDeviceControlLog),
     total: raw.total ?? raw.Total ?? 0,
     page: raw.page ?? raw.Page ?? 1,
     page_size: raw.page_size ?? raw.PageSize ?? 20,
@@ -223,6 +263,24 @@ export async function getDevice(
     accessToken
   );
   return mapDeviceDetail(unwrapResponse(response));
+}
+
+export async function getDeviceControlLogs(
+  id: string,
+  page: number,
+  pageSize: number,
+  accessToken: string
+): Promise<DeviceControlLogListResponse> {
+  const params = new URLSearchParams({
+    page: String(page),
+    page_size: String(pageSize),
+  });
+  const response = await request<DeviceControlLogListRaw | ApiEnvelope<DeviceControlLogListRaw>>(
+    `/api/v1/devices/${id}/control-logs?${params.toString()}`,
+    {},
+    accessToken
+  );
+  return mapDeviceControlLogList(unwrapResponse(response));
 }
 
 export async function updateDeviceName(

@@ -300,6 +300,46 @@ func (h *DeviceHandler) GetStats(c *gin.Context) {
 	})
 }
 
+func (h *DeviceHandler) ListControlLogs(c *gin.Context) {
+	deviceID := c.Param("id")
+	tenantID := c.GetString("tenant_id")
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "20"))
+
+	resp, err := h.deviceControlService.ListLogs(c.Request.Context(), &service.ListDeviceControlLogsRequest{
+		DeviceID: deviceID,
+		TenantID: tenantID,
+		Page:     page,
+		PageSize: pageSize,
+	})
+	if err != nil {
+		h.handleError(c, err)
+		return
+	}
+
+	items := make([]*dto.DeviceControlLogItem, len(resp.Items))
+	for i, item := range resp.Items {
+		items[i] = &dto.DeviceControlLogItem{
+			ID:           item.ID,
+			OperatorID:   item.OperatorID,
+			OperatorName: item.OperatorName,
+			Command:      item.Command,
+			CreatedAt:    item.CreatedAt,
+		}
+	}
+
+	c.JSON(http.StatusOK, dto.Response{
+		Code:    0,
+		Message: "success",
+		Data: dto.DeviceControlLogListData{
+			Items:    items,
+			Total:    resp.Total,
+			Page:     resp.Page,
+			PageSize: resp.PageSize,
+		},
+	})
+}
+
 func (h *DeviceHandler) Control(c *gin.Context) {
 	deviceID := c.Param("id")
 	tenantID := c.GetString("tenant_id")

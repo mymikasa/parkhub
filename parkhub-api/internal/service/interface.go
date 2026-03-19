@@ -516,6 +516,7 @@ type UpdateGateRequest struct {
 
 type DeviceControlService interface {
 	Control(ctx context.Context, req *ControlDeviceRequest) (*ControlDeviceResponse, error)
+	ListLogs(ctx context.Context, req *ListDeviceControlLogsRequest) (*ListDeviceControlLogsResponse, error)
 }
 
 type ControlDeviceRequest struct {
@@ -529,6 +530,28 @@ type ControlDeviceRequest struct {
 
 type ControlDeviceResponse struct {
 	Success bool
+}
+
+type ListDeviceControlLogsRequest struct {
+	DeviceID string
+	TenantID string
+	Page     int
+	PageSize int
+}
+
+type DeviceControlLogItem struct {
+	ID           string
+	OperatorID   string
+	OperatorName string
+	Command      string
+	CreatedAt    string
+}
+
+type ListDeviceControlLogsResponse struct {
+	Items    []*DeviceControlLogItem
+	Total    int64
+	Page     int
+	PageSize int
 }
 
 // BillingRuleService 计费规则服务接口

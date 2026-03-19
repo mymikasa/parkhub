@@ -12,6 +12,7 @@ export const deviceKeys = {
   details: () => [...deviceKeys.all, 'detail'] as const,
   detail: (id: string) => [...deviceKeys.details(), id] as const,
   stats: () => [...deviceKeys.all, 'stats'] as const,
+  controlLogs: (id: string, page: number, pageSize: number) => [...deviceKeys.all, 'control-logs', id, page, pageSize] as const,
 };
 
 export function useDevices(filter: DeviceFilter) {
@@ -43,6 +44,18 @@ export function useDevice(id: string) {
       const accessToken = await getValidAccessToken();
       if (!accessToken) throw new Error('未登录');
       return api.getDevice(id, accessToken);
+    },
+    enabled: !!id,
+  });
+}
+
+export function useDeviceControlLogs(id: string, page: number, pageSize: number = 20) {
+  return useQuery({
+    queryKey: deviceKeys.controlLogs(id, page, pageSize),
+    queryFn: async () => {
+      const accessToken = await getValidAccessToken();
+      if (!accessToken) throw new Error('未登录');
+      return api.getDeviceControlLogs(id, page, pageSize, accessToken);
     },
     enabled: !!id,
   });

@@ -259,6 +259,9 @@ func (r *Router) setupDeviceRoutes(rg *gin.RouterGroup) {
 		// POST /api/v1/devices/:id/control - 远程控制设备
 		devices.POST("/:id/control", r.deviceHandler.Control)
 
+		// GET /api/v1/devices/:id/control-logs - 获取设备控制日志
+		devices.GET("/:id/control-logs", r.deviceHandler.ListControlLogs)
+
 		// POST /api/v1/devices/:id/disable - 禁用设备（仅admin）
 		devices.POST("/:id/disable", middleware.RequireRoles("platform_admin", "tenant_admin"), r.deviceHandler.Disable)
 

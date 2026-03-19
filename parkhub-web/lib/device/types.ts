@@ -74,3 +74,18 @@ export interface ControlDeviceRequest {
 export interface ControlDeviceResponse {
   success: boolean;
 }
+
+export interface DeviceControlLogItem {
+  id: string;
+  operator_id: string;
+  operator_name: string;
+  command: string;
+  created_at: string;
+}
+
+export interface DeviceControlLogListResponse {
+  items: DeviceControlLogItem[];
+  total: number;
+  page: number;
+  page_size: number;
+}

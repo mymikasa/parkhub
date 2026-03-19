@@ -68,6 +68,21 @@ type DeviceStatsData struct {
 	Disabled int64 `json:"disabled"`
 }
 
+type DeviceControlLogItem struct {
+	ID           string `json:"id"`
+	OperatorID   string `json:"operator_id"`
+	OperatorName string `json:"operator_name"`
+	Command      string `json:"command"`
+	CreatedAt    string `json:"created_at"`
+}
+
+type DeviceControlLogListData struct {
+	Items    []*DeviceControlLogItem `json:"items"`
+	Total    int64                   `json:"total"`
+	Page     int                     `json:"page"`
+	PageSize int                     `json:"page_size"`
+}
+
 // ToDeviceListItemDTO converts service layer item to DTO.
 func ToDeviceListItemDTO(item *service.DeviceListItem) *DeviceListItem {
 	return &DeviceListItem{
