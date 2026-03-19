@@ -9,6 +9,12 @@ export type TransitStatus =
 
 export type TransitStatusGroup = "all" | "normal" | "exception";
 
+const EXCEPTION_STATUSES: TransitStatus[] = ["no_exit", "no_entry", "recognition_failed"];
+
+export function isExceptionStatus(status: TransitStatus): boolean {
+  return EXCEPTION_STATUSES.includes(status);
+}
+
 export interface TransitRecord {
   id: string;
   tenant_id: string;
@@ -59,4 +65,11 @@ export interface TransitExceptionSummary {
   no_entry: number;
   recognition_failed: number;
   total: number;
+}
+
+export interface TransitStats {
+  entry_count: number;
+  exit_count: number;
+  on_site_count: number;
+  today_revenue: number;
 }

@@ -4,6 +4,7 @@ import type {
   TransitRecord,
   TransitRecordFilter,
   TransitRecordListResponse,
+  TransitStats,
   TransitStatus,
   TransitType,
 } from "./types";
@@ -283,4 +284,36 @@ export async function exportTransitRecords(
   const filename = parseFilename(res.headers.get("content-disposition"), defaultFilename);
 
   return { blob, filename };
+}
+
+export async function getTransitStats(accessToken: string): Promise<TransitStats> {
+  const response = await request<TransitStats | ApiEnvelope<TransitStats>>(
+    "/api/v1/transit-records/stats",
+    {},
+    accessToken
+  );
+  return unwrapResponse(response);
+}
+
+export async function getLatestTransitRecords(
+  accessToken: string,
+  limit = 20,
+): Promise<TransitRecord[]> {
+  const response = await request<TransitRecord[] | ApiEnvelope<TransitRecord[]>>(
+    `/api/v1/transit-records/latest?limit=${limit}`,
+    {},
+    accessToken
+  );
+  return unwrapResponse(response);
+}
+
+export async function getOverstayRecords(
+  accessToken: string,
+): Promise<TransitRecord[]> {
+  const response = await request<TransitRecord[] | ApiEnvelope<TransitRecord[]>>(
+    "/api/v1/transit-records/overstay",
+    {},
+    accessToken
+  );
+  return unwrapResponse(response);
 }

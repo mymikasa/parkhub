@@ -15,7 +15,7 @@ export const parkingLotKeys = {
   gates: (parkingLotId: string) => [...parkingLotKeys.all, 'gates', parkingLotId] as const,
 };
 
-export function useParkingLots(filter: ParkingLotFilter, enabled = true) {
+export function useParkingLots(filter: ParkingLotFilter, enabled = true, refetchInterval?: number) {
   return useQuery({
     queryKey: parkingLotKeys.list(filter),
     queryFn: async () => {
@@ -24,6 +24,7 @@ export function useParkingLots(filter: ParkingLotFilter, enabled = true) {
       return api.getParkingLots(filter, accessToken);
     },
     enabled,
+    refetchInterval,
   });
 }
 
