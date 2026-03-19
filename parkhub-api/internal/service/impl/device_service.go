@@ -446,6 +446,9 @@ func (s *deviceServiceImpl) BatchDelete(ctx context.Context, req *service.BatchD
 		if device.ParkingLotID != nil || device.GateID != nil {
 			return &domain.DomainError{Code: "DEVICE_MUST_UNBIND", Message: domain.ErrDeviceMustUnbind.Error()}
 		}
+	}
+
+	for _, device := range devices {
 		if err := s.deviceRepo.Delete(ctx, device.ID); err != nil {
 			if err == domain.ErrDeviceNotFound {
 				return &domain.DomainError{Code: "DEVICE_NOT_FOUND", Message: err.Error()}
@@ -474,6 +477,15 @@ func (s *deviceServiceImpl) BatchBind(ctx context.Context, req *service.BatchBin
 		if err := validateTenantAdminSingleParkingLot(devices); err != nil {
 			return err
 		}
+	}
+
+	targetTenantID := req.TargetTenantID
+	if req.OperatorRole == "tenant_admin" {
+		targetTenantID = req.OperatorTenantID
+	}
+
+	if err := s.precheckBatchBind(ctx, devices, req.OperatorRole, req.OperatorTenantID, targetTenantID, req.ParkingLotID, req.GateID); err != nil {
+		return err
 	}
 
 	for _, device := range devices {
@@ -592,5 +604,77 @@ func validateTenantAdminSingleParkingLot(devices []*domain.Device) error {
 			return &domain.DomainError{Code: "FORBIDDEN", Message: "tenant_admin仅可批量操作同一车场设备"}
 		}
 	}
+	return nil
+}
+
+func (s *deviceServiceImpl) precheckBatchBind(
+	ctx context.Context,
+	devices []*domain.Device,
+	operatorRole string,
+	operatorTenantID string,
+	targetTenantID string,
+	parkingLotID string,
+	gateID string,
+) error {
+	for _, device := range devices {
+		if !device.CanBind() {
+			return &domain.DomainError{Code: "DEVICE_INVALID_STATUS", Message: "当前设备状态不允许绑定"}
+		}
+		if operatorRole == "tenant_admin" &&
+			device.TenantID != domain.PlatformTenantID &&
+			device.TenantID != operatorTenantID {
+			return &domain.DomainError{Code: "FORBIDDEN", Message: "无权操作该设备"}
+		}
+	}
+
+	tenant, err := s.tenantRepo.FindByID(ctx, targetTenantID)
+	if err != nil {
+		if err == domain.ErrTenantNotFound {
+			return &domain.DomainError{Code: "TENANT_NOT_FOUND", Message: err.Error()}
+		}
+		return err
+	}
+	if tenant == nil {
+		return &domain.DomainError{Code: "TENANT_NOT_FOUND", Message: domain.ErrTenantNotFound.Error()}
+	}
+
+	lot, err := s.parkingLotRepo.FindByID(ctx, parkingLotID)
+	if err != nil {
+		if err == domain.ErrParkingLotNotFound {
+			return &domain.DomainError{Code: "PARKING_LOT_NOT_FOUND", Message: err.Error()}
+		}
+		return err
+	}
+	if lot.TenantID != targetTenantID {
+		return &domain.DomainError{Code: "FORBIDDEN", Message: "无权绑定到该停车场"}
+	}
+
+	gate, err := s.gateRepo.FindByID(ctx, gateID)
+	if err != nil {
+		if err == domain.ErrGateNotFound {
+			return &domain.DomainError{Code: "GATE_NOT_FOUND", Message: err.Error()}
+		}
+		return err
+	}
+	if gate.ParkingLotID != parkingLotID {
+		return &domain.DomainError{Code: "FORBIDDEN", Message: "目标出入口不属于该停车场"}
+	}
+
+	count, err := s.deviceRepo.CountByGateID(ctx, gateID)
+	if err != nil {
+		return err
+	}
+
+	alreadyOnTargetGate := 0
+	for _, device := range devices {
+		if device.GateID != nil && *device.GateID == gateID {
+			alreadyOnTargetGate++
+		}
+	}
+	requiredSlots := len(devices) - alreadyOnTargetGate
+	if count+int64(requiredSlots) > 3 {
+		return &domain.DomainError{Code: "DEVICE_GATE_CAPACITY_EXCEEDED", Message: "该出入口最多绑定3个设备"}
+	}
+
 	return nil
 }
