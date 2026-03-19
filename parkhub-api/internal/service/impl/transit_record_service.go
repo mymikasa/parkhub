@@ -40,6 +40,18 @@ func NewTransitRecordService(
 }
 
 func (s *transitRecordServiceImpl) CreateEntry(ctx context.Context, req *service.CreateEntryRequest) (*domain.TransitRecord, error) {
+	// 验证车场存在且租户匹配
+	lot, err := s.parkingLotRepo.FindByID(ctx, req.ParkingLotID)
+	if err != nil {
+		if err == domain.ErrParkingLotNotFound {
+			return nil, &domain.DomainError{Code: domain.CodeParkingLotFull, Message: "车场不存在"}
+		}
+		return nil, err
+	}
+	if lot.TenantID != req.TenantID {
+		return nil, &domain.DomainError{Code: "FORBIDDEN", Message: "无权操作该车场"}
+	}
+
 	// 验证 gate 存在且属于指定车场
 	gate, err := s.gateRepo.FindByID(ctx, req.GateID)
 	if err != nil {
@@ -94,6 +106,18 @@ func (s *transitRecordServiceImpl) CreateEntry(ctx context.Context, req *service
 }
 
 func (s *transitRecordServiceImpl) CreateExit(ctx context.Context, req *service.CreateExitRequest) (*domain.TransitRecord, error) {
+	// 验证车场存在且租户匹配
+	lot, err := s.parkingLotRepo.FindByID(ctx, req.ParkingLotID)
+	if err != nil {
+		if err == domain.ErrParkingLotNotFound {
+			return nil, &domain.DomainError{Code: domain.CodeGateTypeMismatch, Message: "车场不存在"}
+		}
+		return nil, err
+	}
+	if lot.TenantID != req.TenantID {
+		return nil, &domain.DomainError{Code: "FORBIDDEN", Message: "无权操作该车场"}
+	}
+
 	// 验证 gate 存在且属于指定车场
 	gate, err := s.gateRepo.FindByID(ctx, req.GateID)
 	if err != nil {
@@ -115,7 +139,7 @@ func (s *transitRecordServiceImpl) CreateExit(ctx context.Context, req *service.
 
 	// 尝试匹配入场记录（车牌识别成功时）
 	if req.PlateNumber != nil && *req.PlateNumber != "" {
-		entryRecord, err := s.transitRecordRepo.FindLatestUnmatchedEntry(ctx, req.ParkingLotID, *req.PlateNumber)
+		entryRecord, err := s.transitRecordRepo.FindLatestUnmatchedEntry(ctx, req.ParkingLotID, *req.PlateNumber, nil)
 		if err != nil {
 			return nil, err
 		}
@@ -272,27 +296,35 @@ func (s *transitRecordServiceImpl) Resolve(ctx context.Context, req *service.Res
 		return nil, err
 	}
 
-	// 如果是出场记录且补录了车牌，重新尝试入场匹配和计费
-	if record.Type == domain.TransitTypeExit && req.PlateNumber != nil && *req.PlateNumber != "" && record.EntryRecordID == nil {
-		entryRecord, err := s.transitRecordRepo.FindLatestUnmatchedEntry(ctx, record.ParkingLotID, *req.PlateNumber)
-		if err != nil {
-			return nil, err
+	// 补录车牌后的状态恢复
+	if req.PlateNumber != nil && *req.PlateNumber != "" {
+		if record.Type == domain.TransitTypeEntry && record.Status == domain.TransitStatusRecognitionFailed {
+			// 入场记录补录车牌后恢复为 normal，使其纳入在场统计和超时扫描
+			record.Status = domain.TransitStatusNormal
 		}
 
-		if entryRecord != nil {
-			record.EntryRecordID = &entryRecord.ID
-			record.Status = domain.TransitStatusPaid
-
-			rule, err := s.billingRuleRepo.FindByParkingLotID(ctx, record.ParkingLotID)
-			if err != nil && err != domain.ErrBillingRuleNotFound {
+		// 出场记录补录车牌后，重新尝试入场匹配和计费（限制只匹配早于出场的入场记录）
+		if record.Type == domain.TransitTypeExit && record.EntryRecordID == nil {
+			entryRecord, err := s.transitRecordRepo.FindLatestUnmatchedEntry(ctx, record.ParkingLotID, *req.PlateNumber, &record.CreatedAt)
+			if err != nil {
 				return nil, err
 			}
 
-			if rule != nil {
-				result, err := rule.Calculate(entryRecord.CreatedAt, record.CreatedAt)
-				if err == nil {
-					record.Fee = &result.FinalFee
-					record.ParkingDuration = &result.ParkingDuration
+			if entryRecord != nil {
+				record.EntryRecordID = &entryRecord.ID
+				record.Status = domain.TransitStatusPaid
+
+				rule, err := s.billingRuleRepo.FindByParkingLotID(ctx, record.ParkingLotID)
+				if err != nil && err != domain.ErrBillingRuleNotFound {
+					return nil, err
+				}
+
+				if rule != nil {
+					result, err := rule.Calculate(entryRecord.CreatedAt, record.CreatedAt)
+					if err == nil {
+						record.Fee = &result.FinalFee
+						record.ParkingDuration = &result.ParkingDuration
+					}
 				}
 			}
 		}

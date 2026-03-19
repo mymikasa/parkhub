@@ -114,14 +114,19 @@ func (r *transitRecordRepo) FindLatest(ctx context.Context, tenantID string, lim
 	return results, nil
 }
 
-func (r *transitRecordRepo) FindLatestUnmatchedEntry(ctx context.Context, parkingLotID, plateNumber string) (*domain.TransitRecord, error) {
+func (r *transitRecordRepo) FindLatestUnmatchedEntry(ctx context.Context, parkingLotID, plateNumber string, before *time.Time) (*domain.TransitRecord, error) {
 	var row dao.TransitRecordDAO
-	err := r.db.WithContext(ctx).
+	q := r.db.WithContext(ctx).
 		Table("transit_records t").
 		Select("t.*").
 		Where("t.parking_lot_id = ? AND t.plate_number = ? AND t.type = ?", parkingLotID, plateNumber, string(domain.TransitTypeEntry)).
-		Where("NOT EXISTS (SELECT 1 FROM transit_records t2 WHERE t2.entry_record_id = t.id)").
-		Order("t.created_at DESC").
+		Where("NOT EXISTS (SELECT 1 FROM transit_records t2 WHERE t2.entry_record_id = t.id)")
+
+	if before != nil {
+		q = q.Where("t.created_at < ?", *before)
+	}
+
+	err := q.Order("t.created_at DESC").
 		Limit(1).
 		First(&row).Error
 	if err != nil {

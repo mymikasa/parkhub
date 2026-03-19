@@ -207,7 +207,7 @@ type TransitRecordRepo interface {
 	FindByID(ctx context.Context, id string) (*domain.TransitRecordListItem, error)
 	FindAll(ctx context.Context, filter TransitRecordFilter) ([]*domain.TransitRecordListItem, int64, error)
 	FindLatest(ctx context.Context, tenantID string, limit int) ([]*domain.TransitRecordListItem, error)
-	FindLatestUnmatchedEntry(ctx context.Context, parkingLotID, plateNumber string) (*domain.TransitRecord, error)
+	FindLatestUnmatchedEntry(ctx context.Context, parkingLotID, plateNumber string, before *time.Time) (*domain.TransitRecord, error)
 	Update(ctx context.Context, record *domain.TransitRecord) error
 	CountTodayStats(ctx context.Context, tenantID string) (*TransitStats, error)
 	FindOverstay(ctx context.Context, tenantID string, threshold time.Time) ([]*domain.TransitRecordListItem, error)
