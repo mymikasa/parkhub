@@ -93,6 +93,18 @@ func main() {
 	r.SetDeviceControlMQTTClient(mqttClient)
 	heartbeatSvc.Start()
 
+	// Start overstay scanner (hourly background check)
+	transitRecordRepo := repoimpl.NewTransitRecordRepo(gormDB)
+	transitRecordSvc := svcimpl.NewTransitRecordService(
+		gormDB,
+		transitRecordRepo,
+		parkingLotRepo,
+		repoimpl.NewGateRepo(gormDB),
+		repoimpl.NewBillingRuleRepo(gormDB),
+	)
+	overstayScanner := svcimpl.NewOverstayScanner(transitRecordSvc)
+	overstayScanner.Start()
+
 	srv := &http.Server{
 		Addr:    ":" + cfg.AppPort,
 		Handler: r.GetEngine(),
@@ -114,6 +126,7 @@ func main() {
 	<-ctx.Done()
 	slog.Info("shutdown signal received")
 
+	overstayScanner.Stop()
 	heartbeatSvc.Stop()
 
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
