@@ -421,6 +421,8 @@ type UpdateDeviceNameRequest struct {
 
 type BindDeviceRequest struct {
 	ID               string
+	OperatorID       string
+	OperatorIP       string
 	OperatorRole     string
 	OperatorTenantID string
 	TargetTenantID   string
@@ -430,6 +432,8 @@ type BindDeviceRequest struct {
 
 type UnbindDeviceRequest struct {
 	ID               string
+	OperatorID       string
+	OperatorIP       string
 	OperatorRole     string
 	OperatorTenantID string
 }
@@ -504,6 +508,7 @@ type ControlDeviceRequest struct {
 	Command      string
 	OperatorID   string
 	OperatorName string
+	OperatorIP   string
 }
 
 type ControlDeviceResponse struct {

@@ -20,6 +20,7 @@ var DeviceControlServiceSet = wire.NewSet(NewDeviceControlService)
 type deviceControlServiceImpl struct {
 	deviceRepo     repository.DeviceRepo
 	controlLogRepo repository.DeviceControlLogRepo
+	auditLogSvc    service.AuditLogService
 	mqttClient     pahomqtt.Client
 	offlineTimeout time.Duration
 }
@@ -27,10 +28,12 @@ type deviceControlServiceImpl struct {
 func NewDeviceControlService(
 	deviceRepo repository.DeviceRepo,
 	controlLogRepo repository.DeviceControlLogRepo,
+	auditLogSvc service.AuditLogService,
 ) service.DeviceControlService {
 	return &deviceControlServiceImpl{
 		deviceRepo:     deviceRepo,
 		controlLogRepo: controlLogRepo,
+		auditLogSvc:    auditLogSvc,
 		mqttClient:     nil,
 		offlineTimeout: time.Duration(domain.DefaultHeartbeatTimeoutSeconds) * time.Second,
 	}
@@ -53,10 +56,6 @@ func (s *deviceControlServiceImpl) Control(ctx context.Context, req *service.Con
 		return nil, &domain.DomainError{Code: "FORBIDDEN", Message: "无权操作该设备"}
 	}
 
-	if !s.isDeviceOnline(device) {
-		return nil, &domain.DomainError{Code: domain.CodeDeviceOffline, Message: domain.ErrDeviceOffline.Error()}
-	}
-
 	if !domain.IsValidControlCommand(req.Command) {
 		return nil, &domain.DomainError{Code: domain.CodeInvalidCommand, Message: domain.ErrInvalidCommand.Error()}
 	}
@@ -72,9 +71,30 @@ func (s *deviceControlServiceImpl) Control(ctx context.Context, req *service.Con
 
 	if err := s.controlLogRepo.Create(ctx, controlLog); err != nil {
 		slog.Error("failed to create control log", "device_id", device.ID, "error", err)
+		return nil, &domain.DomainError{Code: "INTERNAL_ERROR", Message: "保存操作日志失败"}
+	}
+
+	if !s.isDeviceOnline(device) {
+		return nil, &domain.DomainError{Code: domain.CodeDeviceOffline, Message: domain.ErrDeviceOffline.Error()}
 	}
 
 	s.publishCommand(device.ID, req.Command, req.OperatorID, req.OperatorName)
+
+	detail, _ := json.Marshal(map[string]string{
+		"command": req.Command,
+	})
+	tenantID := device.TenantID
+	_ = s.auditLogSvc.Log(ctx, &domain.AuditLog{
+		ID:         uuid.NewString(),
+		UserID:     req.OperatorID,
+		TenantID:   &tenantID,
+		Action:     domain.AuditActionDeviceGateOpened,
+		TargetType: "device",
+		TargetID:   device.ID,
+		Detail:     string(detail),
+		IP:         req.OperatorIP,
+		CreatedAt:  time.Now(),
+	})
 
 	return &service.ControlDeviceResponse{Success: true}, nil
 }

@@ -153,6 +153,7 @@ func (h *DeviceHandler) UpdateName(c *gin.Context) {
 
 func (h *DeviceHandler) Bind(c *gin.Context) {
 	id := c.Param("id")
+	userID := c.GetString("user_id")
 	role := c.GetString("role")
 	tenantID := c.GetString("tenant_id")
 
@@ -164,6 +165,8 @@ func (h *DeviceHandler) Bind(c *gin.Context) {
 
 	device, err := h.deviceService.Bind(c.Request.Context(), &service.BindDeviceRequest{
 		ID:               id,
+		OperatorID:       userID,
+		OperatorIP:       c.ClientIP(),
 		OperatorRole:     role,
 		OperatorTenantID: tenantID,
 		TargetTenantID:   req.TenantID,
@@ -184,11 +187,14 @@ func (h *DeviceHandler) Bind(c *gin.Context) {
 
 func (h *DeviceHandler) Unbind(c *gin.Context) {
 	id := c.Param("id")
+	userID := c.GetString("user_id")
 	role := c.GetString("role")
 	tenantID := c.GetString("tenant_id")
 
 	device, err := h.deviceService.Unbind(c.Request.Context(), &service.UnbindDeviceRequest{
 		ID:               id,
+		OperatorID:       userID,
+		OperatorIP:       c.ClientIP(),
 		OperatorRole:     role,
 		OperatorTenantID: tenantID,
 	})
@@ -245,6 +251,7 @@ func (h *DeviceHandler) Control(c *gin.Context) {
 		Command:      req.Command,
 		OperatorID:   userID,
 		OperatorName: realName,
+		OperatorIP:   c.ClientIP(),
 	})
 	if err != nil {
 		h.handleError(c, err)
