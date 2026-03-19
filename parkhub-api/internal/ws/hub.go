@@ -124,3 +124,12 @@ func (c *client) writeJSON(msg any) error {
 	_ = c.conn.SetWriteDeadline(time.Now().Add(3 * time.Second))
 	return c.conn.WriteJSON(msg)
 }
+
+func (h *AlertHub) Ping(c *client) error {
+	c.writeMu.Lock()
+	defer c.writeMu.Unlock()
+
+	deadline := time.Now().Add(3 * time.Second)
+	_ = c.conn.SetWriteDeadline(deadline)
+	return c.conn.WriteControl(websocket.PingMessage, []byte("ping"), deadline)
+}

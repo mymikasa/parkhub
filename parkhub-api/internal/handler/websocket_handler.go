@@ -15,6 +15,11 @@ import (
 
 var WebSocketHandlerSet = wire.NewSet(NewWebSocketHandler)
 
+const (
+	wsReadTimeout  = 60 * time.Second
+	wsPingInterval = 25 * time.Second
+)
+
 type WebSocketHandler struct {
 	jwtManager *jwt.JWTManager
 	hub        *ws.AlertHub
@@ -68,10 +73,28 @@ func (h *WebSocketHandler) ServeWS(c *gin.Context) {
 	defer h.hub.Unregister(client)
 
 	conn.SetReadLimit(1024)
-	_ = conn.SetReadDeadline(time.Now().Add(60 * time.Second))
+	_ = conn.SetReadDeadline(time.Now().Add(wsReadTimeout))
 	conn.SetPongHandler(func(string) error {
-		return conn.SetReadDeadline(time.Now().Add(60 * time.Second))
+		return conn.SetReadDeadline(time.Now().Add(wsReadTimeout))
 	})
+	done := make(chan struct{})
+	defer close(done)
+
+	go func() {
+		ticker := time.NewTicker(wsPingInterval)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-done:
+				return
+			case <-ticker.C:
+				if err := h.hub.Ping(client); err != nil {
+					_ = conn.Close()
+					return
+				}
+			}
+		}
+	}()
 
 	for {
 		if _, _, err := conn.ReadMessage(); err != nil {
