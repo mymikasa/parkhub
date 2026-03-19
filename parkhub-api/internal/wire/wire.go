@@ -10,6 +10,7 @@ import (
 	repoimpl "github.com/parkhub/api/internal/repository/impl"
 	"github.com/parkhub/api/internal/router"
 	svcimpl "github.com/parkhub/api/internal/service/impl"
+	"github.com/parkhub/api/internal/ws"
 	"gorm.io/gorm"
 )
 
@@ -39,12 +40,14 @@ func InitializeApp(cfg *config.Config, db *gorm.DB) (*router.Router, error) {
 		svcimpl.DeviceServiceSet,
 		svcimpl.DeviceControlServiceSet,
 		svcimpl.BillingRuleServiceSet,
+		ws.AlertHubSet,
 		handler.AuthHandlerSet,
 		handler.TenantHandlerSet,
 		handler.UserHandlerSet,
 		handler.ParkingLotHandlerSet,
 		handler.GateHandlerSet,
 		handler.DeviceHandlerSet,
+		handler.WebSocketHandlerSet,
 		handler.BillingRuleHandlerSet,
 		router.RouterSet,
 	)

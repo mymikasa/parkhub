@@ -7,6 +7,7 @@ import (
 	"github.com/parkhub/api/internal/handler"
 	"github.com/parkhub/api/internal/middleware"
 	"github.com/parkhub/api/internal/pkg/jwt"
+	"github.com/parkhub/api/internal/ws"
 )
 
 // RouterSet is the Wire provider set for Router.
@@ -22,6 +23,7 @@ type Router struct {
 	parkingLotHandler  *handler.ParkingLotHandler
 	gateHandler        *handler.GateHandler
 	deviceHandler      *handler.DeviceHandler
+	webSocketHandler   *handler.WebSocketHandler
 	billingRuleHandler *handler.BillingRuleHandler
 }
 
@@ -35,6 +37,7 @@ func NewRouter(
 	parkingLotHandler *handler.ParkingLotHandler,
 	gateHandler *handler.GateHandler,
 	deviceHandler *handler.DeviceHandler,
+	webSocketHandler *handler.WebSocketHandler,
 	billingRuleHandler *handler.BillingRuleHandler,
 ) *Router {
 	return &Router{
@@ -46,6 +49,7 @@ func NewRouter(
 		parkingLotHandler:  parkingLotHandler,
 		gateHandler:        gateHandler,
 		deviceHandler:      deviceHandler,
+		webSocketHandler:   webSocketHandler,
 		billingRuleHandler: billingRuleHandler,
 	}
 }
@@ -59,6 +63,10 @@ func (r *Router) SetDeviceControlMQTTClient(client pahomqtt.Client) {
 	r.deviceHandler.SetMQTTClient(client)
 }
 
+func (r *Router) GetAlertHub() *ws.AlertHub {
+	return r.webSocketHandler.GetAlertHub()
+}
+
 // Setup 设置所有路由
 func (r *Router) Setup() {
 	// 全局中间件
@@ -68,6 +76,8 @@ func (r *Router) Setup() {
 	r.engine.GET("/health", func(c *gin.Context) {
 		c.JSON(200, gin.H{"status": "ok"})
 	})
+
+	r.engine.GET("/ws", r.webSocketHandler.ServeWS)
 
 	// API v1 路由组
 	v1 := r.engine.Group("/api/v1")

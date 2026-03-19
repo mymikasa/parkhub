@@ -12,6 +12,7 @@ import (
 	"github.com/parkhub/api/internal/repository/impl"
 	"github.com/parkhub/api/internal/router"
 	impl2 "github.com/parkhub/api/internal/service/impl"
+	"github.com/parkhub/api/internal/ws"
 	"gorm.io/gorm"
 )
 
@@ -47,8 +48,10 @@ func InitializeApp(cfg *config.Config, db *gorm.DB) (*router.Router, error) {
 	deviceControlLogRepo := impl.NewDeviceControlLogRepo(db)
 	deviceControlService := impl2.NewDeviceControlService(deviceRepo, deviceControlLogRepo, auditLogService)
 	deviceHandler := handler.NewDeviceHandler(deviceService, deviceControlService)
+	alertHub := ws.NewAlertHub()
+	webSocketHandler := handler.NewWebSocketHandler(jwtManager, alertHub)
 	billingRuleService := impl2.NewBillingRuleService(billingRuleRepo, parkingLotRepo, auditLogRepo)
 	billingRuleHandler := handler.NewBillingRuleHandler(billingRuleService)
-	routerRouter := router.NewRouter(engine, jwtManager, authHandler, tenantHandler, userHandler, parkingLotHandler, gateHandler, deviceHandler, billingRuleHandler)
+	routerRouter := router.NewRouter(engine, jwtManager, authHandler, tenantHandler, userHandler, parkingLotHandler, gateHandler, deviceHandler, webSocketHandler, billingRuleHandler)
 	return routerRouter, nil
 }
