@@ -53,10 +53,6 @@ func (s *deviceControlServiceImpl) Control(ctx context.Context, req *service.Con
 		return nil, &domain.DomainError{Code: "FORBIDDEN", Message: "无权操作该设备"}
 	}
 
-	if !s.isDeviceOnline(device) {
-		return nil, &domain.DomainError{Code: domain.CodeDeviceOffline, Message: domain.ErrDeviceOffline.Error()}
-	}
-
 	if !domain.IsValidControlCommand(req.Command) {
 		return nil, &domain.DomainError{Code: domain.CodeInvalidCommand, Message: domain.ErrInvalidCommand.Error()}
 	}
@@ -72,6 +68,11 @@ func (s *deviceControlServiceImpl) Control(ctx context.Context, req *service.Con
 
 	if err := s.controlLogRepo.Create(ctx, controlLog); err != nil {
 		slog.Error("failed to create control log", "device_id", device.ID, "error", err)
+		return nil, &domain.DomainError{Code: "INTERNAL_ERROR", Message: "保存操作日志失败"}
+	}
+
+	if !s.isDeviceOnline(device) {
+		return nil, &domain.DomainError{Code: domain.CodeDeviceOffline, Message: domain.ErrDeviceOffline.Error()}
 	}
 
 	s.publishCommand(device.ID, req.Command, req.OperatorID, req.OperatorName)

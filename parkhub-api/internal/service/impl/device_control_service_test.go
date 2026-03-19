@@ -83,7 +83,8 @@ func (m *mockDeviceRepoForControl) UnbindByGateID(ctx context.Context, gateID st
 // Mock DeviceControlLogRepo
 
 type mockDeviceControlLogRepo struct {
-	logs []*domain.DeviceControlLog
+	logs      []*domain.DeviceControlLog
+	createErr error
 }
 
 func newMockDeviceControlLogRepo() *mockDeviceControlLogRepo {
@@ -91,6 +92,9 @@ func newMockDeviceControlLogRepo() *mockDeviceControlLogRepo {
 }
 
 func (m *mockDeviceControlLogRepo) Create(ctx context.Context, log *domain.DeviceControlLog) error {
+	if m.createErr != nil {
+		return m.createErr
+	}
 	m.logs = append(m.logs, log)
 	return nil
 }
@@ -228,7 +232,7 @@ func TestDeviceControlService_Control_PlatformAdminNoTenant(t *testing.T) {
 }
 
 func TestDeviceControlService_Control_OfflineDevice(t *testing.T) {
-	svc, deviceRepo, _ := setupTestDeviceControlService()
+	svc, deviceRepo, logRepo := setupTestDeviceControlService()
 	createOfflineDevice(deviceRepo, "device-1", "tenant-1")
 
 	_, err := svc.Control(context.Background(), &service.ControlDeviceRequest{
@@ -245,6 +249,12 @@ func TestDeviceControlService_Control_OfflineDevice(t *testing.T) {
 	var domainErr *domain.DomainError
 	if !errors.As(err, &domainErr) || domainErr.Code != domain.CodeDeviceOffline {
 		t.Errorf("error = %v, want %s", err, domain.CodeDeviceOffline)
+	}
+	if len(logRepo.logs) != 1 {
+		t.Fatalf("Expected 1 log entry for offline control attempt, got %d", len(logRepo.logs))
+	}
+	if logRepo.logs[0].Command != "open_gate" {
+		t.Errorf("Log command = %v, want open_gate", logRepo.logs[0].Command)
 	}
 }
 
@@ -279,7 +289,7 @@ func TestDeviceControlService_Control_DisabledDevice(t *testing.T) {
 }
 
 func TestDeviceControlService_Control_InvalidCommand(t *testing.T) {
-	svc, deviceRepo, _ := setupTestDeviceControlService()
+	svc, deviceRepo, logRepo := setupTestDeviceControlService()
 	createOnlineDevice(deviceRepo, "device-1", "tenant-1")
 
 	_, err := svc.Control(context.Background(), &service.ControlDeviceRequest{
@@ -296,6 +306,34 @@ func TestDeviceControlService_Control_InvalidCommand(t *testing.T) {
 	var domainErr *domain.DomainError
 	if !errors.As(err, &domainErr) || domainErr.Code != domain.CodeInvalidCommand {
 		t.Errorf("error = %v, want %s", err, domain.CodeInvalidCommand)
+	}
+	if len(logRepo.logs) != 0 {
+		t.Fatalf("Expected 0 log entry for invalid command, got %d", len(logRepo.logs))
+	}
+}
+
+func TestDeviceControlService_Control_LogCreateFailed(t *testing.T) {
+	svc, deviceRepo, logRepo := setupTestDeviceControlService()
+	createOnlineDevice(deviceRepo, "device-1", "tenant-1")
+	logRepo.createErr = errors.New("insert failed")
+
+	_, err := svc.Control(context.Background(), &service.ControlDeviceRequest{
+		DeviceID:     "device-1",
+		TenantID:     "tenant-1",
+		Command:      "open_gate",
+		OperatorID:   "user-1",
+		OperatorName: "Test User",
+	})
+
+	if err == nil {
+		t.Fatal("Control() should return error when log creation fails")
+	}
+	var domainErr *domain.DomainError
+	if !errors.As(err, &domainErr) || domainErr.Code != "INTERNAL_ERROR" {
+		t.Errorf("error = %v, want INTERNAL_ERROR", err)
+	}
+	if len(logRepo.logs) != 0 {
+		t.Fatalf("Expected 0 persisted logs when create fails, got %d", len(logRepo.logs))
 	}
 }
 
