@@ -240,9 +240,94 @@ func SeedData(db *gorm.DB) error {
 	return nil
 }
 
-func strPtr(s string) *string  { return &s }
+func SeedTransitRecords(db *gorm.DB) error {
+	var count int64
+	if err := db.Model(&dao.TransitRecordDAO{}).Count(&count).Error; err != nil {
+		return err
+	}
+	if count > 0 {
+		log.Println("Transit records already exist, skipping...")
+		return nil
+	}
+
+	log.Println("Seeding transit records...")
+
+	var demoTenant dao.TenantDAO
+	if err := db.Where("company_name = ?", "绿金物业").First(&demoTenant).Error; err != nil {
+		return err
+	}
+
+	var operator dao.UserDAO
+	if err := db.Where("tenant_id = ? AND role = ?", demoTenant.ID, domain.RoleOperator).First(&operator).Error; err != nil {
+		return err
+	}
+
+	var lots []dao.ParkingLotDAO
+	if err := db.Where("tenant_id = ?", demoTenant.ID).Find(&lots).Error; err != nil {
+		return err
+	}
+	if len(lots) < 2 {
+		log.Printf("Only %d parking lots found, need at least 2", len(lots))
+		return nil
+	}
+
+	lot1 := lots[0]
+	lot2 := lots[1]
+
+	var lot1Gates, lot2Gates []dao.GateDAO
+	if err := db.Where("parking_lot_id = ?", lot1.ID).Find(&lot1Gates).Error; err != nil {
+		return err
+	}
+	if err := db.Where("parking_lot_id = ?", lot2.ID).Find(&lot2Gates).Error; err != nil {
+		return err
+	}
+
+	var lot1EntryGate, lot1ExitGate, lot2EntryGate, lot2ExitGate string
+	for _, gate := range lot1Gates {
+		if gate.Type == string(domain.GateTypeEntry) && lot1EntryGate == "" {
+			lot1EntryGate = gate.ID
+		}
+		if gate.Type == string(domain.GateTypeExit) && lot1ExitGate == "" {
+			lot1ExitGate = gate.ID
+		}
+	}
+	for _, gate := range lot2Gates {
+		if gate.Type == string(domain.GateTypeEntry) && lot2EntryGate == "" {
+			lot2EntryGate = gate.ID
+		}
+		if gate.Type == string(domain.GateTypeExit) && lot2ExitGate == "" {
+			lot2ExitGate = gate.ID
+		}
+	}
+
+	if lot1EntryGate == "" || lot1ExitGate == "" {
+		log.Println("Lot1 requires both entry and exit gates")
+		return nil
+	}
+	if lot2EntryGate == "" {
+		log.Println("Lot2 requires at least an entry gate")
+		return nil
+	}
+	if lot2ExitGate == "" {
+		lot2ExitGate = lot1ExitGate
+	}
+
+	now := time.Now()
+	if err := seedTransitRecords(db, demoTenant.ID, operator.ID, now,
+		lot1.ID, lot2.ID,
+		lot1EntryGate, lot1ExitGate,
+		lot2EntryGate, lot2ExitGate,
+	); err != nil {
+		return err
+	}
+
+	log.Println("Transit records seeded successfully!")
+	return nil
+}
+
+func strPtr(s string) *string     { return &s }
 func floatPtr(f float64) *float64 { return &f }
-func intPtr(i int) *int        { return &i }
+func intPtr(i int) *int           { return &i }
 
 // seedTransitRecords 创建演示通行记录
 func seedTransitRecords(db *gorm.DB, tenantID, operatorID string, now time.Time,
@@ -338,7 +423,7 @@ func seedTransitRecords(db *gorm.DB, tenantID, operatorID string, now time.Time,
 	resolvedRecords := []dao.TransitRecordDAO{
 		{ID: uuid.New().String(), TenantID: tenantID, ParkingLotID: lot2ID, GateID: lot2EntryGate,
 			PlateNumber: strPtr("苏A·44444"), Type: "entry", Status: "recognition_failed",
-			Remark: strPtr("人工核实后补录车牌"),
+			Remark:     strPtr("人工核实后补录车牌"),
 			ResolvedAt: &resolvedAt, ResolvedBy: strPtr(operatorID),
 			CreatedAt: now.Add(-6 * time.Hour), UpdatedAt: resolvedAt},
 	}

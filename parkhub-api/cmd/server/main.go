@@ -54,6 +54,11 @@ func main() {
 		os.Exit(1)
 	}
 
+	if err := seed.SeedTransitRecords(gormDB); err != nil {
+		slog.Error("failed to seed transit records", "error", err)
+		os.Exit(1)
+	}
+
 	r, err := appwire.InitializeApp(cfg, gormDB)
 	if err != nil {
 		slog.Error("failed to initialize app", "error", err)
