@@ -6,6 +6,11 @@
       "sourceType": "github",
       "computedHash": "b764a970e75e086ad7602bcbbf573701847d068745311ca4e4316cdccf77dc03"
     },
+    "request-refactor-plan": {
+      "source": "mattpocock/skills",
+      "sourceType": "github",
+      "computedHash": "176cf1d0c4dc4fc4d958c4bc4ed67f222f2656bda2f3f15e3a3e98b2e5edaf2f"
+    },
     "shadcn": {
       "source": "shadcn/ui",
       "sourceType": "github",
