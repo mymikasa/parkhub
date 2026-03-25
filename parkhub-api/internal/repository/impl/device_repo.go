@@ -295,8 +295,7 @@ func (r *deviceRepo) FindTimedOutDevices(ctx context.Context, threshold time.Tim
 	err := r.db.WithContext(ctx).
 		Where("deleted_at IS NULL").
 		Where("status IN ?", []string{string(domain.DeviceStatusActive), string(domain.DeviceStatusPending)}).
-		Where("last_heartbeat IS NOT NULL").
-		Where("last_heartbeat < ?", threshold).
+		Where("(last_heartbeat IS NULL OR last_heartbeat < ?)", threshold).
 		Find(&rows).Error
 	if err != nil {
 		return nil, err
