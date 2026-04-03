@@ -6,6 +6,10 @@ import {
   resolveTransitRecord,
 } from "./api";
 
+vi.mock('@/lib/auth/store', () => ({
+  getValidAccessToken: vi.fn().mockResolvedValue('mock-token'),
+}));
+
 const mockFetch = vi.fn();
 global.fetch = mockFetch;
 
@@ -50,7 +54,6 @@ describe("getTransitRecords", () => {
 
     const result = await getTransitRecords(
       { page: 2, page_size: 8, status_group: "exception", plate_number: "沪A" },
-      "token"
     );
 
     expect(result.items[0].id).toBe("rec-1");
@@ -70,7 +73,7 @@ describe("getTransitExceptionSummary", () => {
     mockJsonResponse({ code: 0, message: "success", data: { items: [], total: 2, page: 1, page_size: 1 } });
     mockJsonResponse({ code: 0, message: "success", data: { items: [], total: 1, page: 1, page_size: 1 } });
 
-    const result = await getTransitExceptionSummary({ parking_lot_id: "lot-1" }, "token");
+    const result = await getTransitExceptionSummary({ parking_lot_id: "lot-1" });
 
     expect(result.no_exit).toBe(3);
     expect(result.no_entry).toBe(2);
@@ -103,7 +106,6 @@ describe("resolveTransitRecord", () => {
     await resolveTransitRecord(
       "rec-2",
       { plate_number: "沪B66666", remark: "人工确认" },
-      "token"
     );
 
     const [, options] = mockFetch.mock.calls[0] as [string, RequestInit];
@@ -125,13 +127,13 @@ describe("exportTransitRecords", () => {
       },
     });
 
-    const result = await exportTransitRecords({ status_group: "exception" }, "csv", "token");
+    const result = await exportTransitRecords({ status_group: "exception" }, "csv");
 
     const [url, options] = mockFetch.mock.calls[0] as [string, RequestInit];
     expect(url).toContain("/api/v1/transit-records/export");
     expect(url).toContain("status_group=exception");
     expect(url).toContain("format=csv");
-    expect((options.headers as Record<string, string>).Authorization).toBe("Bearer token");
+    expect((options.headers as Record<string, string>).Authorization).toBe("Bearer mock-token");
     expect(result.filename).toBe("transit-records-20260313.csv");
   });
 });

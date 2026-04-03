@@ -13,6 +13,10 @@ import {
   updateDeviceName,
 } from './api'
 
+vi.mock('@/lib/auth/store', () => ({
+  getValidAccessToken: vi.fn().mockResolvedValue('mock-token'),
+}))
+
 const mockFetch = vi.fn()
 global.fetch = mockFetch
 
@@ -55,7 +59,7 @@ describe('getDevices', () => {
       },
     })
 
-    const result = await getDevices({ status: 'active', keyword: 'A区', page: 2, page_size: 10 }, 'token')
+    const result = await getDevices({ status: 'active', keyword: 'A区', page: 2, page_size: 10 })
 
     expect(result.items[0].id).toBe('device-1')
     expect(result.items[0].parking_lot_name).toBe('阳光停车场')
@@ -93,7 +97,7 @@ describe('getDeviceStats', () => {
       },
     })
 
-    const result = await getDeviceStats('token')
+    const result = await getDeviceStats()
 
     expect(result.total).toBe(10)
     expect(result.online).toBe(5)
@@ -130,7 +134,7 @@ describe('device mutations', () => {
       },
     })
 
-    const result = await createDevice({ id: 'device-1', name: '设备A' }, 'token')
+    const result = await createDevice({ id: 'device-1', name: '设备A' })
 
     expect(result.id).toBe('device-1')
     expect(mockFetch.mock.calls[0][1].method).toBe('POST')
@@ -154,7 +158,7 @@ describe('device mutations', () => {
       },
     })
 
-    const result = await getDevice('device-1', 'token')
+    const result = await getDevice('device-1')
 
     expect(result.status).toBe('active')
     expect(result.gate_id).toBe('gate-1')
@@ -177,7 +181,7 @@ describe('device mutations', () => {
       },
     })
 
-    const result = await updateDeviceName('device-1', { name: '新设备名' }, 'token')
+    const result = await updateDeviceName('device-1', { name: '新设备名' })
 
     expect(result.name).toBe('新设备名')
     expect(mockFetch.mock.calls[0][1].method).toBe('PUT')
@@ -203,7 +207,6 @@ describe('device mutations', () => {
     const result = await bindDevice(
       'device-1',
       { tenant_id: 'tenant-1', parking_lot_id: 'lot-1', gate_id: 'gate-1' },
-      'token'
     )
 
     expect(result.status).toBe('active')
@@ -228,7 +231,7 @@ describe('device mutations', () => {
       },
     })
 
-    const result = await unbindDevice('device-1', 'token')
+    const result = await unbindDevice('device-1')
 
     expect(result.status).toBe('pending')
     expect(result.parking_lot_id).toBeNull()
@@ -239,7 +242,7 @@ describe('device mutations', () => {
   it('batchDisableDevices sends POST to batch-disable endpoint', async () => {
     mockJsonResponse({ code: 0, message: 'ok' })
 
-    await batchDisableDevices({ ids: ['device-1', 'device-2'] }, 'token')
+    await batchDisableDevices({ ids: ['device-1', 'device-2'] })
 
     expect(mockFetch.mock.calls[0][0]).toContain('/api/v1/devices/batch-disable')
     expect(mockFetch.mock.calls[0][1].method).toBe('POST')
@@ -249,7 +252,7 @@ describe('device mutations', () => {
   it('batchEnableDevices sends POST to batch-enable endpoint', async () => {
     mockJsonResponse({ code: 0, message: 'ok' })
 
-    await batchEnableDevices({ ids: ['device-1'] }, 'token')
+    await batchEnableDevices({ ids: ['device-1'] })
 
     expect(mockFetch.mock.calls[0][0]).toContain('/api/v1/devices/batch-enable')
     expect(mockFetch.mock.calls[0][1].method).toBe('POST')
@@ -258,7 +261,7 @@ describe('device mutations', () => {
   it('batchDeleteDevices sends POST to batch-delete endpoint', async () => {
     mockJsonResponse({ code: 0, message: 'ok' })
 
-    await batchDeleteDevices({ ids: ['device-1'] }, 'token')
+    await batchDeleteDevices({ ids: ['device-1'] })
 
     expect(mockFetch.mock.calls[0][0]).toContain('/api/v1/devices/batch-delete')
     expect(mockFetch.mock.calls[0][1].method).toBe('POST')
@@ -267,15 +270,12 @@ describe('device mutations', () => {
   it('batchBindDevices sends POST to batch-bind endpoint', async () => {
     mockJsonResponse({ code: 0, message: 'ok' })
 
-    await batchBindDevices(
-      {
-        ids: ['device-1', 'device-2'],
-        tenant_id: 'tenant-1',
-        parking_lot_id: 'lot-1',
-        gate_id: 'gate-1',
-      },
-      'token'
-    )
+    await batchBindDevices({
+      ids: ['device-1', 'device-2'],
+      tenant_id: 'tenant-1',
+      parking_lot_id: 'lot-1',
+      gate_id: 'gate-1',
+    })
 
     expect(mockFetch.mock.calls[0][0]).toContain('/api/v1/devices/batch-bind')
     expect(mockFetch.mock.calls[0][1].method).toBe('POST')

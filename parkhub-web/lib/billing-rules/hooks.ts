@@ -1,7 +1,6 @@
 'use client';
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getValidAccessToken } from '@/lib/auth/store';
 import * as api from './api';
 import type { UpdateBillingRuleRequest, CalculateFeeRequest } from './types';
 
@@ -13,11 +12,7 @@ export const billingRuleKeys = {
 export function useBillingRule(parkingLotId: string) {
   return useQuery({
     queryKey: billingRuleKeys.byParkingLot(parkingLotId),
-    queryFn: async () => {
-      const accessToken = await getValidAccessToken();
-      if (!accessToken) throw new Error('未登录');
-      return api.getBillingRule(parkingLotId, accessToken);
-    },
+    queryFn: () => api.getBillingRule(parkingLotId),
     enabled: !!parkingLotId,
   });
 }
@@ -26,11 +21,8 @@ export function useUpdateBillingRule() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: UpdateBillingRuleRequest }) => {
-      const accessToken = await getValidAccessToken();
-      if (!accessToken) throw new Error('未登录');
-      return api.updateBillingRule(id, data, accessToken);
-    },
+    mutationFn: ({ id, data }: { id: string; data: UpdateBillingRuleRequest }) =>
+      api.updateBillingRule(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: billingRuleKeys.all });
     },
@@ -39,10 +31,6 @@ export function useUpdateBillingRule() {
 
 export function useCalculateFee() {
   return useMutation({
-    mutationFn: async (data: CalculateFeeRequest) => {
-      const accessToken = await getValidAccessToken();
-      if (!accessToken) throw new Error('未登录');
-      return api.calculateFee(data, accessToken);
-    },
+    mutationFn: (data: CalculateFeeRequest) => api.calculateFee(data),
   });
 }

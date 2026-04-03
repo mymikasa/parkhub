@@ -1,3 +1,5 @@
+import { request, unwrapResponse, type ApiEnvelope } from '@/lib/api';
+import { getValidAccessToken } from '@/lib/auth/store';
 import type {
   ResolveTransitRecordRequest,
   TransitExceptionSummary,
@@ -8,19 +10,6 @@ import type {
   TransitStatus,
   TransitType,
 } from "./types";
-
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080";
-
-interface ApiError {
-  code: string;
-  message: string;
-}
-
-interface ApiEnvelope<T> {
-  code: number;
-  message: string;
-  data: T;
-}
 
 type TransitRecordRaw = Partial<TransitRecord> & {
   ID?: string;
@@ -53,50 +42,6 @@ type TransitRecordListRaw = {
   Page?: number;
   PageSize?: number;
 };
-
-async function request<T>(
-  path: string,
-  options: RequestInit = {},
-  accessToken?: string
-): Promise<T> {
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-    ...(options.headers as Record<string, string>),
-  };
-
-  if (accessToken) {
-    headers.Authorization = `Bearer ${accessToken}`;
-  }
-
-  const res = await fetch(`${API_BASE}${path}`, { ...options, headers });
-
-  if (!res.ok) {
-    let errorBody: ApiError = { code: "UNKNOWN_ERROR", message: "请求失败，请重试" };
-    try {
-      errorBody = await res.json();
-    } catch {
-      errorBody = { code: "UNKNOWN_ERROR", message: "请求失败，请重试" };
-    }
-    const err = new Error(errorBody.message) as Error & ApiError;
-    err.code = errorBody.code;
-    throw err;
-  }
-
-  return res.json();
-}
-
-function unwrapResponse<T>(payload: T | ApiEnvelope<T>): T {
-  if (
-    payload &&
-    typeof payload === "object" &&
-    "code" in payload &&
-    "message" in payload &&
-    "data" in payload
-  ) {
-    return (payload as ApiEnvelope<T>).data;
-  }
-  return payload as T;
-}
 
 function mapTransitRecord(raw: TransitRecordRaw): TransitRecord {
   return {
@@ -167,25 +112,19 @@ function buildQueryString(filter: TransitRecordFilter): string {
 
 export async function getTransitRecords(
   filter: TransitRecordFilter,
-  accessToken: string
 ): Promise<TransitRecordListResponse> {
   const query = buildQueryString(filter);
   const response = await request<TransitRecordListRaw | ApiEnvelope<TransitRecordListRaw>>(
     `/api/v1/transit-records${query}`,
-    {},
-    accessToken
   );
   return mapTransitRecordList(unwrapResponse(response));
 }
 
 export async function getTransitRecord(
   id: string,
-  accessToken: string
 ): Promise<TransitRecord> {
   const response = await request<TransitRecordRaw | ApiEnvelope<TransitRecordRaw>>(
     `/api/v1/transit-records/${id}`,
-    {},
-    accessToken
   );
   return mapTransitRecord(unwrapResponse(response));
 }
@@ -193,7 +132,6 @@ export async function getTransitRecord(
 export async function resolveTransitRecord(
   id: string,
   payload: ResolveTransitRecordRequest,
-  accessToken: string
 ): Promise<TransitRecord> {
   const response = await request<TransitRecordRaw | ApiEnvelope<TransitRecordRaw>>(
     `/api/v1/transit-records/${id}/resolve`,
@@ -201,14 +139,12 @@ export async function resolveTransitRecord(
       method: "PUT",
       body: JSON.stringify(payload),
     },
-    accessToken
   );
   return mapTransitRecord(unwrapResponse(response));
 }
 
 export async function getTransitExceptionSummary(
   filter: Omit<TransitRecordFilter, "page" | "page_size" | "status">,
-  accessToken: string
 ): Promise<TransitExceptionSummary> {
   const baseFilter = {
     ...filter,
@@ -217,9 +153,9 @@ export async function getTransitExceptionSummary(
   };
 
   const [noExit, noEntry, recognitionFailed] = await Promise.all([
-    getTransitRecords({ ...baseFilter, status: "no_exit" }, accessToken),
-    getTransitRecords({ ...baseFilter, status: "no_entry" }, accessToken),
-    getTransitRecords({ ...baseFilter, status: "recognition_failed" }, accessToken),
+    getTransitRecords({ ...baseFilter, status: "no_exit" }),
+    getTransitRecords({ ...baseFilter, status: "no_entry" }),
+    getTransitRecords({ ...baseFilter, status: "recognition_failed" }),
   ]);
 
   const summary = {
@@ -253,8 +189,13 @@ function parseFilename(contentDisposition: string | null, fallback: string): str
 export async function exportTransitRecords(
   filter: Omit<TransitRecordFilter, "page" | "page_size" | "status">,
   format: "csv" | "xlsx",
-  accessToken: string
 ): Promise<{ blob: Blob; filename: string }> {
+  const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080";
+  const accessToken = await getValidAccessToken();
+  if (!accessToken) {
+    throw new Error("未登录");
+  }
+
   const query = buildQueryString(filter as TransitRecordFilter);
   const connector = query ? "&" : "?";
   const url = `${API_BASE}/api/v1/transit-records/export${query}${connector}format=${format}`;
@@ -286,34 +227,25 @@ export async function exportTransitRecords(
   return { blob, filename };
 }
 
-export async function getTransitStats(accessToken: string): Promise<TransitStats> {
+export async function getTransitStats(): Promise<TransitStats> {
   const response = await request<TransitStats | ApiEnvelope<TransitStats>>(
     "/api/v1/transit-records/stats",
-    {},
-    accessToken
   );
   return unwrapResponse(response);
 }
 
 export async function getLatestTransitRecords(
-  accessToken: string,
   limit = 20,
 ): Promise<TransitRecord[]> {
   const response = await request<TransitRecord[] | ApiEnvelope<TransitRecord[]>>(
     `/api/v1/transit-records/latest?limit=${limit}`,
-    {},
-    accessToken
   );
   return unwrapResponse(response);
 }
 
-export async function getOverstayRecords(
-  accessToken: string,
-): Promise<TransitRecord[]> {
+export async function getOverstayRecords(): Promise<TransitRecord[]> {
   const response = await request<TransitRecord[] | ApiEnvelope<TransitRecord[]>>(
     "/api/v1/transit-records/overstay",
-    {},
-    accessToken
   );
   return unwrapResponse(response);
 }

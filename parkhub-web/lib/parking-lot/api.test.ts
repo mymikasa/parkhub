@@ -11,7 +11,10 @@ import {
   deleteGate,
 } from './api'
 
-// Mock fetch globally
+vi.mock('@/lib/auth/store', () => ({
+  getValidAccessToken: vi.fn().mockResolvedValue('mock-token'),
+}))
+
 const mockFetch = vi.fn()
 global.fetch = mockFetch
 
@@ -55,7 +58,7 @@ describe('getParkingLots', () => {
       },
     })
 
-    const result = await getParkingLots({}, 'test-token')
+    const result = await getParkingLots({})
 
     expect(result.items).toHaveLength(1)
     expect(result.items[0].id).toBe('lot-1')
@@ -98,7 +101,7 @@ describe('getParkingLots', () => {
       },
     })
 
-    const result = await getParkingLots({}, 'test-token')
+    const result = await getParkingLots({})
 
     expect(result.items[0].id).toBe('lot-2')
     expect(result.items[0].status).toBe('inactive')
@@ -107,13 +110,13 @@ describe('getParkingLots', () => {
   it('sends auth header', async () => {
     mockJsonResponse({ code: 0, message: 'success', data: { items: [], total: 0, page: 1, page_size: 20 } })
 
-    await getParkingLots({}, 'my-token')
+    await getParkingLots({})
 
     expect(mockFetch).toHaveBeenCalledWith(
       expect.stringContaining('/api/v1/parking-lots'),
       expect.objectContaining({
         headers: expect.objectContaining({
-          Authorization: 'Bearer my-token',
+          Authorization: 'Bearer mock-token',
         }),
       })
     )
@@ -122,7 +125,7 @@ describe('getParkingLots', () => {
   it('builds query string from filter', async () => {
     mockJsonResponse({ code: 0, message: 'success', data: { items: [], total: 0, page: 1, page_size: 20 } })
 
-    await getParkingLots({ status: 'active', search: '阳光', tenant_id: 'tenant-1', page: 2, page_size: 10 }, 'token')
+    await getParkingLots({ status: 'active', search: '阳光', tenant_id: 'tenant-1', page: 2, page_size: 10 })
 
     const url = mockFetch.mock.calls[0][0] as string
     expect(url).toContain('status=active')
@@ -135,7 +138,7 @@ describe('getParkingLots', () => {
   it('omits status=all from query', async () => {
     mockJsonResponse({ code: 0, message: 'success', data: { items: [], total: 0, page: 1, page_size: 20 } })
 
-    await getParkingLots({ status: 'all' }, 'token')
+    await getParkingLots({ status: 'all' })
 
     const url = mockFetch.mock.calls[0][0] as string
     expect(url).not.toContain('status=')
@@ -144,7 +147,7 @@ describe('getParkingLots', () => {
   it('handles empty items', async () => {
     mockJsonResponse({ code: 0, message: 'success', data: { items: [], total: 0, page: 1, page_size: 20 } })
 
-    const result = await getParkingLots({}, 'token')
+    const result = await getParkingLots({})
 
     expect(result.items).toEqual([])
     expect(result.total).toBe(0)
@@ -169,7 +172,7 @@ describe('getParkingLot', () => {
       },
     })
 
-    const result = await getParkingLot('lot-1', 'token')
+    const result = await getParkingLot('lot-1')
 
     expect(result.id).toBe('lot-1')
     expect(result.lot_type).toBe('stereo')
@@ -186,7 +189,6 @@ describe('createParkingLot', () => {
 
     const result = await createParkingLot(
       { name: '新车场', address: '新地址', total_spaces: 100, lot_type: 'underground' },
-      'token'
     )
 
     expect(result.id).toBe('new-lot')
@@ -208,7 +210,6 @@ describe('updateParkingLot', () => {
     const result = await updateParkingLot(
       'lot-1',
       { name: '改名', address: '新地址', total_spaces: 200, lot_type: 'ground', status: 'inactive' },
-      'token'
     )
 
     expect(result.name).toBe('改名')
@@ -226,7 +227,7 @@ describe('getParkingLotStats', () => {
       data: { TotalSpaces: 500, AvailableSpaces: 300, OccupiedVehicles: 200, TotalGates: 8 },
     })
 
-    const result = await getParkingLotStats('token')
+    const result = await getParkingLotStats()
 
     expect(result.total_spaces).toBe(500)
     expect(result.available_spaces).toBe(300)
@@ -241,7 +242,7 @@ describe('getParkingLotStats', () => {
       data: { total_spaces: 100, available_spaces: 50, occupied_vehicles: 50, total_gates: 4 },
     })
 
-    const result = await getParkingLotStats('token')
+    const result = await getParkingLotStats()
 
     expect(result.total_spaces).toBe(100)
     expect(result.occupied_vehicles).toBe(50)
@@ -284,7 +285,7 @@ describe('Gate APIs', () => {
       ],
     })
 
-    const result = await getGates('lot-1', 'token')
+    const result = await getGates('lot-1')
 
     expect(result).toHaveLength(2)
     expect(result[0].name).toBe('东入口')
@@ -315,7 +316,7 @@ describe('Gate APIs', () => {
       ],
     })
 
-    const result = await getGates('lot-1', 'token')
+    const result = await getGates('lot-1')
 
     expect(result[0].id).toBe('gate-1')
     expect(result[0].name).toBe('南入口')
@@ -329,7 +330,7 @@ describe('Gate APIs', () => {
       data: { id: 'gate-new', parking_lot_id: 'lot-1', name: '北入口', type: 'entry', device_id: null, created_at: '', updated_at: '' },
     })
 
-    const result = await createGate('lot-1', { name: '北入口', type: 'entry' }, 'token')
+    const result = await createGate('lot-1', { name: '北入口', type: 'entry' })
 
     expect(result.id).toBe('gate-new')
     expect(mockFetch.mock.calls[0][1].method).toBe('POST')
@@ -343,7 +344,7 @@ describe('Gate APIs', () => {
       data: { id: 'gate-1', parking_lot_id: 'lot-1', name: '改名入口', type: 'entry', device_id: null, created_at: '', updated_at: '' },
     })
 
-    const result = await updateGate('gate-1', { name: '改名入口' }, 'token')
+    const result = await updateGate('gate-1', { name: '改名入口' })
 
     expect(result.name).toBe('改名入口')
     expect(mockFetch.mock.calls[0][1].method).toBe('PUT')
@@ -353,7 +354,7 @@ describe('Gate APIs', () => {
   it('deleteGate sends DELETE', async () => {
     mockJsonResponse({ code: 0, message: '删除成功' })
 
-    await deleteGate('gate-1', 'token')
+    await deleteGate('gate-1')
 
     expect(mockFetch.mock.calls[0][1].method).toBe('DELETE')
     expect(mockFetch.mock.calls[0][0]).toContain('/gates/gate-1')
@@ -369,7 +370,7 @@ describe('error handling', () => {
     })
 
     await expect(
-      createParkingLot({ name: '重复', address: '地址地址地址', total_spaces: 10 }, 'token')
+      createParkingLot({ name: '重复', address: '地址地址地址', total_spaces: 10 })
     ).rejects.toThrow('该车场名称已存在')
   })
 
@@ -380,6 +381,6 @@ describe('error handling', () => {
       json: async () => { throw new Error('not json') },
     })
 
-    await expect(getParkingLots({}, 'token')).rejects.toThrow('请求失败，请重试')
+    await expect(getParkingLots({})).rejects.toThrow('请求失败，请重试')
   })
 })

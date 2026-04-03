@@ -1,7 +1,6 @@
 'use client';
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getValidAccessToken } from '@/lib/auth/store';
 import * as api from './api';
 import type { ParkingLotFilter, CreateParkingLotRequest, UpdateParkingLotRequest, CreateGateRequest, UpdateGateRequest } from './types';
 
@@ -18,11 +17,7 @@ export const parkingLotKeys = {
 export function useParkingLots(filter: ParkingLotFilter, enabled = true, refetchInterval?: number) {
   return useQuery({
     queryKey: parkingLotKeys.list(filter),
-    queryFn: async () => {
-      const accessToken = await getValidAccessToken();
-      if (!accessToken) throw new Error('未登录');
-      return api.getParkingLots(filter, accessToken);
-    },
+    queryFn: () => api.getParkingLots(filter),
     enabled,
     refetchInterval,
   });
@@ -31,11 +26,7 @@ export function useParkingLots(filter: ParkingLotFilter, enabled = true, refetch
 export function useParkingLot(id: string) {
   return useQuery({
     queryKey: parkingLotKeys.detail(id),
-    queryFn: async () => {
-      const accessToken = await getValidAccessToken();
-      if (!accessToken) throw new Error('未登录');
-      return api.getParkingLot(id, accessToken);
-    },
+    queryFn: () => api.getParkingLot(id),
     enabled: !!id,
   });
 }
@@ -43,22 +34,14 @@ export function useParkingLot(id: string) {
 export function useParkingLotStats() {
   return useQuery({
     queryKey: parkingLotKeys.stats(),
-    queryFn: async () => {
-      const accessToken = await getValidAccessToken();
-      if (!accessToken) throw new Error('未登录');
-      return api.getParkingLotStats(accessToken);
-    },
+    queryFn: () => api.getParkingLotStats(),
   });
 }
 
 export function useGates(parkingLotId: string) {
   return useQuery({
     queryKey: parkingLotKeys.gates(parkingLotId),
-    queryFn: async () => {
-      const accessToken = await getValidAccessToken();
-      if (!accessToken) throw new Error('未登录');
-      return api.getGates(parkingLotId, accessToken);
-    },
+    queryFn: () => api.getGates(parkingLotId),
     enabled: !!parkingLotId,
   });
 }
@@ -67,11 +50,7 @@ export function useCreateParkingLot() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (data: CreateParkingLotRequest) => {
-      const accessToken = await getValidAccessToken();
-      if (!accessToken) throw new Error('未登录');
-      return api.createParkingLot(data, accessToken);
-    },
+    mutationFn: (data: CreateParkingLotRequest) => api.createParkingLot(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: parkingLotKeys.lists() });
       queryClient.invalidateQueries({ queryKey: parkingLotKeys.stats() });
@@ -83,11 +62,8 @@ export function useUpdateParkingLot() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: UpdateParkingLotRequest }) => {
-      const accessToken = await getValidAccessToken();
-      if (!accessToken) throw new Error('未登录');
-      return api.updateParkingLot(id, data, accessToken);
-    },
+    mutationFn: ({ id, data }: { id: string; data: UpdateParkingLotRequest }) =>
+      api.updateParkingLot(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: parkingLotKeys.lists() });
       queryClient.invalidateQueries({ queryKey: parkingLotKeys.stats() });
@@ -99,11 +75,8 @@ export function useCreateGate() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ parkingLotId, data }: { parkingLotId: string; data: CreateGateRequest }) => {
-      const accessToken = await getValidAccessToken();
-      if (!accessToken) throw new Error('未登录');
-      return api.createGate(parkingLotId, data, accessToken);
-    },
+    mutationFn: ({ parkingLotId, data }: { parkingLotId: string; data: CreateGateRequest }) =>
+      api.createGate(parkingLotId, data),
     onSuccess: (_, { parkingLotId }) => {
       queryClient.invalidateQueries({ queryKey: parkingLotKeys.gates(parkingLotId) });
     },
@@ -114,11 +87,8 @@ export function useUpdateGate() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: UpdateGateRequest }) => {
-      const accessToken = await getValidAccessToken();
-      if (!accessToken) throw new Error('未登录');
-      return api.updateGate(id, data, accessToken);
-    },
+    mutationFn: ({ id, data }: { id: string; data: UpdateGateRequest }) =>
+      api.updateGate(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: parkingLotKeys.all });
     },
@@ -129,11 +99,7 @@ export function useDeleteGate() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (id: string) => {
-      const accessToken = await getValidAccessToken();
-      if (!accessToken) throw new Error('未登录');
-      return api.deleteGate(id, accessToken);
-    },
+    mutationFn: (id: string) => api.deleteGate(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: parkingLotKeys.all });
     },

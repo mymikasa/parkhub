@@ -16,7 +16,6 @@ import {
   faTriangleExclamation,
   faXmark,
 } from "@fortawesome/free-solid-svg-icons";
-import { getValidAccessToken } from "@/lib/auth/store";
 import { getParkingLots, getGates } from "@/lib/parking-lot/api";
 import {
   exportTransitRecords,
@@ -203,12 +202,8 @@ export default function EntryExitRecordsPage() {
   const baseFilter = useMemo(() => buildBaseFilter(appliedFilters), [appliedFilters]);
 
   const loadParkingLotOptions = useCallback(async () => {
-    const accessToken = await getValidAccessToken();
-    if (!accessToken) {
-      return;
-    }
     try {
-      const result = await getParkingLots({ page: 1, page_size: 1000 }, accessToken);
+      const result = await getParkingLots({ page: 1, page_size: 1000 });
       setParkingLots(result.items.map((item) => ({ id: item.id, name: item.name })));
     } catch {
       toast.error("车场列表加载失败");
@@ -216,26 +211,17 @@ export default function EntryExitRecordsPage() {
   }, []);
 
   const loadData = useCallback(async () => {
-    const accessToken = await getValidAccessToken();
-    if (!accessToken) {
-      setLoadFailed(true);
-      return;
-    }
-
     setIsLoading(true);
     setLoadFailed(false);
 
     try {
       const [list, exceptionSummary] = await Promise.all([
-        getTransitRecords(
-          {
-            ...baseFilter,
-            page,
-            page_size: pageSize,
-          },
-          accessToken
-        ),
-        getTransitExceptionSummary(baseFilter, accessToken),
+        getTransitRecords({
+          ...baseFilter,
+          page,
+          page_size: pageSize,
+        }),
+        getTransitExceptionSummary(baseFilter),
       ]);
 
       setRecords(list.items);
@@ -309,23 +295,18 @@ export default function EntryExitRecordsPage() {
   };
 
   const openDetailModal = async (recordId: string) => {
-    const accessToken = await getValidAccessToken();
-    if (!accessToken) {
-      return;
-    }
-
     setIsDetailModalOpen(true);
     setIsDetailLoading(true);
     setDetailRecord(null);
     setDetailDeviceSerial("--");
 
     try {
-      const record = await getTransitRecord(recordId, accessToken);
+      const record = await getTransitRecord(recordId);
       setDetailRecord(record);
 
       if (record.parking_lot_id) {
         try {
-          const gates = await getGates(record.parking_lot_id, accessToken);
+          const gates = await getGates(record.parking_lot_id);
           const gate = gates.find((item) => item.id === record.gate_id);
           setDetailDeviceSerial(gate?.device?.serial_number ?? "--");
         } catch {
@@ -359,11 +340,6 @@ export default function EntryExitRecordsPage() {
       return;
     }
 
-    const accessToken = await getValidAccessToken();
-    if (!accessToken) {
-      return;
-    }
-
     setIsResolving(true);
     try {
       await resolveTransitRecord(
@@ -372,7 +348,6 @@ export default function EntryExitRecordsPage() {
           plate_number: plate,
           remark: resolveRemark.trim() || undefined,
         },
-        accessToken
       );
       toast.success("异常记录处理成功");
       setIsExceptionModalOpen(false);
@@ -389,14 +364,9 @@ export default function EntryExitRecordsPage() {
   };
 
   const doExport = async (format: "csv" | "xlsx") => {
-    const accessToken = await getValidAccessToken();
-    if (!accessToken) {
-      return;
-    }
-
     setExportingFormat(format);
     try {
-      const { blob, filename } = await exportTransitRecords(baseFilter, format, accessToken);
+      const { blob, filename } = await exportTransitRecords(baseFilter, format);
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
