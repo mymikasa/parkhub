@@ -22,7 +22,6 @@ export default function UserManagementPage() {
   const [statusFilter, setStatusFilter] = useState<"active" | "frozen" | "all">("all");
   const [roleFilter, setRoleFilter] = useState<string>("all");
   const [tenantFilter, setTenantFilter] = useState<string>("all");
-  const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const PAGE_SIZE = 10;
 
@@ -38,7 +37,7 @@ export default function UserManagementPage() {
     status: statusFilter,
     role: roleFilter,
     tenant_id: tenantFilter !== "all" ? tenantFilter : undefined,
-    keyword: searchQuery,
+    keyword: "",
     page: currentPage,
     page_size: PAGE_SIZE,
   };
@@ -54,7 +53,14 @@ export default function UserManagementPage() {
 
   const users = usersData?.items || [];
   const total = usersData?.total || 0;
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const tenants = tenantsData?.items || [];
+
+  const getTenantName = (tenantId?: string) => {
+    if (!tenantId) return "-";
+    const tenant = tenants.find((t) => t.id === tenantId);
+    return tenant?.company_name ?? "未知租户";
+  };
 
   const stats = {
     total: usersData?.active_count != null ? (usersData.active_count + usersData.frozen_count) : total,
@@ -93,14 +99,14 @@ export default function UserManagementPage() {
       <Header title="用户管理" description="管理系统用户、角色分配与权限控制" />
       <UserStatsCards stats={stats} isLoading={isLoading} />
       <div className="px-8 pb-8">
-        <UserTable users={users} tenants={tenants} isLoading={isLoading} total={total} currentPage={currentPage} pageSize={PAGE_SIZE}
-          statusFilter={statusFilter} roleFilter={roleFilter} tenantFilter={tenantFilter} searchQuery={searchQuery} isPlatformAdmin={isPlatformAdmin}
+        <UserTable users={users} tenants={tenants} isLoading={isLoading} total={total} currentPage={currentPage} totalPages={totalPages} pageSize={PAGE_SIZE}
+          statusFilter={statusFilter} roleFilter={roleFilter} tenantFilter={tenantFilter} isPlatformAdmin={isPlatformAdmin}
           onStatusFilterChange={(v) => { setStatusFilter(v as any); setCurrentPage(1); }} onRoleFilterChange={(v) => { setRoleFilter(v); setCurrentPage(1); }}
-          onTenantFilterChange={(v) => { setTenantFilter(v); setCurrentPage(1); }} onSearchChange={(v) => { setSearchQuery(v); setCurrentPage(1); }}
-          onPageChange={setCurrentPage} onEdit={(u) => { setSelectedUser(u); setIsEditDialogOpen(true); }}
+          onTenantFilterChange={(v) => { setTenantFilter(v); setCurrentPage(1); }}
+          onPageChange={setCurrentPage} onEditUser={(u) => { setSelectedUser(u); setIsEditDialogOpen(true); }}
           onResetPassword={(u) => { setSelectedUser(u); setIsResetPasswordDialogOpen(true); }}
-          onFreeze={(u) => openConfirmDialog(u, "freeze")} onUnfreeze={(u) => openConfirmDialog(u, "unfreeze")}
-          onCreateUser={() => setIsCreateDialogOpen(true)} onImportUsers={() => setIsImportDialogOpen(true)} />
+          onConfirmAction={(u, a) => openConfirmDialog(u, a)}
+          getTenantName={getTenantName} />
       </div>
       <UserFormDialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen} onSubmit={handleCreate} tenants={tenants} isLoading={createUser.isPending} isPlatformAdmin={isPlatformAdmin} currentUserTenantId={currentUser?.tenant_id ?? undefined} />
       <EditUserDialog open={isEditDialogOpen} onOpenChange={(o) => { setIsEditDialogOpen(o); if (!o) setSelectedUser(null); }} onSubmit={(d) => selectedUser && handleUpdate(selectedUser.id, d)} initialData={selectedUser} isLoading={updateUser.isPending} />
