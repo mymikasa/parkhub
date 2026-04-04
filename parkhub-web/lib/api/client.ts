@@ -41,7 +41,15 @@ export async function request<T>(
     throw new ApiError(code, message);
   }
 
-  return res.json();
+  if (res.status === 204) {
+    return undefined as T;
+  }
+
+  try {
+    return await res.json() as T;
+  } catch {
+    return undefined as T;
+  }
 }
 
 export function unwrapResponse<T>(payload: T | ApiEnvelope<T>): T {

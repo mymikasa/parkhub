@@ -1,4 +1,4 @@
-import { request, unwrapResponse, type ApiEnvelope } from '@/lib/api';
+import { request, unwrapResponse, type ApiEnvelope, ApiError } from '@/lib/api';
 import { getValidAccessToken } from '@/lib/auth/store';
 import type {
   ResolveTransitRecordRequest,
@@ -186,6 +186,11 @@ function parseFilename(contentDisposition: string | null, fallback: string): str
   return fallback;
 }
 
+/**
+ * File download — uses raw fetch instead of the unified client because
+ * the response is a binary Blob, not JSON.  Token is obtained via
+ * getValidAccessToken directly (documented exception for non-JSON responses).
+ */
 export async function exportTransitRecords(
   filter: Omit<TransitRecordFilter, "page" | "page_size" | "status">,
   format: "csv" | "xlsx",
@@ -193,7 +198,7 @@ export async function exportTransitRecords(
   const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080";
   const accessToken = await getValidAccessToken();
   if (!accessToken) {
-    throw new Error("未登录");
+    throw new ApiError("UNAUTHORIZED", "未登录");
   }
 
   const query = buildQueryString(filter as TransitRecordFilter);
@@ -217,7 +222,7 @@ export async function exportTransitRecords(
     } catch {
       errorMessage = "导出失败，请重试";
     }
-    throw new Error(errorMessage);
+    throw new ApiError("EXPORT_FAILED", errorMessage);
   }
 
   const blob = await res.blob();
