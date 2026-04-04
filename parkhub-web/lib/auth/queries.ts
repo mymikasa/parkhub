@@ -90,8 +90,8 @@ export function useLogout() {
 
   return useMutation({
     mutationFn: async () => {
-      const storage = typeof window !== 'undefined' 
-        ? JSON.parse(localStorage.getItem('parkhub_auth') || '{}') 
+      const storage = typeof window !== 'undefined'
+        ? JSON.parse(localStorage.getItem('parkhub_auth') || '{}')
         : {};
       await authApi.logout(storage.access_token || '', storage.refresh_token);
     },

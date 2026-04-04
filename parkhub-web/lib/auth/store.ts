@@ -283,30 +283,48 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 // Fetch interceptor helper (for API calls)
 // ──────────────────────────────────────────────
 
+let refreshPromise: Promise<string | null> | null = null;
+
 /**
  * Get a valid access token, refreshing if needed.
  * Use this in API clients to attach Authorization header.
+ *
+ * Concurrent calls are deduplicated — only one refresh request
+ * is in-flight at a time; the rest await the same promise.
  */
 export async function getValidAccessToken(): Promise<string | null> {
   const storage = loadTokens();
   if (!storage) return null;
 
-  if (isTokenExpired(storage)) {
-    // Attempt refresh
-    try {
-      const res = await authApi.refreshToken(storage.refresh_token);
-      const newStorage: TokenStorage = {
-        access_token: res.access_token,
-        refresh_token: res.refresh_token,
-        expires_at: Date.now() + res.expires_in * 1000,
-      };
-      saveTokens(newStorage);
-      return newStorage.access_token;
-    } catch {
-      clearTokens();
-      return null;
-    }
+  if (!isTokenExpired(storage)) {
+    return storage.access_token;
   }
 
-  return storage.access_token;
+  // Deduplicate: if a refresh is already in-flight, reuse it
+  if (!refreshPromise) {
+    refreshPromise = (async () => {
+      try {
+        const current = loadTokens();
+        if (!current) return null;
+        // Another caller may have already refreshed
+        if (!isTokenExpired(current)) return current.access_token;
+
+        const res = await authApi.refreshToken(current.refresh_token);
+        const newStorage: TokenStorage = {
+          access_token: res.access_token,
+          refresh_token: res.refresh_token,
+          expires_at: Date.now() + res.expires_in * 1000,
+        };
+        saveTokens(newStorage);
+        return newStorage.access_token;
+      } catch {
+        clearTokens();
+        return null;
+      } finally {
+        refreshPromise = null;
+      }
+    })();
+  }
+
+  return refreshPromise;
 }

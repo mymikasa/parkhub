@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { getValidAccessToken } from '@/lib/auth/store';
 import * as api from './api';
 import type {
   Tenant,
@@ -31,15 +30,12 @@ export function useTenants(filter: TenantFilter = {}, enabled = true) {
     let cancelled = false;
 
     async function fetchTenants() {
-      const accessToken = await getValidAccessToken();
-      if (!accessToken || cancelled) return;
-
       setIsLoading(true);
       setError(null);
 
       try {
         const parsed: TenantFilter = JSON.parse(filterKey);
-        const result = await api.getTenants(parsed, accessToken);
+        const result = await api.getTenants(parsed);
         if (!cancelled) setData(result);
       } catch (err) {
         if (!cancelled) setError(err instanceof Error ? err : new Error('获取租户列表失败'));
@@ -71,14 +67,11 @@ export function useTenant(id: string) {
     let mounted = true;
 
     async function fetchTenant() {
-      const accessToken = await getValidAccessToken();
-      if (!accessToken || !id) return;
-
       setIsLoading(true);
       setError(null);
 
       try {
-        const result = await api.getTenant(id, accessToken);
+        const result = await api.getTenant(id);
         if (mounted) {
           setData(result);
         }
@@ -108,14 +101,11 @@ export function useCreateTenant() {
   const [error, setError] = useState<Error | null>(null);
 
   const mutate = useCallback(async (req: CreateTenantRequest, onSuccess?: (data: Tenant) => void) => {
-    const accessToken = await getValidAccessToken();
-    if (!accessToken) return;
-
     setIsPending(true);
     setError(null);
 
     try {
-      const result = await api.createTenant(req, accessToken);
+      const result = await api.createTenant(req);
       onSuccess?.(result);
       return result;
     } catch (err) {
@@ -139,14 +129,11 @@ export function useUpdateTenant() {
     req: UpdateTenantRequest,
     onSuccess?: (data: Tenant) => void
   ) => {
-    const accessToken = await getValidAccessToken();
-    if (!accessToken) return;
-
     setIsPending(true);
     setError(null);
 
     try {
-      const result = await api.updateTenant(id, req, accessToken);
+      const result = await api.updateTenant(id, req);
       onSuccess?.(result);
       return result;
     } catch (err) {
@@ -166,14 +153,11 @@ export function useFreezeTenant() {
   const [error, setError] = useState<Error | null>(null);
 
   const mutate = useCallback(async (id: string, onSuccess?: () => void) => {
-    const accessToken = await getValidAccessToken();
-    if (!accessToken) return;
-
     setIsPending(true);
     setError(null);
 
     try {
-      await api.freezeTenant(id, accessToken);
+      await api.freezeTenant(id);
       onSuccess?.();
     } catch (err) {
       const error = err instanceof Error ? err : new Error('冻结租户失败');
@@ -192,14 +176,11 @@ export function useUnfreezeTenant() {
   const [error, setError] = useState<Error | null>(null);
 
   const mutate = useCallback(async (id: string, onSuccess?: () => void) => {
-    const accessToken = await getValidAccessToken();
-    if (!accessToken) return;
-
     setIsPending(true);
     setError(null);
 
     try {
-      await api.unfreezeTenant(id, accessToken);
+      await api.unfreezeTenant(id);
       onSuccess?.();
     } catch (err) {
       const error = err instanceof Error ? err : new Error('解冻租户失败');
