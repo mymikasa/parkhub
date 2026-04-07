@@ -1,0 +1,86 @@
+syntax = "proto3";
+
+package parkhub.billing.v1;
+
+import "google/protobuf/timestamp.proto";
+import "api/proto/common/v1/money.proto";
+
+option go_package = "github.com/parkhub/api/internal/gen/proto/billing/v1;billingv1";
+
+// FeeBreakdown 费用明细
+message FeeBreakdown {
+  int64 duration_minutes = 1;
+  int64 free_minutes = 2;
+  int64 charged_minutes = 3;
+  common.v1.Money base_fee = 4;
+  common.v1.Money discount = 5;
+  common.v1.Money total_fee = 6;
+}
+
+// PlateFeeResult 车牌计费结果
+message PlateFeeResult {
+  string plate_number = 1;
+  common.v1.Money fee = 2;
+  string error = 3;
+}
+
+service CalculatorService {
+  rpc CalculateFee(CalculateFeeRequest) returns (CalculateFeeResponse);
+  rpc CalculateBatch(CalculateBatchRequest) returns (CalculateBatchResponse);
+  rpc GetFeeDetail(GetFeeDetailRequest) returns (GetFeeDetailResponse);
+  rpc ValidateRule(ValidateRuleRequest) returns (ValidateRuleResponse);
+  rpc PreviewFee(PreviewFeeRequest) returns (PreviewFeeResponse);
+}
+
+message CalculateFeeRequest {
+  string parking_lot_id = 1;
+  string plate_number = 2;
+  google.protobuf.Timestamp entry_time = 3;
+  google.protobuf.Timestamp exit_time = 4;
+}
+
+message CalculateFeeResponse {
+  common.v1.Money fee = 1;
+  string rule_applied = 2;
+  int64 duration_minutes = 3;
+}
+
+message CalculateBatchRequest {
+  string parking_lot_id = 1;
+  repeated string plates = 2;
+}
+
+message CalculateBatchResponse {
+  repeated PlateFeeResult results = 1;
+}
+
+message GetFeeDetailRequest {
+  string transit_id = 1;
+}
+
+message GetFeeDetailResponse {
+  common.v1.Money fee = 1;
+  FeeBreakdown breakdown = 2;
+}
+
+message ValidateRuleRequest {
+  int32 free_minutes = 1;
+  int64 price_per_hour_cents = 2;
+  int64 daily_cap_cents = 3;
+}
+
+message ValidateRuleResponse {
+  bool valid = 1;
+  repeated string errors = 2;
+}
+
+message PreviewFeeRequest {
+  string rule_id = 1;
+  google.protobuf.Timestamp entry_time = 2;
+  google.protobuf.Timestamp exit_time = 3;
+}
+
+message PreviewFeeResponse {
+  common.v1.Money fee = 1;
+  FeeBreakdown breakdown = 2;
+}

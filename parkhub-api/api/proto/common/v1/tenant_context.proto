@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+package parkhub.common.v1;
+
+import "api/proto/common/v1/enums.proto";
+
+option go_package = "github.com/parkhub/api/internal/gen/proto/common/v1;commonv1";
+
+// TenantContext 租户上下文
+message TenantContext {
+  string tenant_id = 1;
+  UserRole user_role = 2;
+}

@@ -1,0 +1,120 @@
+syntax = "proto3";
+
+package parkhub.bff.v1;
+
+import "api/proto/common/v1/pagination.proto";
+
+option go_package = "github.com/parkhub/api/internal/gen/proto/bff/v1;bffv1";
+
+// LotSummary 停车场汇总
+message LotSummary {
+  string parking_lot_id = 1;
+  string name = 2;
+  int32 total_spaces = 3;
+  int32 available_spaces = 4;
+  double occupancy_rate = 5;
+}
+
+// DeviceSummary 设备汇总
+message DeviceSummary {
+  int32 total = 1;
+  int32 online = 2;
+  int32 offline = 3;
+}
+
+// AlertInfo 告警信息
+message AlertInfo {
+  string alert_id = 1;
+  string parking_lot_id = 2;
+  string alert_type = 3;
+  string description = 4;
+  string created_at = 5;
+}
+
+// LotDetailInfo 停车场详情（含闸机和设备）
+message LotDetailInfo {
+  string parking_lot_id = 1;
+  string name = 2;
+  string address = 3;
+  int32 total_spaces = 4;
+  int32 available_spaces = 5;
+  repeated GateInfo gates = 6;
+  repeated DeviceBrief devices = 7;
+  double occupancy_rate = 8;
+}
+
+// GateInfo 闸机信息
+message GateInfo {
+  string gate_id = 1;
+  string name = 2;
+  string gate_type = 3;
+  string device_status = 4;
+}
+
+// DeviceBrief 设备简要信息
+message DeviceBrief {
+  string device_id = 1;
+  string name = 2;
+  string status = 3;
+  string last_heartbeat_at = 4;
+}
+
+service MonitorBffService {
+  rpc GetDashboard(GetDashboardRequest) returns (GetDashboardResponse);
+  rpc GetLotDetail(GetLotDetailRequest) returns (GetLotDetailResponse);
+  rpc GetDeviceStatus(GetDeviceStatusRequest) returns (GetDeviceStatusResponse);
+  rpc GetAlerts(GetAlertsRequest) returns (GetAlertsResponse);
+  rpc GetStatistics(GetStatisticsRequest) returns (GetStatisticsResponse);
+}
+
+message GetDashboardRequest {
+  string tenant_id = 1;
+}
+
+message GetDashboardResponse {
+  repeated LotSummary lots_summary = 1;
+  DeviceSummary devices_summary = 2;
+  repeated AlertInfo recent_alerts = 3;
+}
+
+message GetLotDetailRequest {
+  string parking_lot_id = 1;
+}
+
+message GetLotDetailResponse {
+  LotDetailInfo lot = 1;
+}
+
+message GetDeviceStatusRequest {
+  string tenant_id = 1;
+}
+
+message GetDeviceStatusResponse {
+  repeated DeviceBrief devices = 1;
+  int32 online_count = 2;
+  int32 offline_count = 3;
+}
+
+message GetAlertsRequest {
+  string tenant_id = 1;
+  string parking_lot_id = 2;
+  common.v1.PaginationRequest pagination = 3;
+}
+
+message GetAlertsResponse {
+  repeated AlertInfo alerts = 1;
+  common.v1.PaginationResponse pagination = 2;
+}
+
+message GetStatisticsRequest {
+  string tenant_id = 1;
+  string start_date = 2;
+  string end_date = 3;
+}
+
+message GetStatisticsResponse {
+  int32 total_entries = 1;
+  int32 total_exits = 2;
+  int64 revenue_cents = 3;
+  int64 avg_duration_minutes = 4;
+}

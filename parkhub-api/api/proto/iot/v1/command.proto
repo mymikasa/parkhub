@@ -1,0 +1,70 @@
+syntax = "proto3";
+
+package parkhub.iot.v1;
+
+import "google/protobuf/timestamp.proto";
+import "api/proto/common/v1/pagination.proto";
+
+option go_package = "github.com/parkhub/api/internal/gen/proto/iot/v1;iotv1";
+
+// Command 设备指令
+message Command {
+  string command_id = 1;
+  string device_id = 2;
+  string type = 3;
+  string status = 4;
+  string reason = 5;
+  google.protobuf.Timestamp created_at = 6;
+  google.protobuf.Timestamp completed_at = 7;
+}
+
+service CommandService {
+  rpc SendLiftBarrier(SendLiftBarrierRequest) returns (SendLiftBarrierResponse);
+  rpc SendLowerBarrier(SendLowerBarrierRequest) returns (SendLowerBarrierResponse);
+  rpc SendRestart(SendRestartRequest) returns (SendRestartResponse);
+  rpc GetCommandStatus(GetCommandStatusRequest) returns (GetCommandStatusResponse);
+  rpc ListCommandHistory(ListCommandHistoryRequest) returns (ListCommandHistoryResponse);
+}
+
+message SendLiftBarrierRequest {
+  string device_id = 1;
+  string reason = 2;
+}
+
+message SendLiftBarrierResponse {
+  string command_id = 1;
+}
+
+message SendLowerBarrierRequest {
+  string device_id = 1;
+}
+
+message SendLowerBarrierResponse {
+  string command_id = 1;
+}
+
+message SendRestartRequest {
+  string device_id = 1;
+}
+
+message SendRestartResponse {
+  string command_id = 1;
+}
+
+message GetCommandStatusRequest {
+  string command_id = 1;
+}
+
+message GetCommandStatusResponse {
+  Command command = 1;
+}
+
+message ListCommandHistoryRequest {
+  string device_id = 1;
+  common.v1.PaginationRequest pagination = 2;
+}
+
+message ListCommandHistoryResponse {
+  repeated Command commands = 1;
+  common.v1.PaginationResponse pagination = 2;
+}
