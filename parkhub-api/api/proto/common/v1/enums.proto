@@ -1,0 +1,93 @@
+syntax = "proto3";
+
+package parkhub.common.v1;
+
+option go_package = "github.com/parkhub/api/internal/gen/proto/common/v1;commonv1";
+
+// UserRole 用户角色
+enum UserRole {
+  USER_ROLE_UNSPECIFIED = 0;
+  USER_ROLE_PLATFORM_ADMIN = 1;
+  USER_ROLE_TENANT_ADMIN = 2;
+  USER_ROLE_OPERATOR = 3;
+}
+
+// TenantStatus 租户状态
+enum TenantStatus {
+  TENANT_STATUS_UNSPECIFIED = 0;
+  TENANT_STATUS_ACTIVE = 1;
+  TENANT_STATUS_FROZEN = 2;
+}
+
+// DeviceStatus 设备状态
+enum DeviceStatus {
+  DEVICE_STATUS_UNSPECIFIED = 0;
+  DEVICE_STATUS_PENDING = 1;
+  DEVICE_STATUS_ACTIVE = 2;
+  DEVICE_STATUS_OFFLINE = 3;
+  DEVICE_STATUS_DISABLED = 4;
+}
+
+// TransitType 通行类型
+enum TransitType {
+  TRANSIT_TYPE_UNSPECIFIED = 0;
+  TRANSIT_TYPE_ENTRY = 1;
+  TRANSIT_TYPE_EXIT = 2;
+}
+
+// TransitStatus 通行记录状态
+enum TransitStatus {
+  TRANSIT_STATUS_UNSPECIFIED = 0;
+  TRANSIT_STATUS_NORMAL = 1;
+  TRANSIT_STATUS_PAID = 2;
+  TRANSIT_STATUS_NO_EXIT = 3;
+  TRANSIT_STATUS_NO_ENTRY = 4;
+  TRANSIT_STATUS_RECOGNITION_FAILED = 5;
+}
+
+// LotType 停车场类型
+enum LotType {
+  LOT_TYPE_UNSPECIFIED = 0;
+  LOT_TYPE_UNDERGROUND = 1;
+  LOT_TYPE_GROUND = 2;
+  LOT_TYPE_STEREO = 3;
+}
+
+// GateType 闸机类型
+enum GateType {
+  GATE_TYPE_UNSPECIFIED = 0;
+  GATE_TYPE_ENTRY = 1;
+  GATE_TYPE_EXIT = 2;
+}
+
+// OrderStatus 订单状态
+enum OrderStatus {
+  ORDER_STATUS_UNSPECIFIED = 0;
+  ORDER_STATUS_PENDING = 1;
+  ORDER_STATUS_PAID = 2;
+  ORDER_STATUS_CANCELLED = 3;
+  ORDER_STATUS_REFUNDED = 4;
+}
+
+// PaymentMethod 支付方式
+enum PaymentMethod {
+  PAYMENT_METHOD_UNSPECIFIED = 0;
+  PAYMENT_METHOD_WECHAT = 1;
+  PAYMENT_METHOD_ALIPAY = 2;
+  PAYMENT_METHOD_CASH = 3;
+}
+
+// CouponType 优惠券类型
+enum CouponType {
+  COUPON_TYPE_UNSPECIFIED = 0;
+  COUPON_TYPE_PERCENTAGE = 1;
+  COUPON_TYPE_FIXED = 2;
+}
+
+// AnomalyType 异常类型
+enum AnomalyType {
+  ANOMALY_TYPE_UNSPECIFIED = 0;
+  ANOMALY_TYPE_NO_EXIT = 1;
+  ANOMALY_TYPE_NO_ENTRY = 2;
+  ANOMALY_TYPE_RECOGNITION_FAILED = 3;
+}

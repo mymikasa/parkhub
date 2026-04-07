@@ -1,0 +1,76 @@
+syntax = "proto3";
+
+package parkhub.payment.v1;
+
+import "google/protobuf/timestamp.proto";
+import "api/proto/common/v1/enums.proto";
+import "api/proto/common/v1/money.proto";
+import "api/proto/common/v1/pagination.proto";
+
+option go_package = "github.com/parkhub/api/internal/gen/proto/payment/v1;paymentv1";
+
+// Payment 支付记录
+message Payment {
+  string payment_id = 1;
+  string order_id = 2;
+  string tenant_id = 3;
+  common.v1.Money amount = 4;
+  common.v1.PaymentMethod payment_method = 5;
+  string status = 6;
+  string transaction_id = 7;
+  google.protobuf.Timestamp created_at = 8;
+  google.protobuf.Timestamp completed_at = 9;
+}
+
+service PaymentService {
+  rpc CreatePayment(CreatePaymentRequest) returns (CreatePaymentResponse);
+  rpc ProcessPayment(ProcessPaymentRequest) returns (ProcessPaymentResponse);
+  rpc Refund(RefundRequest) returns (RefundResponse);
+  rpc GetPaymentStatus(GetPaymentStatusRequest) returns (GetPaymentStatusResponse);
+  rpc ListPayments(ListPaymentsRequest) returns (ListPaymentsResponse);
+}
+
+message CreatePaymentRequest {
+  string order_id = 1;
+  common.v1.PaymentMethod payment_method = 2;
+}
+
+message CreatePaymentResponse {
+  Payment payment = 1;
+}
+
+message ProcessPaymentRequest {
+  string payment_id = 1;
+}
+
+message ProcessPaymentResponse {
+  Payment payment = 1;
+}
+
+message RefundRequest {
+  string payment_id = 1;
+  string reason = 2;
+}
+
+message RefundResponse {
+  Payment payment = 1;
+}
+
+message GetPaymentStatusRequest {
+  string payment_id = 1;
+}
+
+message GetPaymentStatusResponse {
+  Payment payment = 1;
+}
+
+message ListPaymentsRequest {
+  string tenant_id = 1;
+  string order_id = 2;
+  common.v1.PaginationRequest pagination = 3;
+}
+
+message ListPaymentsResponse {
+  repeated Payment payments = 1;
+  common.v1.PaginationResponse pagination = 2;
+}

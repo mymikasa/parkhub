@@ -1,0 +1,92 @@
+syntax = "proto3";
+
+package parkhub.payment.v1;
+
+import "google/protobuf/timestamp.proto";
+import "api/proto/common/v1/enums.proto";
+import "api/proto/common/v1/money.proto";
+import "api/proto/common/v1/pagination.proto";
+
+option go_package = "github.com/parkhub/api/internal/gen/proto/payment/v1;paymentv1";
+
+// Coupon 优惠券
+message Coupon {
+  string coupon_id = 1;
+  string tenant_id = 2;
+  string name = 3;
+  common.v1.CouponType coupon_type = 4;
+  int64 value = 5;
+  google.protobuf.Timestamp valid_from = 6;
+  google.protobuf.Timestamp valid_until = 7;
+  int32 max_uses = 8;
+  int32 used_count = 9;
+  google.protobuf.Timestamp created_at = 10;
+}
+
+service CouponService {
+  rpc GetCoupon(GetCouponRequest) returns (GetCouponResponse);
+  rpc ListCoupons(ListCouponsRequest) returns (ListCouponsResponse);
+  rpc CreateCoupon(CreateCouponRequest) returns (CreateCouponResponse);
+  rpc UpdateCoupon(UpdateCouponRequest) returns (UpdateCouponResponse);
+  rpc DeleteCoupon(DeleteCouponRequest) returns (DeleteCouponResponse);
+  rpc ApplyCoupon(ApplyCouponRequest) returns (ApplyCouponResponse);
+}
+
+message GetCouponRequest {
+  string coupon_id = 1;
+}
+
+message GetCouponResponse {
+  Coupon coupon = 1;
+}
+
+message ListCouponsRequest {
+  string tenant_id = 1;
+  common.v1.PaginationRequest pagination = 2;
+}
+
+message ListCouponsResponse {
+  repeated Coupon coupons = 1;
+  common.v1.PaginationResponse pagination = 2;
+}
+
+message CreateCouponRequest {
+  string tenant_id = 1;
+  string name = 2;
+  common.v1.CouponType coupon_type = 3;
+  int64 value = 4;
+  google.protobuf.Timestamp valid_from = 5;
+  google.protobuf.Timestamp valid_until = 6;
+  int32 max_uses = 7;
+}
+
+message CreateCouponResponse {
+  Coupon coupon = 1;
+}
+
+message UpdateCouponRequest {
+  string coupon_id = 1;
+  string name = 2;
+  int64 value = 3;
+  google.protobuf.Timestamp valid_from = 4;
+  google.protobuf.Timestamp valid_until = 5;
+}
+
+message UpdateCouponResponse {
+  Coupon coupon = 1;
+}
+
+message DeleteCouponRequest {
+  string coupon_id = 1;
+}
+
+message DeleteCouponResponse {}
+
+message ApplyCouponRequest {
+  string coupon_id = 1;
+  string order_id = 2;
+}
+
+message ApplyCouponResponse {
+  common.v1.Money discounted_amount = 1;
+}

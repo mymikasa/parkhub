@@ -1,0 +1,83 @@
+syntax = "proto3";
+
+package parkhub.iot.v1;
+
+import "google/protobuf/timestamp.proto";
+import "api/proto/common/v1/enums.proto";
+import "api/proto/common/v1/pagination.proto";
+
+option go_package = "github.com/parkhub/api/internal/gen/proto/iot/v1;iotv1";
+
+// Heartbeat 心跳记录
+message Heartbeat {
+  string heartbeat_id = 1;
+  string device_id = 2;
+  common.v1.DeviceStatus status = 3;
+  string firmware_version = 4;
+  google.protobuf.Timestamp reported_at = 5;
+}
+
+service HeartbeatService {
+  rpc ReportHeartbeat(ReportHeartbeatRequest) returns (ReportHeartbeatResponse);
+  rpc GetLatestHeartbeat(GetLatestHeartbeatRequest) returns (GetLatestHeartbeatResponse);
+  rpc GetHeartbeatHistory(GetHeartbeatHistoryRequest) returns (GetHeartbeatHistoryResponse);
+  rpc GetDeviceOnlineStatistics(GetDeviceOnlineStatisticsRequest) returns (GetDeviceOnlineStatisticsResponse);
+  rpc ListOfflineDevices(ListOfflineDevicesRequest) returns (ListOfflineDevicesResponse);
+}
+
+message ReportHeartbeatRequest {
+  string device_id = 1;
+  common.v1.DeviceStatus status = 2;
+  string firmware_version = 3;
+}
+
+message ReportHeartbeatResponse {}
+
+message GetLatestHeartbeatRequest {
+  string device_id = 1;
+}
+
+message GetLatestHeartbeatResponse {
+  Heartbeat heartbeat = 1;
+}
+
+message GetHeartbeatHistoryRequest {
+  string device_id = 1;
+  google.protobuf.Timestamp start_time = 2;
+  google.protobuf.Timestamp end_time = 3;
+  common.v1.PaginationRequest pagination = 4;
+}
+
+message GetHeartbeatHistoryResponse {
+  repeated Heartbeat heartbeats = 1;
+  common.v1.PaginationResponse pagination = 2;
+}
+
+message GetDeviceOnlineStatisticsRequest {
+  string tenant_id = 1;
+  string parking_lot_id = 2;
+}
+
+message GetDeviceOnlineStatisticsResponse {
+  int32 total = 1;
+  int32 online = 2;
+  int32 offline = 3;
+}
+
+message ListOfflineDevicesRequest {
+  string tenant_id = 1;
+  string parking_lot_id = 2;
+  common.v1.PaginationRequest pagination = 3;
+}
+
+message ListOfflineDevicesResponse {
+  repeated DeviceSummary devices = 1;
+  common.v1.PaginationResponse pagination = 2;
+}
+
+message DeviceSummary {
+  string device_id = 1;
+  string name = 2;
+  string parking_lot_id = 3;
+  google.protobuf.Timestamp last_heartbeat_at = 4;
+}

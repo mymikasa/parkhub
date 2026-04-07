@@ -1,0 +1,105 @@
+syntax = "proto3";
+
+package parkhub.event.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/parkhub/api/internal/gen/proto/event/v1;eventv1";
+
+// LotRealtimeStatus 停车场实时状态
+message LotRealtimeStatus {
+  string parking_lot_id = 1;
+  string name = 2;
+  int32 total_spaces = 3;
+  int32 available_spaces = 4;
+  int32 online_devices = 5;
+  int32 offline_devices = 6;
+}
+
+// OccupancyInfo 占用信息
+message OccupancyInfo {
+  string parking_lot_id = 1;
+  string name = 2;
+  int32 total_spaces = 3;
+  int32 occupied_spaces = 4;
+  double occupancy_rate = 5;
+}
+
+// DashboardSummary 仪表盘汇总
+message DashboardSummary {
+  int32 total_lots = 1;
+  int32 total_spaces = 2;
+  int32 total_occupied = 3;
+  int32 total_devices = 4;
+  int32 online_devices = 5;
+  int32 today_entries = 6;
+  int32 today_exits = 7;
+  int32 unresolved_anomalies = 8;
+}
+
+// RealtimeEvent 实时事件
+message RealtimeEvent {
+  string event_id = 1;
+  string tenant_id = 2;
+  string parking_lot_id = 3;
+  string event_type = 4;
+  string description = 5;
+  google.protobuf.Timestamp occurred_at = 6;
+}
+
+service MonitorService {
+  rpc GetRealtimeStatus(GetRealtimeStatusRequest) returns (GetRealtimeStatusResponse);
+  rpc GetLotOccupancy(GetLotOccupancyRequest) returns (GetLotOccupancyResponse);
+  rpc GetRecentTransits(GetRecentTransitsRequest) returns (GetRecentTransitsResponse);
+  rpc GetDashboardData(GetDashboardDataRequest) returns (GetDashboardDataResponse);
+  rpc SubscribeEvents(SubscribeEventsRequest) returns (stream SubscribeEventsResponse);
+}
+
+message GetRealtimeStatusRequest {
+  string parking_lot_id = 1;
+}
+
+message GetRealtimeStatusResponse {
+  LotRealtimeStatus lot_status = 1;
+}
+
+message GetLotOccupancyRequest {
+  string tenant_id = 1;
+}
+
+message GetLotOccupancyResponse {
+  repeated OccupancyInfo occupancies = 1;
+}
+
+message GetRecentTransitsRequest {
+  string parking_lot_id = 1;
+  int32 limit = 2;
+}
+
+message GetRecentTransitsResponse {
+  repeated TransitSummary transits = 1;
+}
+
+message TransitSummary {
+  string transit_id = 1;
+  string plate_number = 2;
+  string transit_type = 3;
+  google.protobuf.Timestamp transit_time = 4;
+}
+
+message GetDashboardDataRequest {
+  string tenant_id = 1;
+}
+
+message GetDashboardDataResponse {
+  DashboardSummary summary = 1;
+}
+
+message SubscribeEventsRequest {
+  string tenant_id = 1;
+  string parking_lot_id = 2;
+}
+
+message SubscribeEventsResponse {
+  RealtimeEvent event = 1;
+}

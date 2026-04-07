@@ -1,0 +1,99 @@
+syntax = "proto3";
+
+package parkhub.event.v1;
+
+import "google/protobuf/timestamp.proto";
+import "api/proto/common/v1/enums.proto";
+import "api/proto/common/v1/pagination.proto";
+
+option go_package = "github.com/parkhub/api/internal/gen/proto/event/v1;eventv1";
+
+// TransitRecord 通行记录
+message TransitRecord {
+  string transit_id = 1;
+  string tenant_id = 2;
+  string parking_lot_id = 3;
+  string gate_id = 4;
+  string plate_number = 5;
+  common.v1.TransitType transit_type = 6;
+  common.v1.TransitStatus status = 7;
+  string image_url = 8;
+  string entry_record_id = 9;
+  google.protobuf.Timestamp transit_time = 10;
+  google.protobuf.Timestamp created_at = 11;
+}
+
+service TransitService {
+  rpc GetTransitRecord(GetTransitRecordRequest) returns (GetTransitRecordResponse);
+  rpc ListTransitRecords(ListTransitRecordsRequest) returns (ListTransitRecordsResponse);
+  rpc CreateEntryRecord(CreateEntryRecordRequest) returns (CreateEntryRecordResponse);
+  rpc CreateExitRecord(CreateExitRecordRequest) returns (CreateExitRecordResponse);
+  rpc MatchEntryRecord(MatchEntryRecordRequest) returns (MatchEntryRecordResponse);
+  rpc ListByPlate(ListByPlateRequest) returns (ListByPlateResponse);
+}
+
+message GetTransitRecordRequest {
+  string transit_id = 1;
+}
+
+message GetTransitRecordResponse {
+  TransitRecord transit = 1;
+}
+
+message ListTransitRecordsRequest {
+  string tenant_id = 1;
+  string parking_lot_id = 2;
+  common.v1.TransitType transit_type = 3;
+  string plate_number = 4;
+  common.v1.PaginationRequest pagination = 5;
+}
+
+message ListTransitRecordsResponse {
+  repeated TransitRecord transits = 1;
+  common.v1.PaginationResponse pagination = 2;
+}
+
+message CreateEntryRecordRequest {
+  string tenant_id = 1;
+  string parking_lot_id = 2;
+  string gate_id = 3;
+  string plate_number = 4;
+  string image_url = 5;
+}
+
+message CreateEntryRecordResponse {
+  TransitRecord transit = 1;
+}
+
+message CreateExitRecordRequest {
+  string tenant_id = 1;
+  string parking_lot_id = 2;
+  string gate_id = 3;
+  string plate_number = 4;
+  string image_url = 5;
+  string entry_record_id = 6;
+}
+
+message CreateExitRecordResponse {
+  TransitRecord transit = 1;
+}
+
+message MatchEntryRecordRequest {
+  string exit_record_id = 1;
+}
+
+message MatchEntryRecordResponse {
+  bool matched = 1;
+  TransitRecord entry_record = 2;
+}
+
+message ListByPlateRequest {
+  string tenant_id = 1;
+  string plate_number = 2;
+  common.v1.PaginationRequest pagination = 3;
+}
+
+message ListByPlateResponse {
+  repeated TransitRecord transits = 1;
+  common.v1.PaginationResponse pagination = 2;
+}

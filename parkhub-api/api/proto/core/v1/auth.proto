@@ -1,0 +1,73 @@
+syntax = "proto3";
+
+package parkhub.core.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/parkhub/api/internal/gen/proto/core/v1;corev1";
+
+service AuthService {
+  rpc Login(LoginRequest) returns (LoginResponse);
+  rpc Logout(LogoutRequest) returns (LogoutResponse);
+  rpc RefreshToken(RefreshTokenRequest) returns (RefreshTokenResponse);
+  rpc SendSmsCode(SendSmsCodeRequest) returns (SendSmsCodeResponse);
+  rpc GetCurrentUser(GetCurrentUserRequest) returns (GetCurrentUserResponse);
+}
+
+message LoginRequest {
+  string username = 1;
+  string password = 2;
+}
+
+message LoginResponse {
+  string access_token = 1;
+  string refresh_token = 2;
+  google.protobuf.Timestamp expires_at = 3;
+  LoginUser user = 4;
+}
+
+message LoginUser {
+  string user_id = 1;
+  string tenant_id = 2;
+  string username = 3;
+  string real_name = 4;
+  string role = 5;
+}
+
+message LogoutRequest {
+  string access_token = 1;
+}
+
+message LogoutResponse {}
+
+message RefreshTokenRequest {
+  string refresh_token = 1;
+}
+
+message RefreshTokenResponse {
+  string access_token = 1;
+  string refresh_token = 2;
+  google.protobuf.Timestamp expires_at = 3;
+}
+
+message SendSmsCodeRequest {
+  string phone = 1;
+  string purpose = 2;
+}
+
+message SendSmsCodeResponse {}
+
+message GetCurrentUserRequest {
+  string access_token = 1;
+}
+
+message GetCurrentUserResponse {
+  LoginUser user = 1;
+  CurrentUserTenant tenant = 2;
+}
+
+message CurrentUserTenant {
+  string tenant_id = 1;
+  string company_name = 2;
+  string status = 3;
+}
