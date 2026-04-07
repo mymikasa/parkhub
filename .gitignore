@@ -64,5 +64,8 @@ go.work.sum
 parkhub-api/server
 tmp/
 
-# 
+# Generated protobuf code
+parkhub-api/internal/gen/
+
+#
 .worktree/
