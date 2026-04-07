@@ -1,3 +1,4 @@
+import { jwtVerify } from 'jose';
 import { NextRequest, NextResponse } from 'next/server';
 import type { UserRole } from './lib/auth/types';
 
@@ -23,7 +24,7 @@ const ROUTE_PERMISSIONS: Record<string, RoutePermission> = {
 const PUBLIC_ROUTES = ['/login', '/payment'];
 
 // ──────────────────────────────────────────────
-// JWT decode helpers (no crypto – just parse payload)
+// JWT verification with jose (Edge Runtime compatible)
 // ──────────────────────────────────────────────
 
 interface JwtPayload {
@@ -33,7 +34,7 @@ interface JwtPayload {
 }
 
 // Token cache for performance optimization
-// Caches parsed JWT payloads for 5 minutes to avoid repeated parsing
+// Caches verified JWT payloads for 5 minutes to avoid repeated verification
 // Uses LRU (Least Recently Used) eviction when cache is full
 const tokenCache = new Map<string, { payload: JwtPayload; expiry: number; lastAccess: number }>();
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
@@ -54,66 +55,70 @@ if (typeof setInterval !== 'undefined') {
 // Evict least recently used entries when cache is full
 function evictLRU(): void {
   if (tokenCache.size < MAX_CACHE_SIZE) return;
-  
+
   let oldestKey: string | null = null;
   let oldestAccess = Infinity;
-  
+
   for (const [key, value] of tokenCache.entries()) {
     if (value.lastAccess < oldestAccess) {
       oldestAccess = value.lastAccess;
       oldestKey = key;
     }
   }
-  
+
   if (oldestKey) {
     tokenCache.delete(oldestKey);
   }
 }
 
-function parseJwtPayload(token: string): JwtPayload | null {
-  // Check cache first
+// Lazily initialize the secret key (recreated per cold start)
+let secretKey: Uint8Array | null = null;
+
+function getSecretKey(): Uint8Array {
+  if (!secretKey) {
+    secretKey = new TextEncoder().encode(process.env.JWT_SECRET);
+  }
+  return secretKey;
+}
+
+async function verifyJwtToken(token: string): Promise<JwtPayload | null> {
+  // Check cache first — skip crypto verification for recently verified tokens
   const cached = tokenCache.get(token);
   if (cached && cached.expiry > Date.now()) {
-    // Update last access time
     cached.lastAccess = Date.now();
     return cached.payload;
   }
 
   try {
-    const parts = token.split('.');
-    if (parts.length !== 3) return null;
-    const payload = parts[1];
-    // base64url decode
-    const base64 = payload.replace(/-/g, '+').replace(/_/g, '/');
-    const json = atob(base64);
-    const result = JSON.parse(json) as JwtPayload;
-    
+    const { payload } = await jwtVerify(token, getSecretKey());
+
+    const result: JwtPayload = {
+      sub: payload.sub as string | undefined,
+      role: payload.role as UserRole | undefined,
+      exp: payload.exp,
+    };
+
     // Evict LRU if cache is full
     evictLRU();
-    
-    // Cache the result
+
+    // Cache the verified result
     tokenCache.set(token, {
       payload: result,
       expiry: Date.now() + CACHE_TTL_MS,
-      lastAccess: Date.now()
+      lastAccess: Date.now(),
     });
-    
+
     return result;
   } catch {
     return null;
   }
 }
 
-function isTokenExpired(payload: JwtPayload): boolean {
-  if (!payload.exp) return true;
-  return Date.now() / 1000 >= payload.exp;
-}
-
 // ──────────────────────────────────────────────
 // Middleware
 // ──────────────────────────────────────────────
 
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Allow public routes
@@ -140,15 +145,15 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  // Parse JWT payload
-  const payload = parseJwtPayload(accessToken);
+  // Verify JWT signature and parse payload
+  const payload = await verifyJwtToken(accessToken);
 
-  // Invalid or expired token → redirect to login
-  if (!payload || isTokenExpired(payload)) {
+  // Invalid signature, expired, or malformed token → redirect to login
+  if (!payload) {
     const loginUrl = new URL('/login', request.url);
     loginUrl.searchParams.set('redirect', pathname);
     const response = NextResponse.redirect(loginUrl);
-    // Clear the stale cookie
+    // Clear the stale/invalid cookie
     response.cookies.delete('access_token');
     return response;
   }
