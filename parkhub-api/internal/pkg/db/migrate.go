@@ -52,11 +52,11 @@ func RunMigrations(db *gorm.DB, migrationsDir string) error {
 
 func ensureMigrationsTable(db *gorm.DB) error {
 	return db.Exec(`
-		CREATE TABLE IF NOT EXISTS schema_migrations (
-			filename   VARCHAR(255) PRIMARY KEY,
-			applied_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-		)
-	`).Error
+			CREATE TABLE IF NOT EXISTS schema_migrations (
+				filename   VARCHAR(255) PRIMARY KEY,
+				applied_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+			)
+		`).Error
 }
 
 func isMigrationApplied(db *gorm.DB, filename string) (bool, error) {
