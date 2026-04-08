@@ -10,15 +10,18 @@ import (
 
 const bufconnBufSize = 1 << 20 // 1 MiB
 
-// InitGRPCServer creates an in-process gRPC server backed by a bufconn listener.
+// InitGRPCServer creates an in-process gRPC server backed by a bufconn listener
+// and wraps it in a grpcx.Registry. Returning the Registry (rather than the bare
+// server + listener) gives downstream wiring a single object on which to call
+// Register / GetClient.
 //
 // The server is pre-configured with:
 //   - TenantInterceptor: injects TenantInfo from metadata into context
 //   - OTel stats handler: propagates trace context across in-process calls
 //
-// No gRPC services are registered here; domain services register themselves
-// via internal/pkg/grpcx.GetBufconnDialer() in Phase 1.
-func InitGRPCServer() (*grpc.Server, *bufconn.Listener) {
+// No gRPC services are registered here; domain wiring code calls
+// registry.Register("...", corev1.RegisterXxxServer) in Phase 1.
+func InitGRPCServer() (*grpcx.Registry, error) {
 	lis := bufconn.Listen(bufconnBufSize)
 
 	srv := grpc.NewServer(
@@ -26,5 +29,9 @@ func InitGRPCServer() (*grpc.Server, *bufconn.Listener) {
 		grpc.StatsHandler(otelgrpc.NewServerHandler()),
 	)
 
-	return srv, lis
+	reg, err := grpcx.NewRegistry(srv, lis)
+	if err != nil {
+		return nil, err
+	}
+	return reg, nil
 }

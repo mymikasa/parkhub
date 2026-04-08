@@ -69,7 +69,7 @@
 按 domain 分别提交 PR：
 
 - [ ] PR-0.3.1：`api/proto/common/v1/*.proto`（共享类型：Pagination、Money、TenantContext）
-- [ ] PR-0.3.2：`api/proto/core/v1/*.proto`（Tenant、User、Auth、ParkingLot、RBAC）
+- [ ] PR-0.3.2：`api/proto/core/v1/*.proto`（Tenant、User、Auth、ParkingLot）
 - [ ] PR-0.3.3：`api/proto/iot/v1/*.proto`（Device、Heartbeat、Command）
 - [ ] PR-0.3.4：`api/proto/event/v1/*.proto`（Transit、Monitor、Anomaly）
 - [ ] PR-0.3.5：`api/proto/billing/v1/*.proto`（Rule、Calculator）
@@ -192,9 +192,9 @@
 
 - [ ] 在 `internal/pkg/grpcx/` 创建 `inprocess_registry.go`
 - [ ] 实现：
-  - `RegisterService(name, server)` 注册 gRPC server 到全局
-  - `GetClient[T any](name)` 返回 in-process gRPC client
-  - in-process 模式跳过网络栈，直接函数调用
+  - `Registry.Register(name, register)` 注册 gRPC service 到 in-process registry
+  - `GetClient[T any](registry, name, factory)` 返回 in-process gRPC client
+  - in-process 模式跳过真实网络，通过 bufconn 走完整 gRPC 栈
 - [ ] 文档化使用方式
 
 **验收**：阶段 1 搬迁时，`core` 的 service 调用 `iot` 的 service 通过这个机制完成
@@ -252,7 +252,6 @@
 
 | 风险 | 影响 | 应对 |
 |------|------|------|
-| Connect-RPC 工具链不熟悉 | 工期延长 | 团队预先做技术分享、参考 [Connect 官方示例](https://connectrpc.com/docs/go/getting-started) |
 | 自定义 linter 难写 | 工期延长 | 参考 [go-critic](https://github.com/go-critic/go-critic) 实现，或简化为 grep + 正则 |
 | 租户 POC 失败 | **阻塞重构** | **立即暂停**，召集架构组重新讨论租户隔离方案，可能需要引入 ProxySQL |
 | K8s 进度滞后 | 不影响阶段 0 | 阶段 0 不需要 K8s，可以并行 |

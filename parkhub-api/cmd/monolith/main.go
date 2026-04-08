@@ -68,10 +68,14 @@ func main() {
 		os.Exit(1)
 	}
 
-	// ── 5. In-process gRPC server ────────────────────────────────────────────
-	grpcSrv, bufLis := bootstrap.InitGRPCServer()
+	// ── 5. In-process gRPC registry ─────────────────────────────────────────
+	reg, err := bootstrap.InitGRPCServer()
+	if err != nil {
+		slog.Error("grpc registry init failed", "error", err)
+		os.Exit(1)
+	}
 	go func() {
-		if serveErr := grpcSrv.Serve(bufLis); serveErr != nil {
+		if serveErr := reg.Server().Serve(reg.Listener()); serveErr != nil {
 			slog.Error("grpc serve error", "error", serveErr)
 		}
 	}()
@@ -114,7 +118,7 @@ func main() {
 		slog.Error("http shutdown error", "error", err)
 	}
 
-	grpcSrv.GracefulStop()
+	reg.Server().GracefulStop()
 
 	dbCleanup()
 
