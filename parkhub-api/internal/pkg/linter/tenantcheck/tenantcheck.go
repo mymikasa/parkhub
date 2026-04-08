@@ -207,16 +207,18 @@ func run(pass *analysis.Pass) (any, error) {
 		inspect.Preorder(nodeFilter, func(n ast.Node) {
 			sel := n.(*ast.SelectorExpr)
 
-			ident, ok := sel.X.(*ast.Ident)
-			if !ok || ident.Name != "db" {
-				return
+			// Resolve the type of sel.X so we can confirm it is *gorm.DB.
+			// Use TypesInfo.Types first (covers both *ast.Ident "db" and
+			// *ast.SelectorExpr "r.db"); fall back to ObjectOf for bare idents.
+			var isGormDB bool
+			if tv, ok := pass.TypesInfo.Types[sel.X]; ok {
+				isGormDB = isGormDBPtrOrNamed(tv.Type)
+			} else if ident, ok := sel.X.(*ast.Ident); ok {
+				if obj := pass.TypesInfo.ObjectOf(ident); obj != nil {
+					isGormDB = isGormDBPtrOrNamed(obj.Type())
+				}
 			}
-
-			obj := pass.TypesInfo.ObjectOf(ident)
-			if obj == nil {
-				return
-			}
-			if !isGormDBPtrOrNamed(obj.Type()) {
+			if !isGormDB {
 				return
 			}
 

@@ -10,8 +10,27 @@
 package repository
 
 import (
+	"context"
+
 	"gorm.io/gorm"
 )
+
+// fakeRepo simulates a repository struct with an embedded *gorm.DB field.
+type fakeRepo struct {
+	db *gorm.DB
+}
+
+// Violation: must-use-with-tenant — r.db.Where(...) via SelectorExpr (r.db).
+// Expected: must-use-with-tenant: direct r.db.Where() bypasses tenant isolation
+func (r *fakeRepo) violationSelectorExpr(ctx context.Context) {
+	_ = r.db.Where("tenant_id = ?", "T1") // want "must-use-with-tenant"
+}
+
+// Violation: must-use-with-tenant — r.db.Find(...) via SelectorExpr (r.db).
+// Expected: must-use-with-tenant: direct r.db.Find() bypasses tenant isolation
+func (r *fakeRepo) violationFindSelectorExpr(ctx context.Context) {
+	_ = r.db.Find(nil) // want "must-use-with-tenant"
+}
 
 // Violation: no-raw-sql — db.Raw() without nolint comment.
 // Expected: no-raw-sql: db.Raw() bypasses tenant isolation
