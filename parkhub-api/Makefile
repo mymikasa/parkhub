@@ -24,9 +24,9 @@ lint-tenant-violations: build-linter
 	@! go vet -tags tenantcheck_violation -test -vettool=./bin/tenantcheck ./internal/domains/core/service/ 2>&1 | grep -q "no-gorm-outside-repo" && echo "FAIL: no-gorm-outside-repo not detected" && exit 1 || true
 	@echo "--- All intentional violations detected correctly ---"
 
-# 单进程入口
+# 单进程入口 (Task 0.7 目标架构入口 — cmd/monolith)
 build-monolith:
-	go build -o bin/monolith ./cmd/server
+	go build -o bin/monolith ./cmd/monolith
 
 run-monolith: build-monolith
-	./bin/monolith
+	./bin/monolith -config .env.monolith
