@@ -3,45 +3,69 @@ name: Refactor CI
 on:
   push:
     branches:
-      - 'refactor/**'
+      - "refactor/**"
   pull_request:
     branches:
-      - 'refactor/**'
+      - "refactor/microservices"
+
+permissions:
+  contents: read
 
 defaults:
   run:
     working-directory: parkhub-api
 
 jobs:
-  proto-lint:
+  refactor:
+    name: Refactor Pipeline
     runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: bufbuild/buf-setup-action@v1
-        with:
-          version: 'latest'
-      - name: buf lint
-        run: buf lint
 
-  go-test:
-    runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
         with:
           go-version-file: parkhub-api/go.mod
+          cache: true
+
+      - name: Setup Buf
+        uses: bufbuild/buf-setup-action@v1
+        with:
+          version: 1.67.0
+
+      - name: Resolve proto-breaking base branch
+        shell: bash
+        run: |
+          if [[ "${GITHUB_EVENT_NAME}" == "pull_request" ]]; then
+            echo "BASE_REF=${{ github.base_ref }}" >> "${GITHUB_ENV}"
+          elif [[ "${GITHUB_REF_NAME}" == "refactor/microservices" ]]; then
+            echo "BREAKING_REF=HEAD~1" >> "${GITHUB_ENV}"
+          else
+            echo "BASE_REF=refactor/microservices" >> "${GITHUB_ENV}"
+          fi
+
+      - name: Fetch proto-breaking base branch
+        if: env.BASE_REF != ''
+        run: git fetch --no-tags --prune origin "${BASE_REF}:${BASE_REF}" --depth=1
+
+      - name: make proto-lint
+        run: make proto-lint
+
+      - name: make proto-breaking
+        run: make proto-breaking
+
       - name: go vet
         run: go vet ./...
+
+      - name: make lint-tenant
+        run: make lint-tenant
+
       - name: go test
         run: go test ./...
 
-  build-monolith:
-    runs-on: ubuntu-latest
-    needs: [proto-lint, go-test]
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
-        with:
-          go-version-file: parkhub-api/go.mod
-      - name: build
-        run: go build -o bin/monolith ./cmd/server
+      - name: make build-monolith
+        run: make build-monolith

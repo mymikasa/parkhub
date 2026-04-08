@@ -1,62 +1,62 @@
-# ParkHub Agent Guidelines
+# ParkHub 代理指南
 
-Always response in Chinese.
-This file provides guidance for AI coding agents working in this monorepo.
+始终使用中文回复。
+本文档为在此 monorepo 中工作的 AI 编码代理提供指导。
 
-## Project Overview
+## 项目概览
 
-ParkHub is a smart parking management SaaS platform:
-- **parkhub-api**: Go backend with Gin framework (clean architecture)
-- **parkhub-web**: Next.js 15 frontend with App Router and shadcn/ui
+ParkHub 是一个智慧停车管理 SaaS 平台：
+- **parkhub-api**：基于 Gin 框架的 Go 后端（整洁架构）
+- **parkhub-web**：基于 Next.js 15 App Router 和 shadcn/ui 的前端
 
 ---
 
-## Build / Test / Lint Commands
+## 构建 / 测试 / Lint 命令
 
-### Backend (parkhub-api)
+### 后端（parkhub-api）
 
 ```bash
 cd parkhub-api
 
-go test ./...                                          # Run all tests
-go test ./internal/service/impl/...                    # Run tests for a package
-go test -v -run TestLogin_Success ./...                # Run a single test by name
-wire gen ./internal/wire                               # Generate Wire DI code
-go build -o bin/server ./cmd/server && ./bin/server    # Build and run
+go test ./...                                          # 运行全部测试
+go test ./internal/service/impl/...                    # 运行指定包测试
+go test -v -run TestLogin_Success ./...                # 按测试名运行单个测试
+wire gen ./internal/wire                               # 生成 Wire 依赖注入代码
+go build -o bin/server ./cmd/server && ./bin/server    # 构建并运行
 ```
 
-### Frontend (parkhub-web)
+### 前端（parkhub-web）
 
 ```bash
 cd parkhub-web
 
-pnpm install                     # Install dependencies
-pnpm dev                         # Development server (http://localhost:3000)
-pnpm build                       # Production build
-pnpm lint                        # Lint check
-npx shadcn@latest add [component] # Add shadcn component
+pnpm install                      # 安装依赖
+pnpm dev                          # 启动开发服务器（http://localhost:3000）
+pnpm build                        # 生产构建
+pnpm lint                         # 运行 Lint 检查
+npx shadcn@latest add [component] # 添加 shadcn 组件
 ```
 
 ---
 
-## Backend Architecture (Go)
+## 后端架构（Go）
 
-### Clean Architecture Layers
+### 整洁架构分层
 
 ```
 Router → Handler → Middleware → Service → Repository → Domain
 ```
 
-| Layer | Location | Responsibility |
-|-------|----------|----------------|
-| Router | `internal/router/` | Route definitions, middleware chain |
-| Handler | `internal/handler/` | HTTP request/response, DTO conversion |
-| Middleware | `internal/middleware/` | JWT, tenant isolation, RBAC |
-| Service | `internal/service/` | Business logic (interfaces in `interface.go`) |
-| Repository | `internal/repository/` | Database operations (interfaces in `interface.go`) |
-| Domain | `internal/domain/` | Entities, enums, business rules, errors |
+| 分层 | 目录 | 职责 |
+|------|------|------|
+| Router | `internal/router/` | 路由定义与中间件链组装 |
+| Handler | `internal/handler/` | HTTP 请求/响应处理与 DTO 转换 |
+| Middleware | `internal/middleware/` | JWT、租户隔离、RBAC |
+| Service | `internal/service/` | 业务逻辑（接口定义在 `interface.go`） |
+| Repository | `internal/repository/` | 数据库操作（接口定义在 `interface.go`） |
+| Domain | `internal/domain/` | 实体、枚举、业务规则、错误定义 |
 
-### Interface-First Design
+### 接口优先设计
 
 ```go
 // internal/service/interface.go
@@ -76,55 +76,55 @@ func NewAuthService(userRepo repository.UserRepo) service.AuthService {
 var AuthServiceSet = wire.NewSet(NewAuthService)
 ```
 
-After adding new dependencies, regenerate: `wire gen ./internal/wire`
+新增依赖后，重新生成代码：`wire gen ./internal/wire`
 
 ---
 
-## Multi-Tenant Model
+## 多租户模型
 
-| Role | tenant_id | Permissions |
-|------|-----------|-------------|
-| `platform_admin` | NULL | Manage all tenants |
-| `tenant_admin` | Assigned | Manage own tenant |
-| `operator` | Assigned | Monitor, gate control |
+| 角色 | tenant_id | 权限 |
+|------|-----------|------|
+| `platform_admin` | NULL | 管理所有租户 |
+| `tenant_admin` | 已分配 | 管理所属租户 |
+| `operator` | 已分配 | 监控与闸机控制 |
 
-**Critical Rules:**
-- Non-platform admins MUST filter by `tenant_id` in all queries
-- Cross-tenant access returns 403 Forbidden
-- Tenant status is checked during login (frozen tenant = login rejected)
+**关键规则：**
+- 非平台管理员在所有查询中都必须按 `tenant_id` 过滤
+- 跨租户访问必须返回 `403 Forbidden`
+- 登录时需要检查租户状态（冻结租户禁止登录）
 
 ---
 
-## Code Style Guidelines
+## 代码风格规范
 
-### Go Backend
+### Go 后端
 
-**Imports Ordering:** Standard library → External packages → Internal packages
+**导入顺序：** 标准库 → 第三方包 → 内部包
 
-**Naming Conventions:**
-- Interfaces: `XxxService`, `XxxRepo` (no `I` prefix)
-- Implementations: `xxxServiceImpl` (private struct), constructor `NewXxx`
-- ProviderSets: `XxxServiceSet`, `XxxRepoSet`
-- Domain errors: `ErrNotFound`, `ErrUserNotFound`
-- Error codes: `CodeNotFound`, `CodeInvalidCredentials`
+**命名约定：**
+- 接口：`XxxService`、`XxxRepo`（不要使用 `I` 前缀）
+- 实现：`xxxServiceImpl`（私有结构体），构造函数使用 `NewXxx`
+- ProviderSet：`XxxServiceSet`、`XxxRepoSet`
+- 领域错误：`ErrNotFound`、`ErrUserNotFound`
+- 错误码：`CodeNotFound`、`CodeInvalidCredentials`
 
-**Error Handling:**
+**错误处理：**
 ```go
-// Use errors.Is for sentinel errors
+// 对哨兵错误使用 errors.Is
 if errors.Is(err, domain.ErrUserNotFound) { /* handle */ }
 
-// Use errors.As for DomainError
+// 对 DomainError 使用 errors.As
 var domainErr *domain.DomainError
 if errors.As(err, &domainErr) { /* access domainErr.Code */ }
 ```
 
-**No Comments in Code:** Do not add comments unless explicitly requested.
+**代码中不要添加注释：** 除非用户明确要求，否则不要写注释。
 
-### Frontend (TypeScript/React)
+### 前端（TypeScript/React）
 
-**Path Alias:** `@/*` maps to project root
+**路径别名：** `@/*` 映射到项目根目录
 
-**Form Handling (react-hook-form + zod):**
+**表单处理（react-hook-form + zod）：**
 ```tsx
 const schema = z.object({
   username: z.string().min(1, 'Required'),
@@ -135,15 +135,15 @@ const { register, handleSubmit, formState: { errors } } = useForm({
 });
 ```
 
-**Icons:** Use FontAwesome via `@/components/icons/FontAwesome`
+**图标：** 使用 `@/components/icons/FontAwesome` 中的 FontAwesome
 
-**Styling:** Tailwind CSS v4 with shadcn/ui components.
+**样式：** 使用 Tailwind CSS v4 与 shadcn/ui 组件
 
 ---
 
-## Testing Patterns
+## 测试模式
 
-Use mock implementations for interfaces:
+为接口编写 mock 实现：
 
 ```go
 type mockUserRepo struct {
@@ -156,41 +156,44 @@ func (m *mockUserRepo) FindByID(ctx context.Context, id string) (*domain.User, e
 }
 ```
 
-**Important:** When creating test users with `tenant_id`, ensure the corresponding tenant exists in the mock tenant repo.
+**重要：** 测试中创建带有 `tenant_id` 的用户时，必须确保对应租户也存在于 mock tenant repo 中。
 
 ---
 
-## Authentication Flow
+## 认证流程
 
 ```
 Request → AuthMiddleware → TenantMiddleware → RBACMiddleware → Handler
 ```
 
-- Access token: 2 hours, Refresh token: 7 days
-- JWT claims: `sub` (userID), `tenant_id`, `role`, `type` (access/refresh)
+- Access token：2 小时
+- Refresh token：7 天
+- JWT claims：`sub`（userID）、`tenant_id`、`role`、`type`（access/refresh）
 
 ---
 
-## Environment Variables
+## 环境变量
 
-### Backend Required
-| Variable | Required | Default |
-|----------|----------|---------|
-| `APP_ENV`, `APP_PORT` | Yes | development, 8080 |
-| `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME` | Yes | - |
-| `JWT_SECRET` | Yes | ≥32 chars |
+### 后端必需变量
 
-### Frontend
-| Variable | Description |
-|----------|-------------|
-| `NEXT_PUBLIC_API_BASE_URL` | Backend API URL |
+| 变量 | 是否必需 | 默认值 |
+|------|----------|--------|
+| `APP_ENV`, `APP_PORT` | 是 | development, 8080 |
+| `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME` | 是 | - |
+| `JWT_SECRET` | 是 | 至少 32 个字符 |
+
+### 前端
+
+| 变量 | 说明 |
+|------|------|
+| `NEXT_PUBLIC_API_BASE_URL` | 后端 API 地址 |
 
 ---
 
-## Seed Data (Development)
+## 开发环境种子数据
 
-| Role | Username | Password |
-|------|----------|----------|
+| 角色 | 用户名 | 密码 |
+|------|--------|------|
 | Platform Admin | `platform_admin` | `Admin@123456` |
 | Tenant Admin | `tenant_admin` | `Tenant@123456` |
 | Operator | `operator` | `Operator@123456` |

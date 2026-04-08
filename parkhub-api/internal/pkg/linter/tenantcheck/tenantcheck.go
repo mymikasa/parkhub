@@ -66,8 +66,9 @@ func isPkgAllowed(pkgPath string) bool {
 		"internal/dao/",         // legacy monolith dao package
 		"internal/migrations",   // migration scripts
 		"internal/seed",         // seed data — infra-level, no tenant scope
-		"internal/service/impl",  // legacy monolith services (migrated in later phases)
-		"internal/service/test",  // legacy service tests
+		"internal/service/impl", // legacy monolith services (migrated in later phases)
+		"internal/service/test", // legacy service tests
+		"internal/monolith/",    // bootstrap / health infra for phase 0 monolith
 	}
 	for _, a := range allowed {
 		if strings.Contains(pkgPath, a) {
