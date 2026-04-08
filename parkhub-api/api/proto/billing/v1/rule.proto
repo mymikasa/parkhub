@@ -1,0 +1,85 @@
+syntax = "proto3";
+
+package parkhub.billing.v1;
+
+import "google/protobuf/timestamp.proto";
+import "api/proto/common/v1/pagination.proto";
+
+option go_package = "github.com/parkhub/api/internal/gen/proto/billing/v1;billingv1";
+
+// BillingRule 计费规则
+message BillingRule {
+  string rule_id = 1;
+  string tenant_id = 2;
+  string parking_lot_id = 3;
+  int32 free_minutes = 4;
+  int64 price_per_hour_cents = 5;
+  int64 daily_cap_cents = 6;
+  google.protobuf.Timestamp created_at = 7;
+  google.protobuf.Timestamp updated_at = 8;
+}
+
+service RuleService {
+  rpc GetRule(GetRuleRequest) returns (GetRuleResponse);
+  rpc ListRules(ListRulesRequest) returns (ListRulesResponse);
+  rpc CreateRule(CreateRuleRequest) returns (CreateRuleResponse);
+  rpc UpdateRule(UpdateRuleRequest) returns (UpdateRuleResponse);
+  rpc DeleteRule(DeleteRuleRequest) returns (DeleteRuleResponse);
+  rpc GetDefaultRule(GetDefaultRuleRequest) returns (GetDefaultRuleResponse);
+}
+
+message GetRuleRequest {
+  string rule_id = 1;
+}
+
+message GetRuleResponse {
+  BillingRule rule = 1;
+}
+
+message ListRulesRequest {
+  string tenant_id = 1;
+  string parking_lot_id = 2;
+  common.v1.PaginationRequest pagination = 3;
+}
+
+message ListRulesResponse {
+  repeated BillingRule rules = 1;
+  common.v1.PaginationResponse pagination = 2;
+}
+
+message CreateRuleRequest {
+  string tenant_id = 1;
+  string parking_lot_id = 2;
+  int32 free_minutes = 3;
+  int64 price_per_hour_cents = 4;
+  int64 daily_cap_cents = 5;
+}
+
+message CreateRuleResponse {
+  BillingRule rule = 1;
+}
+
+message UpdateRuleRequest {
+  string rule_id = 1;
+  int32 free_minutes = 2;
+  int64 price_per_hour_cents = 3;
+  int64 daily_cap_cents = 4;
+}
+
+message UpdateRuleResponse {
+  BillingRule rule = 1;
+}
+
+message DeleteRuleRequest {
+  string rule_id = 1;
+}
+
+message DeleteRuleResponse {}
+
+message GetDefaultRuleRequest {
+  string parking_lot_id = 1;
+}
+
+message GetDefaultRuleResponse {
+  BillingRule rule = 1;
+}

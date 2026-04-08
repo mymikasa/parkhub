@@ -1,0 +1,114 @@
+syntax = "proto3";
+
+package parkhub.bff.v1;
+
+import "api/proto/common/v1/money.proto";
+
+option go_package = "github.com/parkhub/api/internal/gen/proto/bff/v1;bffv1";
+
+// ExitFeeInfo 出场费用信息
+message ExitFeeInfo {
+  common.v1.Money fee = 1;
+  string entry_time = 2;
+  int64 duration_minutes = 3;
+  ExitOrderBrief order = 4;
+}
+
+// ExitOrderBrief 出场订单简要
+message ExitOrderBrief {
+  string order_id = 1;
+  string status = 2;
+  common.v1.Money amount = 3;
+}
+
+// PaymentResult 支付结果
+message PaymentResult {
+  string payment_id = 1;
+  string status = 2;
+  common.v1.Money amount = 3;
+  string transaction_id = 4;
+}
+
+// OrderResult 订单结果
+message OrderResult {
+  string order_id = 1;
+  string status = 2;
+  common.v1.Money amount = 3;
+}
+
+// TransitResult 通行结果
+message TransitResult {
+  string transit_id = 1;
+  string plate_number = 2;
+  string transit_type = 3;
+  string transit_time = 4;
+}
+
+// BarrierCommandResult 闸机指令结果
+message BarrierCommandResult {
+  string command_id = 1;
+  string device_id = 2;
+  string command_type = 3;
+  string status = 4;
+}
+
+service ExitFlowBffService {
+  rpc GetExitFee(GetExitFeeRequest) returns (GetExitFeeResponse);
+  rpc ConfirmPayment(ConfirmPaymentRequest) returns (ConfirmPaymentResponse);
+  rpc ProcessExit(ProcessExitRequest) returns (ProcessExitResponse);
+  rpc GetExitRecord(GetExitRecordRequest) returns (GetExitRecordResponse);
+  rpc RetryExit(RetryExitRequest) returns (RetryExitResponse);
+}
+
+message GetExitFeeRequest {
+  string parking_lot_id = 1;
+  string plate_number = 2;
+}
+
+message GetExitFeeResponse {
+  common.v1.Money fee = 1;
+  string entry_time = 2;
+  int64 duration_minutes = 3;
+  ExitOrderBrief order = 4;
+}
+
+message ConfirmPaymentRequest {
+  string order_id = 1;
+  string payment_method = 2;
+  string coupon_id = 3;
+}
+
+message ConfirmPaymentResponse {
+  PaymentResult payment = 1;
+  OrderResult order = 2;
+}
+
+message ProcessExitRequest {
+  string parking_lot_id = 1;
+  string plate_number = 2;
+  string gate_id = 3;
+}
+
+message ProcessExitResponse {
+  TransitResult transit = 1;
+  BarrierCommandResult barrier_command = 2;
+}
+
+message GetExitRecordRequest {
+  string transit_id = 1;
+}
+
+message GetExitRecordResponse {
+  TransitResult transit = 1;
+  common.v1.Money fee = 2;
+  PaymentResult payment = 3;
+}
+
+message RetryExitRequest {
+  string transit_id = 1;
+}
+
+message RetryExitResponse {
+  TransitResult transit = 1;
+  BarrierCommandResult barrier_command = 2;
+}

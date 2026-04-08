@@ -1,0 +1,98 @@
+syntax = "proto3";
+
+package parkhub.core.v1;
+
+import "google/protobuf/timestamp.proto";
+import "api/proto/common/v1/enums.proto";
+import "api/proto/common/v1/pagination.proto";
+
+option go_package = "github.com/parkhub/api/internal/gen/proto/core/v1;corev1";
+
+// ParkingLot 停车场实体
+message ParkingLot {
+  string parking_lot_id = 1;
+  string tenant_id = 2;
+  string name = 3;
+  string address = 4;
+  int32 total_spaces = 5;
+  int32 available_spaces = 6;
+  common.v1.LotType lot_type = 7;
+  string status = 8;
+  google.protobuf.Timestamp created_at = 9;
+  google.protobuf.Timestamp updated_at = 10;
+}
+
+service ParkingLotService {
+  rpc GetParkingLot(GetParkingLotRequest) returns (GetParkingLotResponse);
+  rpc ListParkingLots(ListParkingLotsRequest) returns (ListParkingLotsResponse);
+  rpc CreateParkingLot(CreateParkingLotRequest) returns (CreateParkingLotResponse);
+  rpc UpdateParkingLot(UpdateParkingLotRequest) returns (UpdateParkingLotResponse);
+  rpc DeleteParkingLot(DeleteParkingLotRequest) returns (DeleteParkingLotResponse);
+  rpc ListGates(ListGatesRequest) returns (ListGatesResponse);
+}
+
+message GetParkingLotRequest {
+  string parking_lot_id = 1;
+}
+
+message GetParkingLotResponse {
+  ParkingLot parking_lot = 1;
+}
+
+message ListParkingLotsRequest {
+  string tenant_id = 1;
+  string status_filter = 2;
+  common.v1.PaginationRequest pagination = 3;
+}
+
+message ListParkingLotsResponse {
+  repeated ParkingLot parking_lots = 1;
+  common.v1.PaginationResponse pagination = 2;
+}
+
+message CreateParkingLotRequest {
+  string tenant_id = 1;
+  string name = 2;
+  string address = 3;
+  int32 total_spaces = 4;
+  common.v1.LotType lot_type = 5;
+}
+
+message CreateParkingLotResponse {
+  ParkingLot parking_lot = 1;
+}
+
+message UpdateParkingLotRequest {
+  string parking_lot_id = 1;
+  string name = 2;
+  string address = 3;
+  int32 total_spaces = 4;
+  common.v1.LotType lot_type = 5;
+  string status = 6;
+}
+
+message UpdateParkingLotResponse {
+  ParkingLot parking_lot = 1;
+}
+
+message DeleteParkingLotRequest {
+  string parking_lot_id = 1;
+}
+
+message DeleteParkingLotResponse {}
+
+message ListGatesRequest {
+  string parking_lot_id = 1;
+}
+
+message ListGatesResponse {
+  repeated GateSummary gates = 1;
+}
+
+// GateSummary 闸机简要信息
+message GateSummary {
+  string gate_id = 1;
+  string name = 2;
+  common.v1.GateType gate_type = 3;
+  string device_id = 4;
+}

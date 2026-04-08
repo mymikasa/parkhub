@@ -1,0 +1,62 @@
+syntax = "proto3";
+
+package parkhub.core.v1;
+
+import "google/protobuf/timestamp.proto";
+import "api/proto/common/v1/enums.proto";
+
+option go_package = "github.com/parkhub/api/internal/gen/proto/core/v1;corev1";
+
+// Gate 闸机实体
+message Gate {
+  string gate_id = 1;
+  string parking_lot_id = 2;
+  string name = 3;
+  common.v1.GateType gate_type = 4;
+  string device_id = 5;
+  google.protobuf.Timestamp created_at = 6;
+  google.protobuf.Timestamp updated_at = 7;
+}
+
+service GateService {
+  rpc GetGate(GetGateRequest) returns (GetGateResponse);
+  rpc CreateGate(CreateGateRequest) returns (CreateGateResponse);
+  rpc UpdateGate(UpdateGateRequest) returns (UpdateGateResponse);
+  rpc DeleteGate(DeleteGateRequest) returns (DeleteGateResponse);
+}
+
+message GetGateRequest {
+  string gate_id = 1;
+}
+
+message GetGateResponse {
+  Gate gate = 1;
+}
+
+message CreateGateRequest {
+  string parking_lot_id = 1;
+  string name = 2;
+  common.v1.GateType gate_type = 3;
+  string device_id = 4;
+}
+
+message CreateGateResponse {
+  Gate gate = 1;
+}
+
+message UpdateGateRequest {
+  string gate_id = 1;
+  string name = 2;
+  common.v1.GateType gate_type = 3;
+  string device_id = 4;
+}
+
+message UpdateGateResponse {
+  Gate gate = 1;
+}
+
+message DeleteGateRequest {
+  string gate_id = 1;
+}
+
+message DeleteGateResponse {}

@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+package parkhub.common.v1;
+
+option go_package = "github.com/parkhub/api/internal/gen/proto/common/v1;commonv1";
+
+// Money 金额
+message Money {
+  string currency = 1;
+  int64 amount_cents = 2;
+}

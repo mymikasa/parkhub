@@ -69,7 +69,7 @@
 按 domain 分别提交 PR：
 
 - [ ] PR-0.3.1：`api/proto/common/v1/*.proto`（共享类型：Pagination、Money、TenantContext）
-- [ ] PR-0.3.2：`api/proto/core/v1/*.proto`（Tenant、User、Auth、ParkingLot、RBAC）
+- [ ] PR-0.3.2：`api/proto/core/v1/*.proto`（Tenant、User、Auth、ParkingLot）
 - [ ] PR-0.3.3：`api/proto/iot/v1/*.proto`（Device、Heartbeat、Command）
 - [ ] PR-0.3.4：`api/proto/event/v1/*.proto`（Transit、Monitor、Anomaly）
 - [ ] PR-0.3.5：`api/proto/billing/v1/*.proto`（Rule、Calculator）
@@ -168,19 +168,19 @@
 
 ### Task 0.8：搭建可观测性基础设施（2 天）
 
-由 SRE 主导，后端开发协作：
+由 SRE 主导，后端开发协作。详细规范见 [phase-0-task-0.8-observability-spec.md](./phase-0-task-0.8-observability-spec.md)。
 
-- [ ] 部署 OpenTelemetry Collector（开发环境用 Docker Compose）
-- [ ] 部署 VictoriaMetrics（开发环境单节点版）
-- [ ] 部署 Tempo（链路追踪）
-- [ ] 部署 Loki（日志）
-- [ ] 部署 Grafana 并配置三个数据源
-- [ ] 在 `internal/pkg/otelx/` 实现 OTel SDK 初始化封装
-- [ ] 在 `cmd/monolith` 中接入 OTel
-- [ ] 创建 Grafana 基础 Dashboard 模板：
+- [x] 部署 OpenTelemetry Collector（开发环境用 Docker Compose）
+- [x] 部署 VictoriaMetrics（开发环境用 Docker Compose）
+- [x] 部署 Tempo（链路追踪）
+- [x] 部署 Loki（日志）
+- [x] 部署 Grafana 并配置三个数据源
+- [x] 在 `internal/pkg/otelx/` 实现 OTel SDK 初始化封装
+- [x] 在 `cmd/monolith` 中接入 OTel
+- [x] 创建 Grafana 基础 Dashboard 模板：
   - RED 指标（Request Rate / Errors / Duration）
   - Go runtime 指标
-- [ ] 验证：`cmd/monolith` 启动后能在 Grafana 看到指标和 trace
+- [x] 验证：`cmd/monolith` 启动后能在 Grafana 看到指标和 trace（`make obs-verify`）
 
 **验收**：Grafana 看到至少 1 个 trace（健康检查请求） + 基础 RED 指标
 
@@ -192,9 +192,9 @@
 
 - [ ] 在 `internal/pkg/grpcx/` 创建 `inprocess_registry.go`
 - [ ] 实现：
-  - `RegisterService(name, server)` 注册 gRPC server 到全局
-  - `GetClient[T any](name)` 返回 in-process gRPC client
-  - in-process 模式跳过网络栈，直接函数调用
+  - `Registry.Register(name, register)` 注册 gRPC service 到 in-process registry
+  - `GetClient[T any](registry, name, factory)` 返回 in-process gRPC client
+  - in-process 模式跳过真实网络，通过 bufconn 走完整 gRPC 栈
 - [ ] 文档化使用方式
 
 **验收**：阶段 1 搬迁时，`core` 的 service 调用 `iot` 的 service 通过这个机制完成
@@ -203,17 +203,18 @@
 
 ### Task 0.10：CI 流水线配置（1 天）
 
-- [ ] 在 `.github/workflows/refactor.yml` 创建重构分支专用流水线
-- [ ] 触发：push 到 `refactor/**` 分支或 PR 到 `refactor/microservices`
-- [ ] 步骤：
+- [x] 在 `.github/workflows/refactor.yml` 创建重构分支专用流水线
+- [x] 触发：push 到 `refactor/**` 分支或 PR 到 `refactor/microservices`
+- [x] 步骤：
   1. `make proto-lint`
   2. `make proto-breaking`（与 base branch 比较）
   3. `go vet ./...`
   4. `make lint-tenant`
   5. `go test ./...`
   6. `make build-monolith`
-- [ ] 配置 PR 必须通过所有步骤才能合并
-- [ ] 配置 PR 必须有 2 个 approval
+- [x] 提供分支保护配置脚本 `parkhub-api/scripts/configure-refactor-branch-protection.sh`
+  - required status checks：`Refactor Pipeline`
+  - required approving reviews：2
 
 **验收**：故意推一个会失败的 PR，CI 正确拦截
 
@@ -251,7 +252,6 @@
 
 | 风险 | 影响 | 应对 |
 |------|------|------|
-| Connect-RPC 工具链不熟悉 | 工期延长 | 团队预先做技术分享、参考 [Connect 官方示例](https://connectrpc.com/docs/go/getting-started) |
 | 自定义 linter 难写 | 工期延长 | 参考 [go-critic](https://github.com/go-critic/go-critic) 实现，或简化为 grep + 正则 |
 | 租户 POC 失败 | **阻塞重构** | **立即暂停**，召集架构组重新讨论租户隔离方案，可能需要引入 ProxySQL |
 | K8s 进度滞后 | 不影响阶段 0 | 阶段 0 不需要 K8s，可以并行 |

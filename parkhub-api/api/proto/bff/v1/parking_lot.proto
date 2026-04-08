@@ -1,0 +1,120 @@
+syntax = "proto3";
+
+package parkhub.bff.v1;
+
+import "api/proto/common/v1/pagination.proto";
+
+option go_package = "github.com/parkhub/api/internal/gen/proto/bff/v1;bffv1";
+
+// LotWithStats 停车场含统计信息
+message LotWithStats {
+  string parking_lot_id = 1;
+  string name = 2;
+  string address = 3;
+  int32 total_spaces = 4;
+  int32 available_spaces = 5;
+  double occupancy_rate = 6;
+  int32 online_devices = 7;
+  int32 offline_devices = 8;
+}
+
+// LotFullDetail 停车场完整详情
+message LotFullDetail {
+  string parking_lot_id = 1;
+  string name = 2;
+  string address = 3;
+  int32 total_spaces = 4;
+  int32 available_spaces = 5;
+  string lot_type = 6;
+  repeated GateWithDevice gates = 7;
+  BillingRuleBrief billing_rule = 8;
+  double occupancy_rate = 9;
+}
+
+// GateWithDevice 闸机含设备信息
+message GateWithDevice {
+  string gate_id = 1;
+  string name = 2;
+  string gate_type = 3;
+  string device_id = 4;
+  string device_status = 5;
+}
+
+// BillingRuleBrief 计费规则简要
+message BillingRuleBrief {
+  string rule_id = 1;
+  int32 free_minutes = 2;
+  int64 price_per_hour_cents = 3;
+  int64 daily_cap_cents = 4;
+}
+
+// SpacesInfo 车位信息
+message SpacesInfo {
+  int32 total = 1;
+  int32 available = 2;
+  int32 occupied = 3;
+}
+
+// DeviceWithStatus 设备含状态
+message DeviceWithStatus {
+  string device_id = 1;
+  string name = 2;
+  string status = 3;
+  string last_heartbeat_at = 4;
+  string firmware_version = 5;
+}
+
+service ParkingLotBffService {
+  rpc GetParkingLotDetail(GetParkingLotDetailRequest) returns (GetParkingLotDetailResponse);
+  rpc ListLotsWithStats(ListLotsWithStatsRequest) returns (ListLotsWithStatsResponse);
+  rpc GetAvailableSpaces(GetAvailableSpacesRequest) returns (GetAvailableSpacesResponse);
+  rpc GetLotGates(GetLotGatesRequest) returns (GetLotGatesResponse);
+  rpc GetLotDevices(GetLotDevicesRequest) returns (GetLotDevicesResponse);
+}
+
+message GetParkingLotDetailRequest {
+  string parking_lot_id = 1;
+}
+
+message GetParkingLotDetailResponse {
+  LotFullDetail lot = 1;
+}
+
+message ListLotsWithStatsRequest {
+  string tenant_id = 1;
+  common.v1.PaginationRequest pagination = 2;
+}
+
+message ListLotsWithStatsResponse {
+  repeated LotWithStats lots = 1;
+  common.v1.PaginationResponse pagination = 2;
+}
+
+message GetAvailableSpacesRequest {
+  string parking_lot_id = 1;
+}
+
+message GetAvailableSpacesResponse {
+  int32 total = 1;
+  int32 available = 2;
+  int32 occupied = 3;
+}
+
+message GetLotGatesRequest {
+  string parking_lot_id = 1;
+}
+
+message GetLotGatesResponse {
+  repeated GateWithDevice gates = 1;
+  repeated DeviceWithStatus devices = 2;
+}
+
+message GetLotDevicesRequest {
+  string parking_lot_id = 1;
+}
+
+message GetLotDevicesResponse {
+  repeated DeviceWithStatus devices = 1;
+  int32 online_count = 2;
+  int32 offline_count = 3;
+}

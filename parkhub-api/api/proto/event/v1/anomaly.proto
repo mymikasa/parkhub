@@ -1,0 +1,86 @@
+syntax = "proto3";
+
+package parkhub.event.v1;
+
+import "google/protobuf/timestamp.proto";
+import "api/proto/common/v1/enums.proto";
+import "api/proto/common/v1/pagination.proto";
+
+option go_package = "github.com/parkhub/api/internal/gen/proto/event/v1;eventv1";
+
+// Anomaly 异常记录
+message Anomaly {
+  string anomaly_id = 1;
+  string tenant_id = 2;
+  string parking_lot_id = 3;
+  string transit_id = 4;
+  common.v1.AnomalyType anomaly_type = 5;
+  string description = 6;
+  bool resolved = 7;
+  string resolution = 8;
+  string resolved_by = 9;
+  google.protobuf.Timestamp created_at = 10;
+  google.protobuf.Timestamp resolved_at = 11;
+}
+
+service AnomalyService {
+  rpc GetAnomaly(GetAnomalyRequest) returns (GetAnomalyResponse);
+  rpc ListAnomalies(ListAnomaliesRequest) returns (ListAnomaliesResponse);
+  rpc CreateAnomaly(CreateAnomalyRequest) returns (CreateAnomalyResponse);
+  rpc ResolveAnomaly(ResolveAnomalyRequest) returns (ResolveAnomalyResponse);
+  rpc ListUnresolvedAnomalies(ListUnresolvedAnomaliesRequest) returns (ListUnresolvedAnomaliesResponse);
+}
+
+message GetAnomalyRequest {
+  string anomaly_id = 1;
+}
+
+message GetAnomalyResponse {
+  Anomaly anomaly = 1;
+}
+
+message ListAnomaliesRequest {
+  string tenant_id = 1;
+  string parking_lot_id = 2;
+  common.v1.AnomalyType anomaly_type = 3;
+  bool resolved = 4;
+  common.v1.PaginationRequest pagination = 5;
+}
+
+message ListAnomaliesResponse {
+  repeated Anomaly anomalies = 1;
+  common.v1.PaginationResponse pagination = 2;
+}
+
+message CreateAnomalyRequest {
+  string tenant_id = 1;
+  string parking_lot_id = 2;
+  string transit_id = 3;
+  common.v1.AnomalyType anomaly_type = 4;
+  string description = 5;
+}
+
+message CreateAnomalyResponse {
+  Anomaly anomaly = 1;
+}
+
+message ResolveAnomalyRequest {
+  string anomaly_id = 1;
+  string resolution = 2;
+  string resolved_by = 3;
+}
+
+message ResolveAnomalyResponse {
+  Anomaly anomaly = 1;
+}
+
+message ListUnresolvedAnomaliesRequest {
+  string tenant_id = 1;
+  string parking_lot_id = 2;
+  common.v1.PaginationRequest pagination = 3;
+}
+
+message ListUnresolvedAnomaliesResponse {
+  repeated Anomaly anomalies = 1;
+  common.v1.PaginationResponse pagination = 2;
+}
