@@ -64,6 +64,34 @@ func (r *BaseRepo) WithTenant(ctx context.Context) *gorm.DB {
 	return r.db.WithContext(ctx).Where("tenant_id = ?", info.TenantID)
 }
 
+// WithTenantTable returns a *gorm.DB session scoped to the caller's tenant
+// using a table-qualified `<table>.tenant_id = ?` predicate.
+//
+// Use this for JOIN queries where an unqualified `tenant_id` would be
+// ambiguous between two tables that both carry a tenant_id column.
+//
+// Semantics for platform admin / missing context / empty tenant_id are
+// identical to WithTenant.
+func (r *BaseRepo) WithTenantTable(ctx context.Context, table string) *gorm.DB {
+	info, ok := tenant.FromContext(ctx)
+	if !ok {
+		panic("db: tenant context missing — refusing unscoped query")
+	}
+
+	if info.IsPlatformAdmin {
+		return r.db.WithContext(ctx)
+	}
+
+	if info.TenantID == "" {
+		panic(fmt.Sprintf(
+			"db: tenant_id empty for role=%s user=%s — refusing unscoped query",
+			info.UserRole, info.UserID,
+		))
+	}
+
+	return r.db.WithContext(ctx).Where(fmt.Sprintf("%s.tenant_id = ?", table), info.TenantID)
+}
+
 // WithTenantExplicit allows platform admins to target a specific tenant.
 // Non-admin callers have targetTenantID ignored — their own TenantID is used.
 //
