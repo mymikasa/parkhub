@@ -107,7 +107,9 @@ func openDB(d domainDB, cfg *config.MonolithConfig) (*gorm.DB, error) {
 		Logger: gormlogger.Default.LogMode(gormlogger.Silent),
 	}
 
-	// Connect without a database name first so we can run CREATE DATABASE.
+	// Expect d.dsn to be a server-level DSN without a database name.
+	// See .env.monolith for the phase-0 contract: monolith starts by running
+	// CREATE DATABASE IF NOT EXISTS before using the domain database.
 	db, err := gorm.Open(mysql.Open(d.dsn), gormCfg)
 	if err != nil {
 		return nil, fmt.Errorf("open: %w", err)
