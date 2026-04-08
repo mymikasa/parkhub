@@ -140,9 +140,24 @@ func TestInitReplacesGlobalsAndExportsTelemetry(t *testing.T) {
 		t.Fatalf("log span_id = %s, want %s", record.SpanID(), spanContext.SpanID())
 	}
 
-	handlerType := reflect.TypeOf(slog.Default().Handler()).String()
-	if !strings.Contains(handlerType, "otelslog.Handler") {
-		t.Fatalf("default slog handler = %q, want otelslog.Handler", handlerType)
+	// After Init the default handler must be the fanout (local + OTel bridge)
+	// so that local stdout still works when the Collector is unreachable.
+	handler := slog.Default().Handler()
+	fanout, ok := handler.(*fanoutHandler)
+	if !ok {
+		t.Fatalf("default slog handler = %T, want *fanoutHandler", handler)
+	}
+	if len(fanout.handlers) < 2 {
+		t.Fatalf("fanout handler count = %d, want >= 2 (local + OTel bridge)", len(fanout.handlers))
+	}
+	var sawOtel bool
+	for _, h := range fanout.handlers {
+		if strings.Contains(reflect.TypeOf(h).String(), "otelslog.Handler") {
+			sawOtel = true
+		}
+	}
+	if !sawOtel {
+		t.Fatalf("fanout missing otelslog.Handler downstream: %+v", fanout.handlers)
 	}
 
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)

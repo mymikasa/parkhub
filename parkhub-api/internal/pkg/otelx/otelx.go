@@ -102,11 +102,18 @@ func initWithOptions(ctx context.Context, cfg Config, opts initOptions) (*Provid
 		),
 	)
 	logglobal.SetLoggerProvider(loggerProvider)
-	slog.SetDefault(otelslog.NewLogger(
+
+	// Tee logs to both the existing local handler (stdout/stderr) and the
+	// OTel LoggerProvider bridge. The local handler is the safety net: when
+	// the Collector is unreachable the OTLP exporter silently drops records,
+	// but on-host stdout still works for emergency troubleshooting.
+	otelHandler := otelslog.NewHandler(
 		logBridgeName,
 		otelslog.WithLoggerProvider(loggerProvider),
 		otelslog.WithVersion(cfg.ServiceVersion),
-	))
+	)
+	localHandler := slog.Default().Handler()
+	slog.SetDefault(slog.New(newFanoutHandler(localHandler, otelHandler)))
 
 	return &Providers{
 		TracerProvider: tracerProvider,
