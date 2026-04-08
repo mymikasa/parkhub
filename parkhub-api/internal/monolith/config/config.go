@@ -50,7 +50,9 @@ type MonolithConfig struct {
 	DefaultMaxIdleConns int
 	DefaultConnMaxLife  time.Duration
 
-	// OTel: empty → stdout exporter; non-empty → OTLP gRPC exporter.
+	// OTel Collector OTLP gRPC endpoint (no scheme).
+	// Empty → otelx defaults to "localhost:4317".
+	// When no collector is reachable the OTel SDK silently drops exports.
 	OTELEndpoint string
 }
 

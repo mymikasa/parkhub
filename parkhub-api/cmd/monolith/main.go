@@ -11,6 +11,8 @@ import (
 	"syscall"
 	"time"
 
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+
 	"github.com/parkhub/api/internal/monolith/bootstrap"
 	"github.com/parkhub/api/internal/monolith/config"
 	"github.com/parkhub/api/internal/monolith/health"
@@ -76,10 +78,12 @@ func main() {
 	slog.Info("in-process gRPC server started")
 
 	// ── 6. HTTP mux + healthz ────────────────────────────────────────────────
-	// /healthz is registered directly on the raw ServeMux — NOT wrapped by
-	// any OTel HTTP middleware — to avoid generating trace spans from probes.
+	// /healthz is wrapped by otelhttp so every probe request produces a trace
+	// span, satisfying the phase-0 acceptance criteria (≥1 trace visible in
+	// Grafana/Tempo).  In production, consider removing the wrapper or using
+	// a sampler to suppress probe noise.
 	mux := http.NewServeMux()
-	mux.Handle("/healthz", health.NewHandler(dbs))
+	mux.Handle("/healthz", otelhttp.NewHandler(health.NewHandler(dbs), "/healthz"))
 
 	httpSrv := &http.Server{
 		Addr:    fmt.Sprintf(":%s", cfg.AppPort),

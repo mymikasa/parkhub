@@ -1,0 +1,52 @@
+apiVersion: 1
+
+datasources:
+  - name: VictoriaMetrics
+    type: prometheus
+    url: http://victoriametrics:8428
+    isDefault: true
+    uid: victoriametrics
+    editable: false
+
+  - name: Tempo
+    type: tempo
+    url: http://tempo:3200
+    uid: tempo
+    editable: false
+    jsonData:
+      httpMethod: GET
+      serviceMap:
+        datasourceUid: victoriametrics
+      nodeGraph:
+        enabled: true
+      search:
+        hide: false
+      lokiSearch:
+        datasourceUid: loki
+      tracesToLogsV2:
+        datasourceUid: loki
+        spanStartTimeShift: "-1m"
+        spanEndTimeShift: "1m"
+        tags:
+          - key: service.name
+            value: service_name
+        filterByTraceID: true
+        filterBySpanID: false
+      tracesToMetrics:
+        datasourceUid: victoriametrics
+        tags:
+          - key: service.name
+            value: service
+
+  - name: Loki
+    type: loki
+    url: http://loki:3100
+    uid: loki
+    editable: false
+    jsonData:
+      derivedFields:
+        - datasourceUid: tempo
+          matcherRegex: '"trace_id"\s*:\s*"([a-f0-9]+)"'
+          name: TraceID
+          url: "${__value.raw}"
+          urlDisplayLabel: "在 Tempo 中查看 Trace"

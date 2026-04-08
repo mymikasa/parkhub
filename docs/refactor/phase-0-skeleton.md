@@ -168,19 +168,19 @@
 
 ### Task 0.8：搭建可观测性基础设施（2 天）
 
-由 SRE 主导，后端开发协作：
+由 SRE 主导，后端开发协作。详细规范见 [phase-0-task-0.8-observability-spec.md](./phase-0-task-0.8-observability-spec.md)。
 
-- [ ] 部署 OpenTelemetry Collector（开发环境用 Docker Compose）
-- [ ] 部署 VictoriaMetrics（开发环境单节点版）
-- [ ] 部署 Tempo（链路追踪）
-- [ ] 部署 Loki（日志）
-- [ ] 部署 Grafana 并配置三个数据源
-- [ ] 在 `internal/pkg/otelx/` 实现 OTel SDK 初始化封装
-- [ ] 在 `cmd/monolith` 中接入 OTel
-- [ ] 创建 Grafana 基础 Dashboard 模板：
+- [x] 部署 OpenTelemetry Collector（开发环境用 Docker Compose）
+- [x] 部署 VictoriaMetrics（开发环境用 Docker Compose）
+- [x] 部署 Tempo（链路追踪）
+- [x] 部署 Loki（日志）
+- [x] 部署 Grafana 并配置三个数据源
+- [x] 在 `internal/pkg/otelx/` 实现 OTel SDK 初始化封装
+- [x] 在 `cmd/monolith` 中接入 OTel
+- [x] 创建 Grafana 基础 Dashboard 模板：
   - RED 指标（Request Rate / Errors / Duration）
   - Go runtime 指标
-- [ ] 验证：`cmd/monolith` 启动后能在 Grafana 看到指标和 trace
+- [x] 验证：`cmd/monolith` 启动后能在 Grafana 看到指标和 trace（`make obs-verify`）
 
 **验收**：Grafana 看到至少 1 个 trace（健康检查请求） + 基础 RED 指标
 
@@ -203,17 +203,18 @@
 
 ### Task 0.10：CI 流水线配置（1 天）
 
-- [ ] 在 `.github/workflows/refactor.yml` 创建重构分支专用流水线
-- [ ] 触发：push 到 `refactor/**` 分支或 PR 到 `refactor/microservices`
-- [ ] 步骤：
+- [x] 在 `.github/workflows/refactor.yml` 创建重构分支专用流水线
+- [x] 触发：push 到 `refactor/**` 分支或 PR 到 `refactor/microservices`
+- [x] 步骤：
   1. `make proto-lint`
   2. `make proto-breaking`（与 base branch 比较）
   3. `go vet ./...`
   4. `make lint-tenant`
   5. `go test ./...`
   6. `make build-monolith`
-- [ ] 配置 PR 必须通过所有步骤才能合并
-- [ ] 配置 PR 必须有 2 个 approval
+- [x] 提供分支保护配置脚本 `parkhub-api/scripts/configure-refactor-branch-protection.sh`
+  - required status checks：`Refactor Pipeline`
+  - required approving reviews：2
 
 **验收**：故意推一个会失败的 PR，CI 正确拦截
 
